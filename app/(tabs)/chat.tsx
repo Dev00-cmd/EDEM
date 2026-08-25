@@ -265,7 +265,7 @@ export default function ChatScreen() {
   // taper.
   useEffect(() => {
     scrollToEnd();
-  }, [messages.length, typing, keyboard.height, scrollToEnd]);
+  }, [messages.length, typing, keyboard.offset, scrollToEnd]);
 
   const [askingClear, setAskingClear] = useState(false);
 
@@ -333,6 +333,9 @@ export default function ChatScreen() {
       {/* ── Conversation ────────────────────────────────────── */}
       <FlatList
         ref={listRef}
+        // Sans flex:1 la liste prend la hauteur de son contenu et
+        // repousse la barre de saisie hors de l'ecran.
+        style={styles.flex}
         data={messages}
         keyExtractor={(m) => m.id}
         renderItem={({ item }) => <ChatBubble msg={item} />}
@@ -415,7 +418,7 @@ export default function ChatScreen() {
       <View
         style={{
           paddingBottom: keyboard.visible
-            ? keyboard.height
+            ? keyboard.offset
             : Math.max(insets.bottom, 6),
         }}
       >
