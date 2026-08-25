@@ -76,17 +76,21 @@ const QUIZ_SCHEMA = {
         type: "object",
         properties: {
           question: { type: "string" },
+          // Pas de minItems/maxItems ni de minimum/maximum ici :
+          // les structured outputs de l'API ne les acceptent pas
+          // (minItems n'admet que 0 ou 1). La contrainte passe donc
+          // par la description, et l'app revalide chaque question
+          // avant de l'afficher — voir src/ai/remoteTutor.ts.
           choices: {
             type: "array",
             items: { type: "string" },
-            minItems: 4,
-            maxItems: 4,
+            description:
+              "Exactement 4 propositions, une seule correcte, les trois autres plausibles.",
           },
           answer: {
             type: "integer",
-            minimum: 0,
-            maximum: 3,
-            description: "Index de la bonne réponse dans « choices ».",
+            description:
+              "Index de la bonne réponse dans « choices » : 0, 1, 2 ou 3.",
           },
           explanation: {
             type: "string",
@@ -106,6 +110,49 @@ const QUIZ_SCHEMA = {
   required: ["questions"],
   additionalProperties: false,
 } as const;
+
+/**
+ * Extrait la réponse structurée du modèle.
+ *
+ * `output_config.format` garantit que le modèle PRODUIT du JSON
+ * conforme au schéma, mais `messages.create()` ne le désérialise
+ * pas toujours dans `parsed_output` — seul `messages.parse()` le
+ * fait systématiquement. Sans ce filet, le JSON brut partait tel
+ * quel vers l'élève et les quiz échouaient.
+ *
+ * On tente donc, dans l'ordre : le champ déjà désérialisé, puis
+ * le texte de la réponse, puis le texte débarrassé d'une éventuelle
+ * clôture Markdown.
+ */
+// deno-lint-ignore no-explicit-any
+function extractStructured<T>(response: any): T | null {
+  const parsed = response?.parsed_output;
+  if (parsed && typeof parsed === "object") return parsed as T;
+
+  const text = (response?.content ?? [])
+    .filter((b: { type: string }) => b.type === "text")
+    .map((b: { text: string }) => b.text)
+    .join("")
+    .trim();
+
+  if (!text) return null;
+
+  const candidates = [
+    text,
+    // Le modèle enrobe parfois son JSON dans un bloc ```json … ```
+    text.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, ""),
+  ];
+
+  for (const c of candidates) {
+    try {
+      const value = JSON.parse(c);
+      if (value && typeof value === "object") return value as T;
+    } catch {
+      // on essaie le candidat suivant
+    }
+  }
+  return null;
+}
 
 // ═══════════════════════════════════════════════════════════════
 //  Pièce jointe : lecture sécurisée depuis le stockage privé
@@ -246,16 +293,15 @@ Deno.serve(async (req: Request) => {
         },
       });
 
-      const parsed = (response as { parsed_output?: unknown }).parsed_output as
-        | { reply: string; topic: string | null }
-        | null
-        | undefined;
+      const parsed = extractStructured<{ reply: string; topic: string | null }>(
+        response,
+      );
 
       if (parsed?.reply) {
         return json({ reply: parsed.reply, topic: parsed.topic ?? null });
       }
 
-      // Filet de sécurité si le parsing échoue
+      // Dernier recours : renvoyer le texte tel quel plutôt que rien.
       const text = response.content
         .filter((b): b is { type: "text"; text: string } => b.type === "text")
         .map((b) => b.text)
@@ -282,12 +328,9 @@ Deno.serve(async (req: Request) => {
         },
       });
 
-      const parsed = (response as { parsed_output?: unknown }).parsed_output as
-        | { questions: unknown[] }
-        | null
-        | undefined;
+      const parsed = extractStructured<{ questions: unknown[] }>(response);
 
-      if (!parsed?.questions) {
+      if (!parsed?.questions || !Array.isArray(parsed.questions)) {
         return json({ error: "génération du quiz impossible" }, 502);
       }
       return json({ questions: parsed.questions });
