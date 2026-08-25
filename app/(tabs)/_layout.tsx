@@ -6,6 +6,7 @@ import { Icon, type IconName } from '@/components/Icon';
 import { useApp } from '@/store/AppContext';
 import { useTheme } from '@/theme/ThemeContext';
 import { FONT_CAP } from '@/theme/responsive';
+import { useKeyboard } from '@/theme/useKeyboard';
 import { type } from '@/theme/typography';
 
 interface TabStateLike {
@@ -46,6 +47,12 @@ function TabBar({
   const { colors } = useTheme();
   const { t } = useApp();
   const insets = useSafeAreaInsets();
+  const keyboard = useKeyboard();
+
+  // Clavier ouvert : la barre d'onglets s'efface. Elle volerait de
+  // la place à ce que l'élève écrit, et l'écran de conversation
+  // calcule son décalage en supposant qu'elle n'est plus là.
+  if (keyboard.visible) return null;
 
   return (
     <View

@@ -1,8 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import {
   Image,
-  KeyboardAvoidingView,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -15,6 +13,7 @@ import { Chip } from '@/components/Chip';
 import { Icon, type IconName } from '@/components/Icon';
 import { useApp } from '@/store/AppContext';
 import { useTheme } from '@/theme/ThemeContext';
+import { useKeyboard } from '@/theme/useKeyboard';
 import { RADIUS } from '@/theme/colors';
 import { FONTS, type } from '@/theme/typography';
 import { LEVELS } from '@/data/levels';
@@ -35,6 +34,7 @@ const GOALS: { id: string; icon: IconName }[] = [
 export default function Onboarding() {
   const { t, profile, updateProfile } = useApp();
   const { colors } = useTheme();
+  const keyboard = useKeyboard();
 
   const [step, setStep] = useState(0);
   const [error, setError] = useState('');
@@ -76,12 +76,16 @@ export default function Onboarding() {
 
   return (
     <Screen scroll={false} padded={false} edges={['top', 'bottom']}>
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
+      <View style={styles.flex}>
+        {/* Contenu rallongé de la hauteur du clavier : en
+            edge-to-edge la fenêtre ne se redimensionne plus, et
+            sans ce rallongement on ne peut pas atteindre le champ
+            masqué. */}
         <ScrollView
-          contentContainerStyle={styles.scroll}
+          contentContainerStyle={[
+            styles.scroll,
+            { paddingBottom: 40 + keyboard.height },
+          ]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
@@ -322,14 +326,14 @@ export default function Onboarding() {
             />
           </View>
         </ScrollView>
-      </KeyboardAvoidingView>
+      </View>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  scroll: { flexGrow: 1, paddingHorizontal: 22, paddingTop: 10, paddingBottom: 40 },
+  scroll: { flexGrow: 1, paddingHorizontal: 22, paddingTop: 10 },
 
   progressTrack: { flexDirection: 'row', gap: 6, marginBottom: 24 },
   progressSeg: { flex: 1, height: 5, borderRadius: 3 },

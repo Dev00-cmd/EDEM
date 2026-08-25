@@ -3,8 +3,6 @@ import {
   ActivityIndicator,
   FlatList,
   Image,
-  KeyboardAvoidingView,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -31,6 +29,7 @@ import {
   type UploadedFile,
 } from '@/lib/attachments';
 import { useTheme } from '@/theme/ThemeContext';
+import { useKeyboard } from '@/theme/useKeyboard';
 import { RADIUS } from '@/theme/colors';
 import { FONTS, type } from '@/theme/typography';
 import { askTutor } from '@/ai/tutor';
@@ -60,6 +59,7 @@ export default function ChatScreen() {
   const { user } = useAuth();
   const userId = user?.id ?? null;
   const { colors } = useTheme();
+  const keyboard = useKeyboard();
 
   const [subject, setSubject] = useState<string>(params.subject ?? 'general');
   const threadKey = subject ?? 'general';
@@ -257,9 +257,13 @@ export default function ChatScreen() {
     if (params.subject && !params.prefill) setSubject(params.subject);
   }, [params.prefill, params.subject, send]);
 
+  // On suit la fin de la conversation : nouveau message, tuteur en
+  // train d'écrire, et ouverture du clavier — sinon le dernier
+  // message se retrouve masqué au moment où l'élève commence à
+  // taper.
   useEffect(() => {
     scrollToEnd();
-  }, [messages.length, typing, scrollToEnd]);
+  }, [messages.length, typing, keyboard.height, scrollToEnd]);
 
   const [askingClear, setAskingClear] = useState(false);
 
@@ -395,11 +399,13 @@ export default function ChatScreen() {
         ListFooterComponent={typing ? <TypingBubble /> : null}
       />
 
-      {/* ── Barre de saisie ─────────────────────────────────── */}
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 0}
-      >
+      {/* ── Barre de saisie ─────────────────────────────────────
+          Elle remonte de la hauteur exacte du clavier. On ne peut
+          pas s'en remettre à KeyboardAvoidingView : en mode
+          edge-to-edge (Android par défaut depuis Expo SDK 52), la
+          fenêtre ne se redimensionne plus et le champ resterait
+          caché derrière le clavier. */}
+      <View style={{ paddingBottom: keyboard.height }}>
         {/* Erreur de pièce jointe */}
         {attachError !== '' && (
           <View style={[styles.attachError, { backgroundColor: `${colors.danger}18` }]}>
@@ -538,7 +544,7 @@ export default function ChatScreen() {
             </Pressable>
           </View>
         </View>
-      </KeyboardAvoidingView>
+      </View>
 
       <ConfirmDialog
         visible={askingClear}

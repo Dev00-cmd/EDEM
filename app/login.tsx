@@ -1,7 +1,5 @@
 import React, { useState } from 'react';
 import {
-  KeyboardAvoidingView,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -14,6 +12,7 @@ import { Input } from '@/components/Input';
 import { Icon } from '@/components/Icon';
 import { LogoMark } from '@/components/LogoMark';
 import { useAuth } from '@/store/AuthContext';
+import { useKeyboard } from '@/theme/useKeyboard';
 import { useApp } from '@/store/AppContext';
 import { useTheme } from '@/theme/ThemeContext';
 import { RADIUS } from '@/theme/colors';
@@ -27,6 +26,7 @@ export default function LoginScreen() {
   const { signIn, signUp, sendPasswordReset } = useAuth();
   const { t, profile, updateProfile } = useApp();
   const { colors } = useTheme();
+  const keyboard = useKeyboard();
 
   const [mode, setMode] = useState<Mode>('signin');
   const [name, setName] = useState('');
@@ -107,12 +107,17 @@ export default function LoginScreen() {
 
   return (
     <Screen scroll={false} padded={false} edges={['top', 'bottom']}>
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
+      <View style={styles.flex}>
+        {/* Le contenu est rallongé de la hauteur du clavier : c'est
+            ce qui permet de faire défiler jusqu'au champ masqué.
+            KeyboardAvoidingView ne suffit pas — en edge-to-edge
+            (Android par défaut), la fenêtre ne se redimensionne
+            plus et il reste sans effet. */}
         <ScrollView
-          contentContainerStyle={styles.content}
+          contentContainerStyle={[
+            styles.content,
+            { paddingBottom: 32 + keyboard.height },
+          ]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
@@ -268,14 +273,14 @@ export default function LoginScreen() {
             {APP_NAME} · {lang === 'ht' ? APP_TAGLINE_HT : APP_TAGLINE_FR}
           </Text>
         </ScrollView>
-      </KeyboardAvoidingView>
+      </View>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  content: { paddingHorizontal: 24, paddingBottom: 32, flexGrow: 1 },
+  content: { paddingHorizontal: 24, flexGrow: 1 },
 
   langRow: { flexDirection: 'row', gap: 8, justifyContent: 'flex-end', paddingTop: 8 },
   langChip: {
