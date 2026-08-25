@@ -500,12 +500,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
   );
 
   // ── Remise à zéro ───────────────────────────────────────────
+  // Lève en cas d'échec : l'appelant doit pouvoir prévenir
+  // l'élève. Supabase renvoie l'erreur au lieu de la lancer,
+  // donc sans ce test l'échec passerait totalement inaperçu.
   const resetAll = useCallback(async () => {
+    if (userId) {
+      const { error } = await supabase.rpc('reset_progress');
+      if (error) throw new Error(error.message);
+    }
     setProgress(DEFAULT_PROGRESS);
     setThreads({});
     setActivity([]);
-    if (!userId) return;
-    await supabase.rpc('reset_progress');
   }, [userId]);
 
   const refresh = useCallback(async () => {

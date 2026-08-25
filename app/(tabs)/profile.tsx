@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Screen } from '@/components/Screen';
 import { Card } from '@/components/Card';
 import { Chip } from '@/components/Chip';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { Icon, type IconName } from '@/components/Icon';
 import { LogoMark } from '@/components/LogoMark';
 import { StatTile, ProgressBar } from '@/components/Stats';
@@ -46,6 +47,11 @@ export default function ProfileScreen() {
 
   const [editingName, setEditingName] = useState(false);
 
+  // Boîte de confirmation ouverte, et son état d'exécution.
+  const [asking, setAsking] = useState<'reset' | 'signout' | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [failure, setFailure] = useState('');
+
   const accuracy =
     progress.answered > 0
       ? Math.round((progress.correct / progress.answered) * 100)
@@ -58,18 +64,32 @@ export default function ProfileScreen() {
     updateProfile({ favorites });
   };
 
-  const confirmReset = () => {
-    Alert.alert(t('profile.reset'), t('profile.resetConfirm'), [
-      { text: t('common.cancel'), style: 'cancel' },
-      { text: t('profile.reset'), style: 'destructive', onPress: () => void resetAll() },
-    ]);
-  };
+  /**
+   * Exécute l'action confirmée.
+   *
+   * Le résultat est surveillé : si la remise à zéro ou la
+   * déconnexion échoue (réseau coupé), l'élève voit un message
+   * plutôt qu'un bouton qui ne répond pas.
+   */
+  const runConfirmed = async () => {
+    const action = asking;
+    if (!action) return;
 
-  const confirmSignOut = () => {
-    Alert.alert(t('profile.signOut'), t('profile.signOutConfirm'), [
-      { text: t('common.cancel'), style: 'cancel' },
-      { text: t('profile.signOut'), style: 'destructive', onPress: () => void signOut() },
-    ]);
+    setBusy(true);
+    setFailure('');
+    try {
+      if (action === 'reset') await resetAll();
+      else await signOut();
+      setAsking(null);
+    } catch {
+      setFailure(
+        lang === 'ht'
+          ? 'Aksyon an pa mache. Tcheke koneksyon ou epi eseye ankò.'
+          : "L'action n'a pas abouti. Vérifie ta connexion et réessaie.",
+      );
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
@@ -293,8 +313,20 @@ export default function ProfileScreen() {
 
       {/* ── Compte ──────────────────────────────────────────── */}
       <View style={styles.dangerZone}>
+        {failure !== '' && (
+          <View style={[styles.failure, { backgroundColor: `${colors.danger}18` }]}>
+            <Icon name="alert" size={14} color={colors.danger} />
+            <Text style={[type.caption, { color: colors.danger, flex: 1 }]}>
+              {failure}
+            </Text>
+          </View>
+        )}
+
         <Pressable
-          onPress={confirmReset}
+          onPress={() => {
+            setFailure('');
+            setAsking('reset');
+          }}
           accessibilityRole="button"
           style={[styles.outlineBtn, { borderColor: colors.borderStrong }]}
         >
@@ -305,7 +337,10 @@ export default function ProfileScreen() {
         </Pressable>
 
         <Pressable
-          onPress={confirmSignOut}
+          onPress={() => {
+            setFailure('');
+            setAsking('signout');
+          }}
           accessibilityRole="button"
           style={[styles.outlineBtn, { borderColor: colors.danger }]}
         >
@@ -315,6 +350,21 @@ export default function ProfileScreen() {
           </Text>
         </Pressable>
       </View>
+
+      <ConfirmDialog
+        visible={asking !== null}
+        icon={asking === 'signout' ? 'logout' : 'refresh'}
+        destructive
+        title={asking === 'signout' ? t('profile.signOut') : t('profile.reset')}
+        message={
+          asking === 'signout' ? t('profile.signOutConfirm') : t('profile.resetConfirm')
+        }
+        confirmLabel={asking === 'signout' ? t('profile.signOut') : t('profile.reset')}
+        cancelLabel={t('common.cancel')}
+        busy={busy}
+        onConfirm={runConfirmed}
+        onCancel={() => setAsking(null)}
+      />
     </Screen>
   );
 }
@@ -375,6 +425,13 @@ const styles = StyleSheet.create({
   aboutHead: { flexDirection: 'row', alignItems: 'center', gap: 10 },
 
   dangerZone: { gap: 10, marginTop: 28 },
+  failure: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    padding: 10,
+    borderRadius: RADIUS.sm,
+  },
   outlineBtn: {
     flexDirection: 'row',
     gap: 8,

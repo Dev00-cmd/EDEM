@@ -111,8 +111,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [],
   );
 
+  // Lève en cas d'échec, pour que l'écran puisse le dire à
+  // l'élève : Supabase renvoie l'erreur plutôt que de la lancer.
   const signOut = useCallback(async () => {
-    await supabase.auth.signOut();
+    const { error } = await supabase.auth.signOut();
+    if (error) throw new Error(error.message);
   }, []);
 
   const sendPasswordReset = useCallback(

@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   Image,
   KeyboardAvoidingView,
@@ -16,6 +15,7 @@ import {
 import { useLocalSearchParams } from 'expo-router';
 import { Screen } from '@/components/Screen';
 import { Chip } from '@/components/Chip';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { Icon } from '@/components/Icon';
 import { ChatBubble, TypingBubble } from '@/components/ChatBubble';
 import { LogoMark } from '@/components/LogoMark';
@@ -261,16 +261,7 @@ export default function ChatScreen() {
     scrollToEnd();
   }, [messages.length, typing, scrollToEnd]);
 
-  const confirmClear = () => {
-    Alert.alert(t('chat.clear'), t('chat.clearConfirm'), [
-      { text: t('common.cancel'), style: 'cancel' },
-      {
-        text: t('chat.clear'),
-        style: 'destructive',
-        onPress: () => clearChat(threadKey),
-      },
-    ]);
-  };
+  const [askingClear, setAskingClear] = useState(false);
 
   const canSend = !typing && !attachBusy && (input.trim().length > 0 || !!pending);
 
@@ -295,7 +286,7 @@ export default function ChatScreen() {
         </View>
         {messages.length > 0 && (
           <Pressable
-            onPress={confirmClear}
+            onPress={() => setAskingClear(true)}
             hitSlop={10}
             accessibilityRole="button"
             accessibilityLabel={t('chat.clear')}
@@ -548,6 +539,21 @@ export default function ChatScreen() {
           </View>
         </View>
       </KeyboardAvoidingView>
+
+      <ConfirmDialog
+        visible={askingClear}
+        icon="trash"
+        destructive
+        title={t('chat.clear')}
+        message={t('chat.clearConfirm')}
+        confirmLabel={t('chat.clear')}
+        cancelLabel={t('common.cancel')}
+        onConfirm={() => {
+          clearChat(threadKey);
+          setAskingClear(false);
+        }}
+        onCancel={() => setAskingClear(false)}
+      />
     </Screen>
   );
 }
