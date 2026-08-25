@@ -85,7 +85,13 @@ export async function remoteQuiz(
   const prompt = buildQuizPrompt(ctx, subjectLabel);
 
   try {
-    const data = await invoke<QuizResponse>({ action: 'quiz', prompt });
+    // `subjectId` sert au serveur à retrouver les questions déjà
+    // posées dans cette matière, pour ne pas les reproposer.
+    const data = await invoke<QuizResponse>({
+      action: 'quiz',
+      prompt,
+      subjectId,
+    });
     const raw = data.questions;
     if (!Array.isArray(raw) || raw.length === 0) return null;
 

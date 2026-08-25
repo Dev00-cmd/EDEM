@@ -17,6 +17,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import Anthropic from "npm:@anthropic-ai/sdk@^0.71.0";
 import { createClient } from "npm:@supabase/supabase-js@^2.112.4";
+import { TEACHING_METHOD, quizGuidance } from "./teaching.ts";
 
 const MODEL = Deno.env.get("ANTHROPIC_MODEL") ?? "claude-opus-5";
 
@@ -155,6 +156,28 @@ function extractStructured<T>(response: any): T | null {
 }
 
 // ═══════════════════════════════════════════════════════════════
+//  Identité de l'appelant
+// ═══════════════════════════════════════════════════════════════
+
+/** Client agissant AU NOM de l'élève : les règles RLS s'appliquent. */
+function userClient(req: Request) {
+  return createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_ANON_KEY")!,
+    {
+      global: {
+        headers: { Authorization: req.headers.get("Authorization") ?? "" },
+      },
+    },
+  );
+}
+
+async function getUserId(req: Request): Promise<string | null> {
+  const { data } = await userClient(req).auth.getUser();
+  return data?.user?.id ?? null;
+}
+
+// ═══════════════════════════════════════════════════════════════
 //  Pièce jointe : lecture sécurisée depuis le stockage privé
 // ═══════════════════════════════════════════════════════════════
 
@@ -260,14 +283,7 @@ Deno.serve(async (req: Request) => {
 
       // Le fichier se rattache au dernier message de l'élève.
       if (attachment?.path) {
-        const authHeader = req.headers.get("Authorization") ?? "";
-        const anon = createClient(
-          Deno.env.get("SUPABASE_URL")!,
-          Deno.env.get("SUPABASE_ANON_KEY")!,
-          { global: { headers: { Authorization: authHeader } } },
-        );
-        const { data: userData } = await anon.auth.getUser();
-        const userId = userData?.user?.id;
+        const userId = await getUserId(req);
         if (!userId) return json({ error: "non authentifié" }, 401);
 
         const block = await buildAttachmentBlock(attachment, userId);
@@ -278,13 +294,17 @@ Deno.serve(async (req: Request) => {
         ];
       }
 
+      // Le profil vient de l'app, la méthode vient du serveur :
+      // on peut donc améliorer la pédagogie sans republier l'app.
+      const profile =
+        typeof system === "string" && system.length > 0
+          ? system
+          : "Tu es Ti Pwof, tuteur scolaire pour un élève haïtien.";
+
       const response = await client.messages.create({
         model: MODEL,
         max_tokens: 4000,
-        system:
-          typeof system === "string" && system.length > 0
-            ? system
-            : "Tu es un tuteur bienveillant pour élèves haïtiens.",
+        system: `${profile}\n\n${TEACHING_METHOD}`,
         // deno-lint-ignore no-explicit-any
         messages: history as any,
         output_config: {
@@ -311,28 +331,79 @@ Deno.serve(async (req: Request) => {
 
     // ── Génération d'un quiz ──────────────────────────────────
     if (action === "quiz") {
-      const { prompt } = body as { prompt?: string };
+      const { prompt, subjectId } = body as {
+        prompt?: string;
+        subjectId?: string;
+      };
       if (typeof prompt !== "string" || prompt.length === 0) {
         return json({ error: "prompt manquant" }, 400);
+      }
+
+      const subject = typeof subjectId === "string" ? subjectId : "general";
+      const supabase = userClient(req);
+      const userId = await getUserId(req);
+
+      // Ce que cet élève a déjà vu dans cette matière.
+      let seen: string[] = [];
+      if (userId) {
+        const { data } = await supabase
+          .from("quiz_seen_questions")
+          .select("question")
+          .eq("user_id", userId)
+          .eq("subject_id", subject)
+          .order("created_at", { ascending: false })
+          .limit(25);
+        seen = (data ?? []).map((r: { question: string }) => r.question);
       }
 
       const response = await client.messages.create({
         model: MODEL,
         max_tokens: 8000,
-        system:
-          "Tu génères des quiz scolaires pour des élèves haïtiens, adaptés à leur classe et au programme du MENFP. Les questions sont claires, progressives, et chaque explication apprend quelque chose.",
+        system: `Tu génères des quiz scolaires pour des élèves haïtiens, adaptés à leur classe et au programme du MENFP.\n\n${TEACHING_METHOD}\n\n${quizGuidance(seen)}`,
         messages: [{ role: "user", content: prompt }],
         output_config: {
-          effort: "medium",
+          // Un quiz varié demande plus de recul qu'une réponse
+          // directe : mêmes notions, mais angles neufs.
+          effort: "high",
           format: { type: "json_schema", schema: QUIZ_SCHEMA },
         },
       });
 
-      const parsed = extractStructured<{ questions: unknown[] }>(response);
+      const parsed = extractStructured<{
+        questions: { question: string; topic?: string }[];
+      }>(response);
 
       if (!parsed?.questions || !Array.isArray(parsed.questions)) {
         return json({ error: "génération du quiz impossible" }, 502);
       }
+
+      // On mémorise pour ne pas les reproposer.
+      //
+      // Cette écriture est ATTENDUE, pas lancée puis oubliée :
+      // l'isolat Edge peut être détruit dès la réponse envoyée, et
+      // une écriture en vol serait perdue — le quiz suivant
+      // reproposerait alors les mêmes questions. Le surcoût est de
+      // quelques dizaines de millisecondes sur un appel qui en dure
+      // plusieurs milliers.
+      //
+      // Un échec ne doit pas priver l'élève de son quiz : on
+      // journalise et on continue.
+      if (userId && parsed.questions.length > 0) {
+        const { error: memoryError } = await supabase
+          .from("quiz_seen_questions")
+          .insert(
+            parsed.questions
+              .filter((q) => typeof q?.question === "string")
+              .map((q) => ({
+                user_id: userId,
+                subject_id: subject,
+                question: q.question.slice(0, 500),
+                topic: q.topic ?? null,
+              })),
+          );
+        if (memoryError) console.error("memoire quiz:", memoryError.message);
+      }
+
       return json({ questions: parsed.questions });
     }
 

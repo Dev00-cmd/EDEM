@@ -5,6 +5,7 @@ import { Screen } from '@/components/Screen';
 import { Card } from '@/components/Card';
 import { Button } from '@/components/Button';
 import { Icon } from '@/components/Icon';
+import { RichText } from '@/components/MathText';
 import { ProgressBar } from '@/components/Stats';
 import { useApp } from '@/store/AppContext';
 import { useTheme } from '@/theme/ThemeContext';
@@ -302,9 +303,9 @@ export default function QuizScreen() {
       />
 
       <Card style={{ marginTop: 18 }}>
-        <Text style={[styles.questionText, { color: colors.text }]}>
+        <RichText size={18} color={colors.text} boldColor={colors.accent}>
           {question.q[lang]}
-        </Text>
+        </RichText>
       </Card>
 
       <View style={styles.options}>
@@ -361,9 +362,11 @@ export default function QuizScreen() {
                   </Text>
                 )}
               </View>
-              <Text style={[type.bodyMedium, { color: colors.text, flex: 1 }]}>
-                {opt[lang]}
-              </Text>
+              <View style={styles.optionBody}>
+                <RichText size={14.8} color={colors.text}>
+                  {opt[lang]}
+                </RichText>
+              </View>
             </Pressable>
           );
         })}
@@ -381,12 +384,14 @@ export default function QuizScreen() {
           </Text>
 
           {picked !== question.correct && (
-            <Text style={[type.body, { color: colors.textSoft, marginTop: 4 }]}>
-              {t('quiz.theAnswerWas')}
-              <Text style={{ fontFamily: FONTS.bold, color: colors.text }}>
-                {question.opts[question.correct][lang]}
+            <View style={styles.answerRow}>
+              <Text style={[type.body, { color: colors.textSoft }]}>
+                {t('quiz.theAnswerWas')}
               </Text>
-            </Text>
+              <RichText size={14.8} color={colors.text} style={{ fontFamily: FONTS.bold }}>
+                {question.opts[question.correct][lang]}
+              </RichText>
+            </View>
           )}
 
           {question.expl[lang] !== '' && (
@@ -397,9 +402,11 @@ export default function QuizScreen() {
                   {t('quiz.explanation')}
                 </Text>
               </View>
-              <Text style={[type.body, { color: colors.onNight, marginTop: 7 }]}>
-                {question.expl[lang]}
-              </Text>
+              <View style={{ marginTop: 7 }}>
+                <RichText color={colors.onNight} boldColor={colors.sky}>
+                  {question.expl[lang]}
+                </RichText>
+              </View>
             </Card>
           )}
 
@@ -493,6 +500,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  optionBody: { flex: 1 },
+  answerRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4, flexWrap: 'wrap' },
 
   feedback: { marginTop: 18 },
 

@@ -9,35 +9,14 @@ import {
 } from 'react-native';
 import { Icon } from './Icon';
 import { LogoMark } from './LogoMark';
+import { RichText } from './MathText';
 import { useTheme } from '@/theme/ThemeContext';
 import { FONTS, type } from '@/theme/typography';
 import { signedUrlFor } from '@/lib/attachments';
 import type { ChatMsg } from '@/store/AppContext';
 
-// ── Mini formatage : **gras** ─────────────────────────────────
-
-function renderFormatted(
-  text: string,
-  baseStyle: object,
-  boldColor: string,
-) {
-  const parts = text.split(/(\*\*[^*]+\*\*)/g);
-  return parts.map((part, i) => {
-    const isBold = part.startsWith('**') && part.endsWith('**');
-    return (
-      <Text
-        key={i}
-        style={
-          isBold
-            ? [baseStyle, { fontFamily: FONTS.bold, color: boldColor }]
-            : baseStyle
-        }
-      >
-        {isBold ? part.slice(2, -2) : part}
-      </Text>
-    );
-  });
-}
+// Le formatage (**gras** et $formules$) est délégué à RichText,
+// qui sait dessiner les fractions et les exposants.
 
 /**
  * Aperçu d'une pièce jointe.
@@ -111,12 +90,11 @@ export function ChatBubble({ msg }: { msg: ChatMsg }) {
           style={[styles.bubble, styles.userBubble, { backgroundColor: colors.accent }]}
         >
           {msg.attachment && <Attachment attachment={msg.attachment} />}
-          {msg.text.length > 0 &&
-            renderFormatted(
-              msg.text,
-              [styles.text, { color: '#FFFFFF' }],
-              '#FFFFFF',
-            )}
+          {msg.text.length > 0 && (
+            <RichText color="#FFFFFF" boldColor="#FFFFFF">
+              {msg.text}
+            </RichText>
+          )}
         </View>
       </Animated.View>
     );
@@ -132,11 +110,9 @@ export function ChatBubble({ msg }: { msg: ChatMsg }) {
           { backgroundColor: colors.surface, borderColor: colors.border },
         ]}
       >
-        {renderFormatted(
-          msg.text,
-          [styles.text, { color: colors.text }],
-          colors.accent,
-        )}
+        <RichText color={colors.text} boldColor={colors.accent}>
+          {msg.text}
+        </RichText>
       </View>
     </Animated.View>
   );
