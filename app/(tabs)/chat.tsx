@@ -11,6 +11,7 @@ import {
   View,
 } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Screen } from '@/components/Screen';
 import { Chip } from '@/components/Chip';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
@@ -60,6 +61,7 @@ export default function ChatScreen() {
   const userId = user?.id ?? null;
   const { colors } = useTheme();
   const keyboard = useKeyboard();
+  const insets = useSafeAreaInsets();
 
   const [subject, setSubject] = useState<string>(params.subject ?? 'general');
   const threadKey = subject ?? 'general';
@@ -400,12 +402,23 @@ export default function ChatScreen() {
       />
 
       {/* ── Barre de saisie ─────────────────────────────────────
-          Elle remonte de la hauteur exacte du clavier. On ne peut
-          pas s'en remettre à KeyboardAvoidingView : en mode
-          edge-to-edge (Android par défaut depuis Expo SDK 52), la
-          fenêtre ne se redimensionne plus et le champ resterait
-          caché derrière le clavier. */}
-      <View style={{ paddingBottom: keyboard.height }}>
+          On ne peut pas s'en remettre à KeyboardAvoidingView : en
+          mode edge-to-edge (Android par défaut depuis Expo SDK 52),
+          la fenêtre ne se redimensionne plus et le champ resterait
+          derrière le clavier. On décale donc nous-mêmes.
+
+          Clavier ouvert  → on remonte de sa hauteur, qui recouvre
+                            déjà la barre de navigation du téléphone.
+          Clavier fermé   → on laisse la place de cette barre, sinon
+                            le champ passe dessous sur les appareils
+                            à navigation gestuelle. */}
+      <View
+        style={{
+          paddingBottom: keyboard.visible
+            ? keyboard.height
+            : Math.max(insets.bottom, 6),
+        }}
+      >
         {/* Erreur de pièce jointe */}
         {attachError !== '' && (
           <View style={[styles.attachError, { backgroundColor: `${colors.danger}18` }]}>

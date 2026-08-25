@@ -161,6 +161,7 @@ export const fr = {
     question: 'Question',
     correct: 'Bonne réponse !',
     wrong: 'Pas tout à fait…',
+    timeUp: 'Temps écoulé !',
     theAnswerWas: 'La bonne réponse : ',
     explanation: 'Explication',
     nextQuestion: 'Question suivante',

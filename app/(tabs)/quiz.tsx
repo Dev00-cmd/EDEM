@@ -4,6 +4,7 @@ import { useLocalSearchParams } from 'expo-router';
 import { Screen } from '@/components/Screen';
 import { Card } from '@/components/Card';
 import { Button } from '@/components/Button';
+import { Countdown } from '@/components/Countdown';
 import { Icon } from '@/components/Icon';
 import { RichText } from '@/components/MathText';
 import { ProgressBar } from '@/components/Stats';
@@ -269,6 +270,23 @@ export default function QuizScreen() {
     });
   };
 
+  /**
+   * Temps écoulé : la question compte comme manquée, et la bonne
+   * réponse est révélée. On enregistre `picked: -1` — aucune option
+   * n'est alors marquée comme choisie, ce qui distingue « je me suis
+   * trompé » de « je n'ai pas eu le temps ».
+   */
+  const timeOut = () => {
+    if (picked !== null) return;
+    setPhase({
+      name: 'active',
+      quiz,
+      index,
+      picked: -1,
+      answers: [...answers, { topic: question.topic, ok: false }],
+    });
+  };
+
   const next = async () => {
     if (!isLast) {
       setPhase({ name: 'active', quiz, index: index + 1, picked: null, answers });
@@ -285,15 +303,31 @@ export default function QuizScreen() {
   return (
     <Screen>
       <View style={styles.quizHead}>
-        <Text style={[type.captionMedium, { color: colors.textSoft }]}>
-          {t('quiz.question')} {index + 1}/{total}
-        </Text>
-        <View style={[styles.quizSubject, { backgroundColor: `${subject.color}1F` }]}>
-          <Icon name={subject.icon} size={13} color={subject.color} />
-          <Text style={[type.caption, { color: subject.color }]}>
-            {subject.name[lang]}
+        <View style={styles.flex}>
+          <Text style={[type.captionMedium, { color: colors.textSoft }]}>
+            {t('quiz.question')} {index + 1}/{total}
           </Text>
+          <View
+            style={[
+              styles.quizSubject,
+              { backgroundColor: `${subject.color}1F`, marginTop: 5 },
+            ]}
+          >
+            <Icon name={subject.icon} size={13} color={subject.color} />
+            <Text style={[type.caption, { color: subject.color }]}>
+              {subject.name[lang]}
+            </Text>
+          </View>
         </View>
+
+        {/* Le chrono se fige dès que l'élève a répondu : il lit son
+            explication sans pression. */}
+        <Countdown
+          seconds={subject.seconds}
+          resetKey={index}
+          paused={picked !== null}
+          onExpire={timeOut}
+        />
       </View>
 
       <ProgressBar
@@ -380,7 +414,11 @@ export default function QuizScreen() {
               { color: picked === question.correct ? colors.success : colors.danger },
             ]}
           >
-            {picked === question.correct ? t('quiz.correct') : t('quiz.wrong')}
+            {picked === question.correct
+              ? t('quiz.correct')
+              : picked === -1
+                ? t('quiz.timeUp')
+                : t('quiz.wrong')}
           </Text>
 
           {picked !== question.correct && (

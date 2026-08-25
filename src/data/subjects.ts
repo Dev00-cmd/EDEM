@@ -8,6 +8,15 @@ import type { IconName } from '@/components/Icon';
 export interface Subject {
   id: string;
   icon: IconName; // icône du jeu Ti Pwof
+  /**
+   * Secondes accordées par question de quiz.
+   *
+   * Le temps n'est pas le même partout : une équation demande
+   * de poser un calcul, une date d'histoire se sait ou ne se
+   * sait pas. Un chrono uniforme punirait les matières de
+   * calcul et serait trop généreux ailleurs.
+   */
+  seconds: number;
   grad: [string, string]; // dégradé propre à la matière
   color: string;
   name: Record<Lang, string>;
@@ -17,6 +26,7 @@ export interface Subject {
 export const SUBJECTS: Subject[] = [
   {
     id: 'math',
+    seconds: 90,
     icon: 'calculator',
     color: '#3B82F6',
     grad: ['#60A5FA', '#1D4ED8'],
@@ -25,6 +35,7 @@ export const SUBJECTS: Subject[] = [
   },
   {
     id: 'histoire',
+    seconds: 45,
     icon: 'landmark',
     color: '#F59E0B',
     grad: ['#FBBF24', '#D97706'],
@@ -33,6 +44,7 @@ export const SUBJECTS: Subject[] = [
   },
   {
     id: 'svt',
+    seconds: 45,
     icon: 'leaf',
     color: '#10B981',
     grad: ['#34D399', '#059669'],
@@ -41,6 +53,7 @@ export const SUBJECTS: Subject[] = [
   },
   {
     id: 'francais',
+    seconds: 60,
     icon: 'book',
     color: '#8B5CF6',
     grad: ['#A78BFA', '#7C3AED'],
@@ -49,6 +62,7 @@ export const SUBJECTS: Subject[] = [
   },
   {
     id: 'physique',
+    seconds: 90,
     icon: 'atom',
     color: '#06B6D4',
     grad: ['#22D3EE', '#0891B2'],
@@ -57,6 +71,7 @@ export const SUBJECTS: Subject[] = [
   },
   {
     id: 'anglais',
+    seconds: 45,
     icon: 'language',
     color: '#EC4899',
     grad: ['#F472B6', '#DB2777'],
@@ -65,6 +80,7 @@ export const SUBJECTS: Subject[] = [
   },
   {
     id: 'chimie',
+    seconds: 75,
     icon: 'flask',
     color: '#F97316',
     grad: ['#FB923C', '#EA580C'],
@@ -73,6 +89,7 @@ export const SUBJECTS: Subject[] = [
   },
   {
     id: 'creole',
+    seconds: 45,
     icon: 'tutor',
     color: '#EF4444',
     grad: ['#F87171', '#DC2626'],
@@ -81,6 +98,7 @@ export const SUBJECTS: Subject[] = [
   },
   {
     id: 'geo',
+    seconds: 45,
     icon: 'globe',
     color: '#14B8A6',
     grad: ['#2DD4BF', '#0D9488'],
@@ -89,6 +107,7 @@ export const SUBJECTS: Subject[] = [
   },
   {
     id: 'info',
+    seconds: 45,
     icon: 'laptop',
     color: '#6366F1',
     grad: ['#818CF8', '#4F46E5'],

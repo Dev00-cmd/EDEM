@@ -161,6 +161,7 @@ export const ht: Messages = {
     question: 'Kesyon',
     correct: 'Bon repons !',
     wrong: 'Pa sa non…',
+    timeUp: 'Tan an fini !',
     theAnswerWas: 'Bon repons lan: ',
     explanation: 'Eksplikasyon',
     nextQuestion: 'Kesyon swivan',
