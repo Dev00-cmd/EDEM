@@ -52,3 +52,6 @@ assets/references/
 
 # Planches d exploration de logo (regenerables via scripts/logo_concepts.py)
 assets/concepts/
+
+# Fichiers temporaires de la CLI Supabase
+supabase/.temp/
