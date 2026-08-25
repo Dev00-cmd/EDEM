@@ -106,6 +106,19 @@ npx eas-cli submit --platform android
 npx eas-cli update --branch production --message "Amélioration du tuteur"
 ```
 
+### ⚠️ `runtimeVersion` : à bumper avec la version
+
+`app.json` fixe `"runtimeVersion": "1.0.0"` en clair, plutôt que la politique automatique `appVersion`. Raison : sur Windows, le CLI d'`expo-updates` que cette politique déclenche à chaque requête du serveur de développement plante par intermittence (`0xC0000142`), et le manifeste ne se sert plus du tout. Une valeur en clair donne exactement le même résultat sans ce sous-processus fragile.
+
+**Conséquence :** quand tu changes la version native de l'app (nouvelle dépendance native, nouvelle permission), incrémente **les deux** dans `app.json` :
+
+```json
+"version": "1.0.1",
+"runtimeVersion": "1.0.1"
+```
+
+Le `runtimeVersion` est ce qui garantit qu'une mise à jour OTA n'atterrit que sur des builds capables de l'exécuter. Le laisser en arrière enverrait du code neuf à une app native trop ancienne — et l'app planterait au démarrage.
+
 ---
 
 ## 7. Checklist avant le lancement public ✅
