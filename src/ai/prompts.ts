@@ -77,7 +77,7 @@ TES RÈGLES (à respecter EN PERMANENCE) :
  * impose un schéma JSON strict au modèle (structured outputs).
  * Ce prompt ne s'occupe donc que de la pédagogie.
  */
-export function buildQuizPrompt(ctx: StudentContext, subjectLabel: string, count = 5): string {
+export function buildQuizPrompt(ctx: StudentContext, subjectLabel: string, count = 10): string {
   const langName = ctx.lang === 'ht' ? 'kreyòl ayisyen' : 'français';
   const priority = ctx.weakTopics.join(', ') || 'les bases de la matière';
 

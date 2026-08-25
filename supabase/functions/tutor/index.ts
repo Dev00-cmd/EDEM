@@ -17,7 +17,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import Anthropic from "npm:@anthropic-ai/sdk@^0.71.0";
 import { createClient } from "npm:@supabase/supabase-js@^2.112.4";
-import { TEACHING_METHOD, quizGuidance } from "./teaching.ts";
+import { TEACHING_METHOD, quizGuidance, type Performance } from "./teaching.ts";
 
 const MODEL = Deno.env.get("ANTHROPIC_MODEL") ?? "claude-opus-5";
 
@@ -175,6 +175,96 @@ function userClient(req: Request) {
 async function getUserId(req: Request): Promise<string | null> {
   const { data } = await userClient(req).auth.getUser();
   return data?.user?.id ?? null;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  Quiz : position de la bonne réponse
+// ═══════════════════════════════════════════════════════════════
+
+interface RawQuestion {
+  question: string;
+  choices: string[];
+  answer: number;
+  explanation?: string;
+  topic?: string;
+}
+
+/**
+ * Remélange les options d'une question.
+ *
+ * Les modèles de langue placent presque toujours la bonne réponse
+ * en première ou deuxième position — un élève finit par le
+ * remarquer et répond sans réfléchir. Le demander dans le prompt
+ * ne suffit pas : ce biais résiste aux consignes.
+ *
+ * On mélange donc nous-mêmes. C'est la seule façon d'obtenir une
+ * répartition réellement imprévisible sur les quatre positions.
+ *
+ * On permute des INDICES, pas les textes : deux options au libellé
+ * identique ne pourraient pas être distinguées autrement, et la
+ * bonne réponse serait perdue.
+ */
+function shuffleChoices(q: RawQuestion): RawQuestion {
+  const order = q.choices.map((_, i) => i);
+
+  // Fisher-Yates : chaque permutation est équiprobable.
+  for (let i = order.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [order[i], order[j]] = [order[j], order[i]];
+  }
+
+  return {
+    ...q,
+    choices: order.map((i) => q.choices[i]),
+    answer: order.indexOf(q.answer),
+  };
+}
+
+/** Une question exploitable : 4 options distinctes, index valide. */
+function isSound(q: RawQuestion): boolean {
+  if (!q || typeof q.question !== "string" || q.question.trim() === "") return false;
+  if (!Array.isArray(q.choices) || q.choices.length !== 4) return false;
+  if (q.choices.some((c) => typeof c !== "string" || c.trim() === "")) return false;
+  if (new Set(q.choices.map((c) => c.trim().toLowerCase())).size !== 4) return false;
+  return Number.isInteger(q.answer) && q.answer >= 0 && q.answer < 4;
+}
+
+/**
+ * Ce que l'élève a réellement réussi dans cette matière.
+ * Sert à calibrer la difficulté du prochain quiz.
+ */
+async function readPerformance(
+  // deno-lint-ignore no-explicit-any
+  supabase: any,
+  userId: string,
+  subject: string,
+): Promise<Performance> {
+  const [scores, mastery] = await Promise.all([
+    supabase
+      .from("quiz_results")
+      .select("score_pct")
+      .eq("user_id", userId)
+      .eq("subject_id", subject)
+      .order("created_at", { ascending: false })
+      .limit(5),
+    supabase
+      .from("topic_mastery")
+      .select("mastery")
+      .eq("user_id", userId)
+      .eq("subject_id", subject),
+  ]);
+
+  const s: number[] = (scores.data ?? []).map((r: { score_pct: number }) => r.score_pct);
+  const m: number[] = (mastery.data ?? []).map((r: { mastery: number }) => r.mastery);
+
+  const avg = (xs: number[]) =>
+    xs.length === 0 ? 0 : xs.reduce((a, b) => a + b, 0) / xs.length;
+
+  return {
+    averageScore: s.length > 0 ? avg(s) : null,
+    quizCount: s.length,
+    averageMastery: avg(m),
+  };
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -343,23 +433,35 @@ Deno.serve(async (req: Request) => {
       const supabase = userClient(req);
       const userId = await getUserId(req);
 
-      // Ce que cet élève a déjà vu dans cette matière.
+      // Ce que cet élève a déjà vu, et ce qu'il a déjà réussi.
       let seen: string[] = [];
+      let perf: Performance = {
+        averageScore: null,
+        quizCount: 0,
+        averageMastery: 0,
+      };
+
       if (userId) {
-        const { data } = await supabase
-          .from("quiz_seen_questions")
-          .select("question")
-          .eq("user_id", userId)
-          .eq("subject_id", subject)
-          .order("created_at", { ascending: false })
-          .limit(25);
-        seen = (data ?? []).map((r: { question: string }) => r.question);
+        const [seenRes, perfRes] = await Promise.all([
+          supabase
+            .from("quiz_seen_questions")
+            .select("question")
+            .eq("user_id", userId)
+            .eq("subject_id", subject)
+            .order("created_at", { ascending: false })
+            .limit(40),
+          readPerformance(supabase, userId, subject),
+        ]);
+        seen = (seenRes.data ?? []).map((r: { question: string }) => r.question);
+        perf = perfRes;
       }
 
       const response = await client.messages.create({
         model: MODEL,
-        max_tokens: 8000,
-        system: `Tu génères des quiz scolaires pour des élèves haïtiens, adaptés à leur classe et au programme du MENFP.\n\n${TEACHING_METHOD}\n\n${quizGuidance(seen)}`,
+        // Dix questions avec leurs explications, plus le
+        // raisonnement du modèle : 8000 jetons devenaient justes.
+        max_tokens: 16000,
+        system: `Tu génères des quiz scolaires pour des élèves haïtiens, adaptés à leur classe et au programme du MENFP.\n\n${TEACHING_METHOD}\n\n${quizGuidance(seen, perf)}`,
         messages: [{ role: "user", content: prompt }],
         output_config: {
           // Un quiz varié demande plus de recul qu'une réponse
@@ -369,11 +471,18 @@ Deno.serve(async (req: Request) => {
         },
       });
 
-      const parsed = extractStructured<{
-        questions: { question: string; topic?: string }[];
-      }>(response);
+      const parsed = extractStructured<{ questions: RawQuestion[] }>(response);
 
       if (!parsed?.questions || !Array.isArray(parsed.questions)) {
+        return json({ error: "génération du quiz impossible" }, 502);
+      }
+
+      // On écarte les questions bancales, puis on remélange les
+      // options pour que la bonne réponse ne tombe pas toujours au
+      // même endroit.
+      const questions = parsed.questions.filter(isSound).map(shuffleChoices);
+
+      if (questions.length === 0) {
         return json({ error: "génération du quiz impossible" }, 502);
       }
 
@@ -388,23 +497,21 @@ Deno.serve(async (req: Request) => {
       //
       // Un échec ne doit pas priver l'élève de son quiz : on
       // journalise et on continue.
-      if (userId && parsed.questions.length > 0) {
+      if (userId) {
         const { error: memoryError } = await supabase
           .from("quiz_seen_questions")
           .insert(
-            parsed.questions
-              .filter((q) => typeof q?.question === "string")
-              .map((q) => ({
-                user_id: userId,
-                subject_id: subject,
-                question: q.question.slice(0, 500),
-                topic: q.topic ?? null,
-              })),
+            questions.map((q) => ({
+              user_id: userId,
+              subject_id: subject,
+              question: q.question.slice(0, 500),
+              topic: q.topic ?? null,
+            })),
           );
         if (memoryError) console.error("memoire quiz:", memoryError.message);
       }
 
-      return json({ questions: parsed.questions });
+      return json({ questions });
     }
 
     return json({ error: "action inconnue (chat | quiz)" }, 400);

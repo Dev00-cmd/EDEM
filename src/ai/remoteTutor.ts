@@ -95,25 +95,35 @@ export async function remoteQuiz(
     const raw = data.questions;
     if (!Array.isArray(raw) || raw.length === 0) return null;
 
-    const questions: QuizQuestion[] = raw
-      .filter(
-        (x) =>
-          x &&
-          typeof x.question === 'string' &&
-          Array.isArray(x.choices) &&
-          x.choices.length === 4,
-      )
-      .map((x, i) => ({
-        id: `ai-${Date.now()}-${i}`,
-        topic: typeof x.topic === 'string' && x.topic ? x.topic : 'general',
-        // Le quiz est déjà généré dans la langue de l'élève : on remplit
-        // les deux clés avec le même texte plutôt que de le traduire.
-        q: { fr: x.question, ht: x.question },
-        opts: x.choices.map((o) => ({ fr: String(o), ht: String(o) })),
-        correct:
-          Number.isInteger(x.answer) && x.answer >= 0 && x.answer < 4 ? x.answer : 0,
-        expl: { fr: String(x.explanation ?? ''), ht: String(x.explanation ?? '') },
-      }));
+    /**
+     * Une question n'est retenue que si elle est irréprochable.
+     *
+     * On ÉCARTE plutôt que de rafistoler : auparavant, un index de
+     * réponse invalide était ramené à 0, ce qui présentait une
+     * mauvaise option comme étant la bonne. Mieux vaut un quiz de
+     * neuf questions qu'une seule qui enseigne une erreur.
+     */
+    const isSound = (x: RawQuizQuestion): boolean => {
+      if (!x || typeof x.question !== 'string' || x.question.trim() === '') return false;
+      if (!Array.isArray(x.choices) || x.choices.length !== 4) return false;
+      if (x.choices.some((o) => typeof o !== 'string' || o.trim() === '')) return false;
+      // Deux options identiques rendraient la bonne réponse ambiguë.
+      const unique = new Set(x.choices.map((o) => o.trim().toLowerCase()));
+      if (unique.size !== 4) return false;
+      // L'index doit vraiment désigner l'une des quatre options.
+      return Number.isInteger(x.answer) && x.answer >= 0 && x.answer < 4;
+    };
+
+    const questions: QuizQuestion[] = raw.filter(isSound).map((x, i) => ({
+      id: `ai-${Date.now()}-${i}`,
+      topic: typeof x.topic === 'string' && x.topic ? x.topic : 'general',
+      // Le quiz est déjà généré dans la langue de l'élève : on remplit
+      // les deux clés avec le même texte plutôt que de le traduire.
+      q: { fr: x.question, ht: x.question },
+      opts: x.choices.map((o) => ({ fr: String(o), ht: String(o) })),
+      correct: x.answer,
+      expl: { fr: String(x.explanation ?? ''), ht: String(x.explanation ?? '') },
+    }));
 
     return questions.length > 0 ? { subjectId, source: 'ai', questions } : null;
   } catch {

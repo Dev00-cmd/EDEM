@@ -126,6 +126,66 @@ Si la classe n'est pas précisée, vise le milieu (8e AF) et
 adapte-toi aux mots qu'emploie l'élève.
 `.trim();
 
+// ═══════════════════════════════════════════════════════════════
+//  DIFFICULTÉ ADAPTATIVE
+// ═══════════════════════════════════════════════════════════════
+
+export interface Performance {
+  /** Moyenne des derniers scores dans CETTE matière (0-100). */
+  averageScore: number | null;
+  /** Nombre de quiz déjà passés dans cette matière. */
+  quizCount: number;
+  /** Maîtrise moyenne des notions de cette matière (0-100). */
+  averageMastery: number;
+}
+
+type Tier = 'decouverte' | 'consolidation' | 'approfondissement' | 'defi';
+
+/**
+ * Choisit le palier de difficulté à partir de ce que l'élève a
+ * RÉELLEMENT réussi, pas de ce qu'il déclare.
+ *
+ * Un élève qui enchaîne les 90 % s'ennuie si on lui repropose les
+ * mêmes bases ; un élève à 40 % décroche si on monte d'un cran.
+ */
+export function difficultyTier(p: Performance): Tier {
+  if (p.quizCount === 0) return 'decouverte';
+  const score = p.averageScore ?? 0;
+  // La maîtrise pondère : bien réussir deux quiz ne suffit pas à
+  // prouver qu'on maîtrise l'ensemble du programme de la matière.
+  const blended = score * 0.7 + p.averageMastery * 0.3;
+
+  if (blended >= 85 && p.quizCount >= 3) return 'defi';
+  if (blended >= 70) return 'approfondissement';
+  if (blended >= 50) return 'consolidation';
+  return 'decouverte';
+}
+
+const TIER_BRIEF: Record<Tier, string> = {
+  decouverte: `PALIER : DÉCOUVERTE
+L'élève débute dans cette matière, ou ses résultats montrent que
+les bases ne sont pas acquises. Questions directes, une seule
+étape de raisonnement, nombres simples. Le but est qu'il réussisse
+et reprenne confiance, pas qu'on le piège.`,
+
+  consolidation: `PALIER : CONSOLIDATION
+Les bases sont là mais fragiles. Mélange des questions directes et
+des applications à deux étapes. Introduis quelques énoncés en
+situation concrète. Reste dans le programme déjà vu.`,
+
+  approfondissement: `PALIER : APPROFONDISSEMENT
+L'élève réussit régulièrement. Passe aux raisonnements en deux ou
+trois étapes, aux énoncés où il faut d'abord extraire la bonne
+information, et aux questions qui demandent de choisir la bonne
+méthode parmi plusieurs.`,
+
+  defi: `PALIER : DÉFI
+L'élève maîtrise la matière. Propose des problèmes qui combinent
+PLUSIEURS notions, des énoncés qui exigent de la rigueur, des cas
+limites, et des questions où l'erreur classique est très
+tentante. Vise le niveau d'un examen d'État exigeant.`,
+};
+
 /**
  * Consigne de génération de quiz.
  *
@@ -134,8 +194,25 @@ adapte-toi aux mots qu'emploie l'élève.
  * les mêmes, et l'élève finit par retenir des réponses plutôt que
  * des notions.
  */
-export function quizGuidance(avoid: string[]): string {
+export function quizGuidance(avoid: string[], perf: Performance): string {
+  const tier = difficultyTier(perf);
+
+  const history =
+    perf.quizCount === 0
+      ? "C'est son premier quiz dans cette matière."
+      : `Il a déjà passé ${perf.quizCount} quiz dans cette matière, avec une moyenne de ${Math.round(perf.averageScore ?? 0)} % et une maîtrise moyenne de ${Math.round(perf.averageMastery)} %.`;
+
   const base = `
+═══ NIVEAU RÉEL DE CET ÉLÈVE ═══
+
+${history}
+
+${TIER_BRIEF[tier]}
+
+À l'intérieur du quiz, la difficulté monte encore : les premières
+questions mettent en confiance, les dernières font vraiment
+réfléchir.
+
 ═══ RÈGLES DE GÉNÉRATION ═══
 
 Écris les mathématiques comme indiqué plus haut : $\\frac{a}{b}$
@@ -144,23 +221,26 @@ questions, dans les options ET dans les explications.
 
 Chaque question :
 - porte sur UNE notion précise du programme de la classe visée
-- a exactement 4 options, une seule correcte
+- a exactement 4 options, toutes DIFFÉRENTES, une seule correcte
 - a trois mauvaises options PLAUSIBLES, correspondant à des
   erreurs que les élèves font vraiment (mauvais dénominateur,
   signe oublié, unité fausse) — jamais de réponse absurde
 - a une explication qui REFAIT le raisonnement en une ou deux
   étapes, pas seulement « la bonne réponse est B »
 
+Ne cherche pas à équilibrer la position de la bonne réponse : les
+options sont remélangées après toi. Concentre-toi sur la qualité
+des distracteurs.
+
 Fais varier les angles d'une question à l'autre : calcul direct,
 application concrète, lecture d'énoncé, repérage d'erreur,
-définition. Difficulté croissante : la première met en confiance,
-la dernière fait réfléchir.
+définition, comparaison.
 `.trim();
 
   if (avoid.length === 0) return base;
 
   // On borne la liste : au-delà, elle coûte plus qu'elle ne sert.
-  const list = avoid.slice(0, 25).map((q) => `- ${q}`).join('\n');
+  const list = avoid.slice(0, 40).map((q) => `- ${q}`).join('\n');
   return `${base}
 
 ═══ DÉJÀ POSÉ À CET ÉLÈVE — NE PAS REPRODUIRE ═══
