@@ -205,6 +205,17 @@ export const ht: Messages = {
     aboutText:
       'Ti Pwof se yon pwofesè AI li fèt pou elèv ayisyen: franse ak kreyòl, chemen sou mezi, kwiz san limit, konvèsasyon ki rete sou sije lekòl pou w rete konsantre. Li fèt pou chak jenn — Pòtoprens, Okay, oswa kèlkeswa kote — gen yon vrè pwof nan poch li. 🇭🇹',
     madeWith: 'Yo fè l ak ❤ pou elèv Ayiti',
+    updates: 'Mizajou',
+    checkUpdate: 'Chèche yon mizajou',
+    updateHint: 'Peze pou tcheke kounye a',
+    updateChecking: 'N ap chèche…',
+    updateDownloading: 'N ap telechaje… app la ap rekòmanse',
+    updateNone: 'Ti Pwof deja ajou ✓',
+    updateUnavailable: 'Mizajou pa disponib sou vèsyon sa a.',
+    channel: 'Kanal',
+    runtime: 'Baz',
+    build: 'Vèsyon ki enstale',
+    embedded: 'sa ki nan fichye enstalasyon an',
     signOut: 'Dekonekte',
     signOutConfirm:
       'Pwogrè ou yo rete anrejistre sou kont ou. W ap jwenn yo lè w konekte ankò.',

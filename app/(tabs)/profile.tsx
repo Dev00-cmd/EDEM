@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import * as Updates from 'expo-updates';
 import { Screen } from '@/components/Screen';
 import { Card } from '@/components/Card';
 import { Chip } from '@/components/Chip';
@@ -51,6 +52,56 @@ export default function ProfileScreen() {
   const [asking, setAsking] = useState<'reset' | 'signout' | null>(null);
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState('');
+
+  // ── Mises à jour à distance ─────────────────────────────────
+  type UpdateState = 'idle' | 'checking' | 'downloading' | 'uptodate' | 'error';
+  const [updateState, setUpdateState] = useState<UpdateState>('idle');
+  const [updateError, setUpdateError] = useState('');
+
+  /**
+   * Cherche, télécharge et applique une mise à jour à distance.
+   *
+   * Sans ce bouton, l'élève doit fermer et rouvrir l'app deux fois
+   * en espérant que ça se fasse — et personne ne sait dire si ça a
+   * marché. Ici, chaque étape est visible et l'app redémarre d'elle
+   * même sur la nouvelle version.
+   */
+  const checkUpdate = async () => {
+    setUpdateError('');
+
+    if (!Updates.isEnabled) {
+      setUpdateState('error');
+      setUpdateError(t('profile.updateUnavailable'));
+      return;
+    }
+
+    setUpdateState('checking');
+    try {
+      const result = await Updates.checkForUpdateAsync();
+      if (!result.isAvailable) {
+        setUpdateState('uptodate');
+        return;
+      }
+      setUpdateState('downloading');
+      await Updates.fetchUpdateAsync();
+      // Redémarre immédiatement sur la nouvelle version.
+      await Updates.reloadAsync();
+    } catch (e) {
+      setUpdateState('error');
+      setUpdateError(e instanceof Error ? e.message : String(e));
+    }
+  };
+
+  const updateLabel =
+    updateState === 'checking'
+      ? t('profile.updateChecking')
+      : updateState === 'downloading'
+        ? t('profile.updateDownloading')
+        : updateState === 'uptodate'
+          ? t('profile.updateNone')
+          : updateState === 'error'
+            ? updateError.slice(0, 90)
+            : t('profile.updateHint');
 
   const accuracy =
     progress.answered > 0
@@ -311,6 +362,56 @@ export default function ProfileScreen() {
         </Card>
       </Section>
 
+      {/* ── Mises à jour ────────────────────────────────────── */}
+      <Section label={t('profile.updates')}>
+        <Card>
+          <Pressable
+            onPress={checkUpdate}
+            disabled={updateState === 'checking' || updateState === 'downloading'}
+            accessibilityRole="button"
+            style={styles.updateRow}
+          >
+            <View style={[styles.updateIcon, { backgroundColor: colors.accentSoft }]}>
+              {updateState === 'checking' || updateState === 'downloading' ? (
+                <ActivityIndicator size="small" color={colors.accent} />
+              ) : (
+                <Icon
+                  name={updateState === 'uptodate' ? 'check-circle' : 'refresh'}
+                  size={18}
+                  color={updateState === 'error' ? colors.danger : colors.accent}
+                />
+              )}
+            </View>
+
+            <View style={styles.flex}>
+              <Text style={[type.bodyMedium, { color: colors.text }]}>
+                {t('profile.checkUpdate')}
+              </Text>
+              <Text style={[type.caption, { color: colors.textFaint, marginTop: 2 }]}>
+                {updateLabel}
+              </Text>
+            </View>
+
+            {updateState === 'idle' && (
+              <Icon name="chevron-right" size={16} color={colors.textFaint} />
+            )}
+          </Pressable>
+
+          {/* Ces identifiants servent au diagnostic : ils disent
+              exactement quelle version tourne sur l'appareil. */}
+          <View style={[styles.updateMeta, { borderTopColor: colors.border }]}>
+            <Text style={[type.caption, { color: colors.textFaint }]}>
+              {t('profile.channel')} : {Updates.channel ?? '—'} · {t('profile.runtime')}{' '}
+              : {Updates.runtimeVersion ?? '—'}
+            </Text>
+            <Text style={[type.caption, { color: colors.textFaint }]} numberOfLines={1}>
+              {t('profile.build')} :{' '}
+              {Updates.updateId ? Updates.updateId.slice(0, 8) : t('profile.embedded')}
+            </Text>
+          </View>
+        </Card>
+      </Section>
+
       {/* ── Compte ──────────────────────────────────────────── */}
       <View style={styles.dangerZone}>
         {failure !== '' && (
@@ -423,6 +524,21 @@ const styles = StyleSheet.create({
   chipsWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
 
   aboutHead: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+
+  updateRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  updateIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: RADIUS.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  updateMeta: {
+    marginTop: 13,
+    paddingTop: 11,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    gap: 2,
+  },
 
   dangerZone: { gap: 10, marginTop: 28 },
   failure: {

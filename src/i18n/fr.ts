@@ -205,6 +205,17 @@ export const fr = {
     aboutText:
       "Ti Pwof est un tuteur IA conçu pour les élèves haïtiens : français et créole, parcours sur mesure, quiz générés à l'infini, et des conversations strictement scolaires pour rester concentré. Fait pour que chaque jeune — à Port-au-Prince, aux Cayes ou ailleurs — ait un vrai prof dans sa poche. 🇭🇹",
     madeWith: 'Fait avec ❤ pour les élèves d’Haïti',
+    updates: 'Mises à jour',
+    checkUpdate: 'Rechercher une mise à jour',
+    updateHint: 'Touche pour vérifier maintenant',
+    updateChecking: 'Recherche en cours…',
+    updateDownloading: 'Téléchargement… l’app va redémarrer',
+    updateNone: 'Ti Pwof est déjà à jour ✓',
+    updateUnavailable: 'Mises à jour indisponibles sur cette version.',
+    channel: 'Canal',
+    runtime: 'Base',
+    build: 'Version installée',
+    embedded: 'celle du fichier d’installation',
     signOut: 'Se déconnecter',
     signOutConfirm:
       'Tes progrès restent enregistrés sur ton compte. Tu les retrouveras à la prochaine connexion.',
