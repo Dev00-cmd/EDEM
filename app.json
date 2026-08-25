@@ -1,0 +1,55 @@
+{
+  "expo": {
+    "name": "Ti Pwof",
+    "slug": "tipwof",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "tipwof",
+    "userInterfaceStyle": "automatic",
+    "backgroundColor": "#0D1B2A",
+    "primaryColor": "#2563EB",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.tipwof.app"
+    },
+    "android": {
+      "package": "com.tipwof.app",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro",
+      "output": "single"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-font",
+      "expo-secure-store",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Ti Pwof utilise tes photos pour que tu puisses envoyer une image de ton devoir au tuteur.",
+          "cameraPermission": "Ti Pwof utilise l'appareil photo pour que tu puisses photographier ton devoir et le faire expliquer."
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 180,
+          "resizeMode": "contain",
+          "backgroundColor": "#0D1B2A"
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

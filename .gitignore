@@ -1,0 +1,51 @@
+# dépendances
+node_modules/
+
+# Expo
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+
+# Natif
+.kotlin/
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# Metro
+.metro-health-check*
+
+# Journaux
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+*.log
+
+# macOS
+.DS_Store
+*.pem
+
+# ═══════════════════════════════════════════════════════════════
+#  SECRETS — ne JAMAIS versionner
+#  (.env.example, lui, est versionné : c'est le modèle à copier)
+# ═══════════════════════════════════════════════════════════════
+.env
+.env.*
+!.env.example
+
+# TypeScript
+*.tsbuildinfo
+
+# Dossiers natifs générés
+/ios
+/android
+
+# Fichiers temporaires de vérification
+_*.mjs
+
+# Références de design (logos tiers) — gardées en local, hors dépôt
+assets/references/
