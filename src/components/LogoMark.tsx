@@ -6,15 +6,23 @@ import { BRAND } from '@/theme/colors';
 import { FONTS } from '@/theme/typography';
 
 /**
- * La marque Ti Pwof : un livre ouvert surmonté d'une étincelle —
- * l'école et l'IA dans un même signe.
+ * La marque Ti Pwof : une bulle de dialogue portant l'étincelle
+ * de l'IA — l'app, c'est une conversation avec un prof qui sait.
  *
- * Dessinée en SVG plutôt qu'en image : nette à toutes les tailles,
- * et elle change de couleur avec le thème sans second fichier.
+ * ⚠️ Ce tracé est le MÊME que celui de `scripts/make_icons.py`,
+ * en grille 96×96. Si tu modifies l'un, relance l'autre :
+ *     python scripts/make_icons.py
+ *
+ * Dessinée en vectoriel plutôt qu'en image : nette à toutes les
+ * tailles et sur toutes les densités d'écran, sans second fichier.
  */
-export function LogoMark({ size = 40, rounded = true }: { size?: number; rounded?: boolean }) {
-  const radius = rounded ? 26 : 0;
-
+export function LogoMark({
+  size = 40,
+  rounded = true,
+}: {
+  size?: number;
+  rounded?: boolean;
+}) {
   return (
     <View style={{ width: size, height: size }}>
       <Svg width={size} height={size} viewBox="0 0 96 96">
@@ -26,27 +34,33 @@ export function LogoMark({ size = 40, rounded = true }: { size?: number; rounded
         </Defs>
 
         {/* Pastille de marque */}
-        <Rect x="0" y="0" width="96" height="96" rx={radius} fill="url(#tipwofBg)" />
-
-        {/* Livre ouvert */}
-        <Path
-          d="M20 34.5c8.5-4.2 16-4.2 24 0v33c-8-4.2-15.5-4.2-24 0Z"
-          fill="none"
-          stroke={BRAND.white}
-          strokeWidth="4.2"
-          strokeLinejoin="round"
-        />
-        <Path
-          d="M76 34.5c-8.5-4.2-16-4.2-24 0v33c8-4.2 15.5-4.2 24 0Z"
-          fill="none"
-          stroke={BRAND.white}
-          strokeWidth="4.2"
-          strokeLinejoin="round"
+        <Rect
+          x="0"
+          y="0"
+          width="96"
+          height="96"
+          rx={rounded ? 26 : 0}
+          fill="url(#tipwofBg)"
         />
 
-        {/* Étincelle — l'intelligence qui éclaire la page */}
+        {/* La pointe, posée avant le trait qui vient la recouvrir */}
+        <Path d="M35 58 L30 73 L51 58 Z" fill={BRAND.white} />
+
+        {/* Le corps de la bulle */}
+        <Rect
+          x="21"
+          y="23"
+          width="54"
+          height="37"
+          rx="14"
+          fill="none"
+          stroke={BRAND.white}
+          strokeWidth="4.6"
+        />
+
+        {/* L'étincelle — l'intelligence qui répond */}
         <Path
-          d="m48 12 3.6 9.4L61 25l-9.4 3.6L48 38l-3.6-9.4L35 25l9.4-3.6Z"
+          d="M48 27 L52.2 36.8 L62 41 L52.2 45.2 L48 55 L43.8 45.2 L34 41 L43.8 36.8 Z"
           fill={BRAND.sky}
         />
       </Svg>

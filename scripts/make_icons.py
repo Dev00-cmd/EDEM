@@ -5,7 +5,7 @@
 
  Redessine toutes les icônes de l'application à partir du même
  tracé que le logo SVG de `src/components/LogoMark.tsx` :
- un livre ouvert surmonté d'une étincelle.
+ une bulle de dialogue portant l'étincelle de l'IA.
 
  Pourquoi un script plutôt que des fichiers figés ? Parce que
  l'icône doit pouvoir être régénérée à l'identique quand la
@@ -16,6 +16,7 @@
 ═══════════════════════════════════════════════════════════════
 """
 
+import math
 from pathlib import Path
 from PIL import Image, ImageDraw
 
@@ -45,26 +46,53 @@ def bezier(p0, p1, p2, p3, steps=60):
     return pts
 
 
-def book_pages():
-    """Les deux pages du livre, en coordonnées 96×96 (comme le SVG)."""
-    left = (
-        bezier((20, 34.5), (28.5, 30.3), (36, 30.3), (44, 34.5))
-        + [(44, 67.5)]
-        + bezier((44, 67.5), (36, 63.3), (28.5, 63.3), (20, 67.5))
-        + [(20, 34.5)]
-    )
-    right = (
-        bezier((76, 34.5), (67.5, 30.3), (60, 30.3), (52, 34.5))
-        + [(52, 67.5)]
-        + bezier((52, 67.5), (60, 63.3), (67.5, 63.3), (76, 67.5))
-        + [(76, 34.5)]
-    )
-    return left, right
+# ═══════════════════════════════════════════════════════════════
+#  LA MARQUE — une bulle de dialogue, l'étincelle de l'IA dedans.
+#
+#  Le sens : Ti Pwof, c'est une conversation avec un professeur
+#  qui sait. La bulle porte l'échange, l'étincelle porte l'IA.
+#
+#  Coordonnées en grille 96×96, identiques au tracé SVG utilisé
+#  dans l'application (src/components/LogoMark.tsx) : les deux
+#  doivent rester rigoureusement le même dessin.
+# ═══════════════════════════════════════════════════════════════
+
+def rounded_outline(x0, y0, x1, y1, r, steps=14):
+    """Contour d'un rectangle à coins ronds, échantillonné en points."""
+    pts = []
+    corners = [
+        (x1 - r, y0 + r, -90, 0),    # haut-droite
+        (x1 - r, y1 - r, 0, 90),     # bas-droite
+        (x0 + r, y1 - r, 90, 180),   # bas-gauche
+        (x0 + r, y0 + r, 180, 270),  # haut-gauche
+    ]
+    for cx, cy, a0, a1 in corners:
+        for i in range(steps + 1):
+            a = math.radians(a0 + (a1 - a0) * i / steps)
+            pts.append((cx + r * math.cos(a), cy + r * math.sin(a)))
+    pts.append(pts[0])  # referme le contour
+    return pts
 
 
+def bubble_outline():
+    """
+    Le corps de la bulle.
+
+    Volontairement en retrait des bords : une icône dont le motif
+    touche le cadre paraît à l'étroit, et Android peut la rogner
+    davantage selon la forme choisie par le lanceur.
+    """
+    return rounded_outline(21, 23, 75, 60, 14)
+
+
+# La pointe, sous le bord gauche. Courte et large pour rester
+# lisible à 48 px — une pointe fine disparaît à cette taille.
+BUBBLE_TAIL = [(35, 58), (30, 73), (51, 58)]
+
+# Étincelle à quatre branches, au centre de la bulle (48, 41).
 SPARK = [
-    (48, 12), (51.6, 21.4), (61, 25), (51.6, 28.6),
-    (48, 38), (44.4, 28.6), (35, 25), (44.4, 21.4),
+    (48, 27), (52.2, 36.8), (62, 41), (52.2, 45.2),
+    (48, 55), (43.8, 45.2), (34, 41), (43.8, 36.8),
 ]
 
 
@@ -93,7 +121,7 @@ def stroke_path(draw, pts, color, width):
 
 def draw_motif(draw, size, motif_color, spark_color, scale=1.0, offset=(0, 0)):
     """
-    Dessine le livre + l'étincelle, centrés.
+    Dessine la bulle + l'étincelle, centrées.
 
     `scale` < 1 rétrécit le motif — utile pour l'icône adaptative
     Android, dont le centre seul est garanti visible.
@@ -107,9 +135,10 @@ def draw_motif(draw, size, motif_color, spark_color, scale=1.0, offset=(0, 0)):
 
     stroke = max(1.0, 4.6 * k)
 
-    for page in book_pages():
-        stroke_path(draw, to_px(page), motif_color, stroke)
-
+    # La pointe d'abord : le trait de la bulle vient ensuite la
+    # recouvrir proprement à la jonction.
+    draw.polygon(to_px(BUBBLE_TAIL), fill=motif_color)
+    stroke_path(draw, to_px(bubble_outline()), motif_color, stroke)
     draw.polygon(to_px(SPARK), fill=spark_color)
 
 
@@ -146,12 +175,15 @@ def make_icon(size, radius_ratio=0.22):
 def make_foreground(size, color=WHITE, spark=SKY):
     """
     Calque avant de l'icône adaptative Android : fond transparent.
-    Le motif est réduit à 60 % pour rester dans la zone sûre, quelle
-    que soit la forme découpée par le lanceur (rond, carré, goutte).
+
+    Android ne garantit que le cercle central (≈61 % du cadre) :
+    au-delà, le lanceur peut rogner selon la forme qu'il applique.
+    À 0.76, la diagonale du motif occupe ~58 % du cadre — il remplit
+    bien l'icône tout en restant entièrement dans la zone sûre.
     """
     s = size * SS
     img = Image.new("RGBA", (s, s), (0, 0, 0, 0))
-    draw_motif(ImageDraw.Draw(img), s, color, spark, scale=0.60)
+    draw_motif(ImageDraw.Draw(img), s, color, spark, scale=0.76)
     return img.resize((size, size), Image.LANCZOS)
 
 

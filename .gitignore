@@ -49,3 +49,6 @@ _*.mjs
 
 # Références de design (logos tiers) — gardées en local, hors dépôt
 assets/references/
+
+# Planches d exploration de logo (regenerables via scripts/logo_concepts.py)
+assets/concepts/
