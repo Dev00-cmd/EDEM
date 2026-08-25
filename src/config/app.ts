@@ -2,8 +2,12 @@
 //  CONFIGURATION GLOBALE
 // ═══════════════════════════════════════════════════════════════
 
-export const APP_NAME = 'Ti Pwof';
-export const APP_VERSION = '2.0.0';
+export const APP_NAME = 'EDEM';
+
+/** Le nom du tuteur. C'est lui que l'élève voit et à qui il parle. */
+export const AI_NAME = 'M. Thomas';
+
+export const APP_VERSION = '2.1.0';
 
 export const APP_TAGLINE_FR = 'Ton prof IA dans ta poche';
 export const APP_TAGLINE_HT = 'Pwof AI ou nan poch ou';
@@ -13,9 +17,26 @@ export const APP_TAGLINE_HT = 'Pwof AI ou nan poch ou';
 // (study_topic / apply_quiz_results).
 export const XP = {
   STUDY_TOPIC: 8, // notion étudiée avec le tuteur
-  QUIZ_CORRECT: 10, // bonne réponse au quiz
-  QUIZ_PERFECT_BONUS: 20, // bonus si 100 %
 };
+
+// ── Niveaux de difficulté des quiz ────────────────────────────
+// Le barème réel est appliqué par la base (apply_quiz_results) :
+// ces valeurs servent UNIQUEMENT à l'affichage. Un élève ne peut
+// donc pas s'attribuer les XP du niveau difficile en jouant facile.
+export type Difficulty = 'facile' | 'moyen' | 'difficile';
+
+export const DIFFICULTIES: {
+  id: Difficulty;
+  perCorrect: number;
+  bonus: number;
+}[] = [
+  { id: 'facile', perCorrect: 6, bonus: 10 },
+  { id: 'moyen', perCorrect: 10, bonus: 20 },
+  { id: 'difficile', perCorrect: 16, bonus: 35 },
+];
+
+export const difficultyReward = (id: Difficulty) =>
+  DIFFICULTIES.find((d) => d.id === id) ?? DIFFICULTIES[1];
 
 // ── Cache local (accélère l'ouverture, marche hors-ligne) ─────
 export const STORAGE_KEYS = {

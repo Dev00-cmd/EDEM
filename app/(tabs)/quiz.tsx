@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { Screen } from '@/components/Screen';
-import { Card } from '@/components/Card';
+import { Card, SectionHeader } from '@/components/Card';
 import { Button } from '@/components/Button';
 import { Countdown } from '@/components/Countdown';
 import { Icon } from '@/components/Icon';
@@ -16,6 +16,7 @@ import { generateQuiz } from '@/ai/tutor';
 import { studentContextOf } from '@/ai/plan';
 import { SUBJECTS, getSubject } from '@/data/subjects';
 import type { GeneratedQuiz, QuizQuestion } from '@/ai/types';
+import { DIFFICULTIES, difficultyReward, type Difficulty } from '@/config/app';
 
 type Answer = { topic: string; ok: boolean };
 
@@ -29,8 +30,15 @@ type Phase =
       index: number;
       picked: number | null;
       answers: Answer[];
+      difficulty: Difficulty;
     }
-  | { name: 'results'; quiz: GeneratedQuiz; answers: Answer[]; xpGained: number };
+  | {
+      name: 'results';
+      quiz: GeneratedQuiz;
+      answers: Answer[];
+      xpGained: number;
+      difficulty: Difficulty;
+    };
 
 export default function QuizScreen() {
   const params = useLocalSearchParams<{ subject?: string }>();
@@ -40,18 +48,28 @@ export default function QuizScreen() {
 
   const [phase, setPhase] = useState<Phase>({ name: 'select' });
   const [saving, setSaving] = useState(false);
+  // Le niveau reste choisi d un quiz a l autre : un eleve qui
+  // travaille en difficile ne veut pas le re-selectionner a chaque fois.
+  const [difficulty, setDifficulty] = useState<Difficulty>('moyen');
   const startedFor = useRef<string | null>(null);
 
   const startQuiz = useCallback(
-    async (subjectId: string) => {
+    async (subjectId: string, level: Difficulty) => {
       setPhase({ name: 'loading', subjectId });
       const ctx = studentContextOf(profile, progress, subjectId);
-      const quiz = await generateQuiz(ctx, subjectId);
+      const quiz = await generateQuiz(ctx, subjectId, level);
       if (!quiz) {
         setPhase({ name: 'error', subjectId });
         return;
       }
-      setPhase({ name: 'active', quiz, index: 0, picked: null, answers: [] });
+      setPhase({
+        name: 'active',
+        quiz,
+        index: 0,
+        picked: null,
+        answers: [],
+        difficulty: level,
+      });
     },
     [profile, progress],
   );
@@ -60,8 +78,9 @@ export default function QuizScreen() {
   useEffect(() => {
     if (params.subject && startedFor.current !== params.subject) {
       startedFor.current = params.subject;
-      startQuiz(params.subject);
+      startQuiz(params.subject, difficulty);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.subject, startQuiz]);
 
   // ══ Choix de la matière ═══════════════════════════════════
@@ -90,12 +109,70 @@ export default function QuizScreen() {
           </Text>
         </Card>
 
-        <View style={{ height: 16 }} />
+        {/* ── Niveau de difficulté ──────────────────────────
+            L'élève choisit lui-même son niveau, et voit tout de
+            suite ce que ça rapporte : sans ce repère, personne ne
+            prend le risque de monter en difficulté. */}
+        <SectionHeader dash title={t('quiz.chooseLevel')} style={styles.section} />
+
+        <View style={styles.levelRow}>
+          {DIFFICULTIES.map((d) => {
+            const active = difficulty === d.id;
+            const tint =
+              d.id === 'facile'
+                ? colors.success
+                : d.id === 'difficile'
+                  ? colors.danger
+                  : colors.accent;
+            return (
+              <Pressable
+                key={d.id}
+                onPress={() => setDifficulty(d.id)}
+                accessibilityRole="button"
+                accessibilityState={{ selected: active }}
+                style={[
+                  styles.levelCard,
+                  {
+                    backgroundColor: active ? tint : colors.surface,
+                    borderColor: active ? tint : colors.border,
+                  },
+                ]}
+              >
+                <Text
+                  style={[
+                    type.captionMedium,
+                    { color: active ? '#FFFFFF' : colors.text },
+                  ]}
+                  numberOfLines={1}
+                >
+                  {t(`quiz.level_${d.id}`)}
+                </Text>
+                <Text
+                  style={[
+                    type.caption,
+                    {
+                      color: active ? 'rgba(255,255,255,0.85)' : colors.textFaint,
+                      marginTop: 2,
+                    },
+                  ]}
+                >
+                  +{d.perCorrect} XP
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+
+        <Text style={[type.caption, styles.levelHint, { color: colors.textFaint }]}>
+          {t(`quiz.levelHint_${difficulty}`)}
+        </Text>
+
+        <SectionHeader dash title={t('quiz.chooseSubject')} style={styles.section} />
 
         {SUBJECTS.map((s) => {
           const best = progress.quizBest[s.id];
           return (
-            <Card key={s.id} style={styles.subjectCard} onPress={() => startQuiz(s.id)}>
+            <Card key={s.id} style={styles.subjectCard} onPress={() => startQuiz(s.id, difficulty)}>
               <View style={styles.subjectRow}>
                 <View style={[styles.subjectIcon, { backgroundColor: s.color }]}>
                   <Icon name={s.icon} size={18} color="#FFFFFF" />
@@ -169,7 +246,7 @@ export default function QuizScreen() {
               label={t('common.retry')}
               icon="refresh"
               full
-              onPress={() => startQuiz(phase.subjectId)}
+              onPress={() => startQuiz(phase.subjectId, difficulty)}
             />
             <Button
               label={t('quiz.back')}
@@ -238,7 +315,7 @@ export default function QuizScreen() {
             label={t('quiz.newQuiz')}
             icon="refresh"
             full
-            onPress={() => startQuiz(quiz.subjectId)}
+            onPress={() => startQuiz(quiz.subjectId, difficulty)}
           />
           <Button
             label={t('quiz.otherSubject')}
@@ -267,6 +344,7 @@ export default function QuizScreen() {
       index,
       picked: i,
       answers: [...answers, { topic: question.topic, ok }],
+      difficulty: phase.difficulty,
     });
   };
 
@@ -284,20 +362,34 @@ export default function QuizScreen() {
       index,
       picked: -1,
       answers: [...answers, { topic: question.topic, ok: false }],
+      difficulty: phase.difficulty,
     });
   };
 
   const next = async () => {
     if (!isLast) {
-      setPhase({ name: 'active', quiz, index: index + 1, picked: null, answers });
+      setPhase({
+        name: 'active',
+        quiz,
+        index: index + 1,
+        picked: null,
+        answers,
+        difficulty: phase.difficulty,
+      });
       return;
     }
     // Le calcul des XP est fait par le serveur : on attend sa
     // réponse pour afficher un score qui soit bien celui enregistré.
     setSaving(true);
-    const xpGained = await applyQuizResults(quiz.subjectId, answers);
+    const xpGained = await applyQuizResults(quiz.subjectId, answers, phase.difficulty);
     setSaving(false);
-    setPhase({ name: 'results', quiz, answers, xpGained });
+    setPhase({
+      name: 'results',
+      quiz,
+      answers,
+      xpGained,
+      difficulty: phase.difficulty,
+    });
   };
 
   return (
@@ -539,6 +631,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   optionBody: { flex: 1 },
+  section: { marginTop: 22, marginBottom: 12 },
+  levelRow: { flexDirection: 'row', gap: 8 },
+  levelCard: {
+    flex: 1,
+    borderRadius: RADIUS.md,
+    borderWidth: 1.5,
+    paddingVertical: 12,
+    paddingHorizontal: 10,
+    alignItems: 'center',
+  },
+  levelHint: { marginTop: 9, marginHorizontal: 2 },
   answerRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4, flexWrap: 'wrap' },
 
   feedback: { marginTop: 18 },

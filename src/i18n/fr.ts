@@ -7,7 +7,7 @@ export type Lang = 'fr' | 'ht';
 
 export const fr = {
   common: {
-    appName: 'Ti Pwof',
+    appName: 'EDEM',
     next: 'Continuer',
     back: 'Retour',
     letsGo: "C'est parti !",
@@ -25,8 +25,9 @@ export const fr = {
   tabs: {
     home: 'Accueil',
     path: 'Parcours',
-    tutor: 'Ti Pwof',
+    tutor: 'M. Thomas',
     quiz: 'Quiz',
+    board: 'Classement',
     profile: 'Profil',
   },
 
@@ -65,7 +66,7 @@ export const fr = {
   },
 
   onboarding: {
-    welcome: 'Ti Pwof.',
+    welcome: 'EDEM.',
     welcomeSub:
       "Ton professeur IA personnel — 100 % scolaire, 100 % pour toi. Il construit ton parcours, explique chaque notion et crée tes quiz. En français ou en créole.",
     badgeAI: 'IA scolaire',
@@ -90,7 +91,7 @@ export const fr = {
     subjectsNeeded: 'Choisis au moins une matière',
     ready: 'Tout est prêt, {name} !',
     readySub:
-      'Ton parcours personnalisé est généré. Chaque jour, Ti Pwof te dira quoi étudier — et suivra ta progression pas à pas.',
+      'Ton parcours personnalisé est généré. Chaque jour, M. Thomas te dira quoi étudier — et suivra ta progression pas à pas.',
   },
 
   home: {
@@ -119,7 +120,7 @@ export const fr = {
     practice: 'Quiz éclair',
     empty: 'Choisis tes matières et ta classe pour générer ton parcours',
     emptyCta: 'Configurer mon parcours',
-    tapToLearn: 'Touche une notion → Ti Pwof te l’explique en direct',
+    tapToLearn: 'Touche une notion → M. Thomas te l’explique en direct',
     statsTitle: 'Ta progression',
     bySubject: 'Matière par matière',
     weekXp: 'Cette semaine',
@@ -127,11 +128,31 @@ export const fr = {
     quizzesDone: 'Quiz faits',
   },
 
+  update: {
+    ready: 'Une mise à jour est prête',
+    tap: 'Touche ici pour l’installer',
+    applying: 'Redémarrage…',
+  },
+
+  board: {
+    title: 'Classement',
+    subtitle: 'Les élèves les plus assidus d’EDEM',
+    yourRank: 'Ta position',
+    outOf: 'sur {total} élèves classés',
+    you: 'toi',
+    keepGoing: 'Continue : chaque quiz et chaque notion étudiée te fait monter.',
+    emptyTitle: 'Le classement est vide',
+    emptyBody: 'Personne n’a encore gagné d’XP. Sois le premier : fais un quiz !',
+    errorTitle: 'Classement indisponible',
+    errorBody: 'Vérifie ta connexion, puis tire vers le bas pour réessayer.',
+    privacy: 'Seul ton prénom ({name}) est visible. Ni e-mail, ni contact.',
+  },
+
   chat: {
-    title: 'Ti Pwof',
+    title: 'M. Thomas',
     subtitle: 'Tuteur IA · sujets scolaires',
     greeting:
-      "Bonjour ! Je suis Ti Pwof, ton tuteur IA scolaire.\n\nPose-moi ta question — maths, histoire, sciences, langues… Je t'explique étape par étape, à TON niveau.",
+      "Bonjour ! Je suis M. Thomas, ton tuteur IA scolaire.\n\nPose-moi ta question — maths, histoire, sciences, langues… Je t'explique étape par étape, à TON niveau.",
     schoolOnly: 'Je suis spécialisé école : je garde nos discussions sur tes études 🎓',
     placeholder: 'Ta question de cours…',
     tryThese: 'Pour commencer :',
@@ -141,7 +162,7 @@ export const fr = {
     chooseFile: 'Choisir un document (PDF)',
     uploading: 'Envoi en cours…',
     readyToSend: 'Prêt à envoyer',
-    typing: 'Ti Pwof écrit…',
+    typing: 'M. Thomas écrit…',
     clear: 'Effacer',
     clearConfirm: 'Effacer toute la conversation ?',
     setupTitle: 'Serveur IA non configuré',
@@ -158,6 +179,15 @@ export const fr = {
     heroEyebrow: 'Quiz IA',
     heroTitle: 'Prouve-toi 🏆',
     heroSub: 'Chaque quiz est unique, créé pour toi par l’IA. 100 % = +20 XP de bonus.',
+    chooseLevel: 'Choisis ton niveau',
+    chooseSubject: 'Choisis ta matière',
+    level_facile: 'Facile',
+    level_moyen: 'Intermédiaire',
+    level_difficile: 'Difficile',
+    levelHint_facile: 'Questions directes, une seule étape. Pour réviser sereinement.',
+    levelHint_moyen: 'Niveau d’un contrôle ordinaire. Deux étapes de raisonnement.',
+    levelHint_difficile: 'Plusieurs notions à la fois, niveau examen d’État. Rapporte le plus d’XP.',
+    difficulty: 'Niveau',
     question: 'Question',
     correct: 'Bonne réponse !',
     wrong: 'Pas tout à fait…',
@@ -204,14 +234,14 @@ export const fr = {
     goal_english: 'Parler mieux anglais',
     about: 'À propos',
     aboutText:
-      "Ti Pwof est un tuteur IA conçu pour les élèves haïtiens : français et créole, parcours sur mesure, quiz générés à l'infini, et des conversations strictement scolaires pour rester concentré. Fait pour que chaque jeune — à Port-au-Prince, aux Cayes ou ailleurs — ait un vrai prof dans sa poche. 🇭🇹",
+      "EDEM est un tuteur IA conçu pour les élèves haïtiens : français et créole, parcours sur mesure, quiz générés à l'infini, et des conversations strictement scolaires pour rester concentré. Fait pour que chaque jeune — à Port-au-Prince, aux Cayes ou ailleurs — ait un vrai prof dans sa poche. 🇭🇹",
     madeWith: 'Fait avec ❤ pour les élèves d’Haïti',
     updates: 'Mises à jour',
     checkUpdate: 'Rechercher une mise à jour',
     updateHint: 'Touche pour vérifier maintenant',
     updateChecking: 'Recherche en cours…',
     updateDownloading: 'Téléchargement… l’app va redémarrer',
-    updateNone: 'Ti Pwof est déjà à jour ✓',
+    updateNone: 'EDEM est déjà à jour ✓',
     updateUnavailable: 'Mises à jour indisponibles sur cette version.',
     channel: 'Canal',
     runtime: 'Base',

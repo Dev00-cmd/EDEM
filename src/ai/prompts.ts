@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-//  PROMPTS SYSTÈME — la personnalité de Ti Pwof.
+//  PROMPTS SYSTÈME — la personnalité de M. Thomas, le tuteur.
 //  Deux principes stricts :
 //   1. PERSONNALISÉ (classe, objectif, notions faibles/fortes)
 //   2. STRICTEMENT SCOLAIRE (refus poli hors-sujet + recentrage)
@@ -7,6 +7,7 @@
 
 import type { Lang } from '@/i18n';
 import type { StudentContext } from './types';
+import type { Difficulty } from '@/config/app';
 
 const GOALS: Record<string, Record<Lang, string>> = {
   exams: { fr: 'réussir ses examens d’État (6e AF, 9e AF, Bac/Philo)', ht: 'pase egzamen eta l yo' },
@@ -26,7 +27,7 @@ export function buildSystemPrompt(ctx: StudentContext, subjectsLabel: string): s
   const strong = ctx.strongTopics.length ? ctx.strongTopics.join(', ') : 'aucune pour le moment';
 
   if (ctx.lang === 'ht') {
-    return `Ou se "Ti Pwof", pwofesè pèsonèl AI yon elèv ayisyen. Ou se yon MENTO LEKÒL — pa yon asistan jeneral.
+    return `Ou se "M. Thomas", pwofesè pèsonèl AI yon elèv ayisyen nan app EDEM. Ou se yon MENTO LEKÒL — pa yon asistan jeneral.
 
 PWOFIL ELÈV LA:
 - Non: ${ctx.name || 'zanmi'}
@@ -48,7 +49,7 @@ RÈG OU (respecte yo TOUT tan):
 9. Repons yo dwe klè, pa twò long, byen òganize (etap, lis).`;
   }
 
-  return `Tu es "Ti Pwof", le professeur personnel IA d'un élève haïtien. Tu es un MENTOR SCOLAIRE — pas un assistant généraliste.
+  return `Tu es "M. Thomas", le professeur personnel IA d'un élève haïtien, dans l'application EDEM. Tu es un MENTOR SCOLAIRE — pas un assistant généraliste.
 
 PROFIL DE L'ÉLÈVE :
 - Prénom : ${ctx.name || 'ami·e'}
@@ -77,9 +78,26 @@ TES RÈGLES (à respecter EN PERMANENCE) :
  * impose un schéma JSON strict au modèle (structured outputs).
  * Ce prompt ne s'occupe donc que de la pédagogie.
  */
-export function buildQuizPrompt(ctx: StudentContext, subjectLabel: string, count = 10): string {
+export function buildQuizPrompt(
+  ctx: StudentContext,
+  subjectLabel: string,
+  difficulty: Difficulty = 'moyen',
+  count = 10,
+): string {
   const langName = ctx.lang === 'ht' ? 'kreyòl ayisyen' : 'français';
   const priority = ctx.weakTopics.join(', ') || 'les bases de la matière';
+
+  // L'élève a CHOISI son niveau : ce choix prime sur toute autre
+  // estimation. Le serveur affine ensuite à l'intérieur du niveau
+  // selon ses résultats réels.
+  const LEVELS: Record<Difficulty, string> = {
+    facile:
+      "FACILE — l'élève veut réviser sereinement. Questions directes, une seule étape, nombres simples, énoncés courts. Aucun piège.",
+    moyen:
+      "INTERMÉDIAIRE — niveau d'un contrôle ordinaire. Deux étapes de raisonnement, quelques énoncés en situation.",
+    difficile:
+      "DIFFICILE — l'élève veut se mettre à l'épreuve. Problèmes combinant plusieurs notions, énoncés où il faut d'abord trier l'information, erreurs classiques très tentantes. Niveau d'un examen d'État exigeant.",
+  };
 
   return `Génère un quiz de ${count} questions à choix multiples pour cet élève.
 
@@ -88,9 +106,11 @@ export function buildQuizPrompt(ctx: StudentContext, subjectLabel: string, count
 - Langue des questions ET des explications : ${langName}
 - Notions prioritaires : ${priority}
 
+NIVEAU DEMANDÉ PAR L'ÉLÈVE : ${LEVELS[difficulty]}
+
 Exigences :
-- Difficulté progressive : les premières questions mettent en confiance, les dernières font réfléchir.
-- Exactement 4 options par question, une seule correcte, les trois autres plausibles (pas de réponse absurde).
+- Difficulté progressive À L'INTÉRIEUR du niveau demandé : les premières questions mettent en confiance, les dernières font réfléchir. Ne sors jamais du niveau choisi.
+- Exactement 4 options par question, toutes différentes, une seule correcte, les trois autres plausibles (pas de réponse absurde).
 - Chaque explication enseigne la méthode, elle ne se contente pas de désigner la bonne réponse.
 - Utilise des exemples de la vie haïtienne quand c'est naturel (gourdes, marché, tap-tap, football).
 - Contenu strictement scolaire et adapté à un élève de ${ctx.level}.`;

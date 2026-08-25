@@ -7,6 +7,7 @@
 // ═══════════════════════════════════════════════════════════════
 
 import { supabase } from '@/lib/supabase';
+import type { Difficulty } from '@/config/app';
 import { buildQuizPrompt, buildSystemPrompt } from './prompts';
 import type { AIMessage, GeneratedQuiz, QuizQuestion, StudentContext } from './types';
 
@@ -81,8 +82,9 @@ export async function remoteQuiz(
   ctx: StudentContext,
   subjectId: string,
   subjectLabel: string,
+  difficulty: Difficulty,
 ): Promise<GeneratedQuiz | null> {
-  const prompt = buildQuizPrompt(ctx, subjectLabel);
+  const prompt = buildQuizPrompt(ctx, subjectLabel, difficulty);
 
   try {
     // `subjectId` sert au serveur à retrouver les questions déjà
@@ -91,6 +93,7 @@ export async function remoteQuiz(
       action: 'quiz',
       prompt,
       subjectId,
+      difficulty,
     });
     const raw = data.questions;
     if (!Array.isArray(raw) || raw.length === 0) return null;

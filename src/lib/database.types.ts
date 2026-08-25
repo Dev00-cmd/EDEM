@@ -213,8 +213,22 @@ export type Database = {
     };
     Functions: {
       apply_quiz_results: {
-        Args: { p_results: Json; p_subject_id: string };
+        Args: { p_results: Json; p_subject_id: string; p_difficulty?: string };
         Returns: Json;
+      };
+      leaderboard: {
+        Args: { p_limit?: number };
+        Returns: {
+          rank: number;
+          name: string;
+          xp: number;
+          level: number;
+          is_me: boolean;
+        }[];
+      };
+      my_rank: {
+        Args: never;
+        Returns: { rank: number; total: number; xp: number }[];
       };
       reset_progress: { Args: never; Returns: undefined };
       study_topic: {

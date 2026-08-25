@@ -421,15 +421,20 @@ Deno.serve(async (req: Request) => {
 
     // ── Génération d'un quiz ──────────────────────────────────
     if (action === "quiz") {
-      const { prompt, subjectId } = body as {
+      const { prompt, subjectId, difficulty } = body as {
         prompt?: string;
         subjectId?: string;
+        difficulty?: string;
       };
       if (typeof prompt !== "string" || prompt.length === 0) {
         return json({ error: "prompt manquant" }, 400);
       }
 
       const subject = typeof subjectId === "string" ? subjectId : "general";
+      const chosen =
+        difficulty === "facile" || difficulty === "moyen" || difficulty === "difficile"
+          ? difficulty
+          : undefined;
       const supabase = userClient(req);
       const userId = await getUserId(req);
 
@@ -461,7 +466,7 @@ Deno.serve(async (req: Request) => {
         // Dix questions avec leurs explications, plus le
         // raisonnement du modèle : 8000 jetons devenaient justes.
         max_tokens: 16000,
-        system: `Tu génères des quiz scolaires pour des élèves haïtiens, adaptés à leur classe et au programme du MENFP.\n\n${TEACHING_METHOD}\n\n${quizGuidance(seen, perf)}`,
+        system: `Tu génères des quiz scolaires pour des élèves haïtiens, adaptés à leur classe et au programme du MENFP.\n\n${TEACHING_METHOD}\n\n${quizGuidance(seen, perf, chosen)}`,
         messages: [{ role: "user", content: prompt }],
         output_config: {
           // Un quiz varié demande plus de recul qu'une réponse

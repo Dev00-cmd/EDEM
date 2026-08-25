@@ -21,7 +21,7 @@ import React, {
   type ReactNode,
 } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { STORAGE_KEYS } from '@/config/app';
+import { STORAGE_KEYS, type Difficulty } from '@/config/app';
 import { supabase } from '@/lib/supabase';
 import { removeAttachments } from '@/lib/attachments';
 import { useAuth } from './AuthContext';
@@ -115,6 +115,7 @@ interface AppState {
   applyQuizResults: (
     subjectId: string,
     results: { topic: string; ok: boolean }[],
+    difficulty: Difficulty,
   ) => Promise<number>; // XP gagnés
   addChatMessages: (thread: string, msgs: ChatMsg[]) => void;
   clearChat: (thread: string) => void;
@@ -414,12 +415,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // ── Résultats d'un quiz ─────────────────────────────────────
   const applyQuizResults = useCallback(
-    async (subjectId: string, results: { topic: string; ok: boolean }[]) => {
+    async (
+      subjectId: string,
+      results: { topic: string; ok: boolean }[],
+      difficulty: Difficulty,
+    ) => {
       if (!userId || results.length === 0) return 0;
 
+      // Le barème d'XP est appliqué par la base, pas ici : on lui
+      // transmet seulement le niveau choisi.
       const { data, error } = await supabase.rpc('apply_quiz_results', {
         p_subject_id: subjectId,
         p_results: results,
+        p_difficulty: difficulty,
       });
 
       if (error || !data) {

@@ -19,6 +19,7 @@ const ICONS: Record<string, IconName> = {
   path: 'chart',
   chat: 'tutor',
   quiz: 'quiz',
+  board: 'award',
   profile: 'profile',
 };
 
@@ -27,6 +28,7 @@ const LABEL_KEYS: Record<string, string> = {
   path: 'tabs.path',
   chat: 'tabs.tutor',
   quiz: 'tabs.quiz',
+  board: 'tabs.board',
   profile: 'tabs.profile',
 };
 
@@ -125,6 +127,7 @@ export default function TabsLayout() {
       <Tabs.Screen name="path" />
       <Tabs.Screen name="chat" />
       <Tabs.Screen name="quiz" />
+      <Tabs.Screen name="board" />
       <Tabs.Screen name="profile" />
     </Tabs>
   );

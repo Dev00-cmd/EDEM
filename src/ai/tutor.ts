@@ -4,7 +4,7 @@
 //  Supabase « tutor » (clé API gardée côté serveur).
 // ═══════════════════════════════════════════════════════════════
 
-import { isBackendConfigured } from '@/config/app';
+import { isBackendConfigured, type Difficulty } from '@/config/app';
 import { getSubject } from '@/data/subjects';
 import { matchTopicId, type CurriculumContext } from './plan';
 import { remoteAnswer, remoteQuiz, type RemoteAttachment } from './remoteTutor';
@@ -62,7 +62,13 @@ export async function askTutor(
 export async function generateQuiz(
   ctx: StudentContext,
   subjectId: string,
+  difficulty: Difficulty = 'moyen',
 ): Promise<GeneratedQuiz | null> {
   if (!isBackendConfigured()) return null;
-  return remoteQuiz(ctx, subjectId, subjectLabelFor({ ...ctx, subject: subjectId }));
+  return remoteQuiz(
+    ctx,
+    subjectId,
+    subjectLabelFor({ ...ctx, subject: subjectId }),
+    difficulty,
+  );
 }

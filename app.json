@@ -1,9 +1,9 @@
 {
   "expo": {
-    "name": "Ti Pwof",
+    "name": "EDEM",
     "slug": "yourydev",
     "owner": "yourydevs-team",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "scheme": "tipwof",
@@ -60,6 +60,6 @@
     "updates": {
       "url": "https://u.expo.dev/1d6cdcc0-c5b1-4c8f-b578-a3933f486f6b"
     },
-    "runtimeVersion": "1.0.0"
+    "runtimeVersion": "1.1.0"
   }
 }

@@ -7,7 +7,7 @@ import type { Messages } from './fr';
 
 export const ht: Messages = {
   common: {
-    appName: 'Ti Pwof',
+    appName: 'EDEM',
     next: 'Kontinye',
     back: 'Retounen',
     letsGo: 'An n kòmanse !',
@@ -25,8 +25,9 @@ export const ht: Messages = {
   tabs: {
     home: 'Akèy',
     path: 'Chemen',
-    tutor: 'Ti Pwof',
+    tutor: 'M. Thomas',
     quiz: 'Kwiz',
+    board: 'Klasman',
     profile: 'Pwofil',
   },
 
@@ -65,7 +66,7 @@ export const ht: Messages = {
   },
 
   onboarding: {
-    welcome: 'Ti Pwof.',
+    welcome: 'EDEM.',
     welcomeSub:
       'Pwofesè AI pèsonèl ou — 100 % lekòl, 100 % pou ou. Li bati chemen ou, esplike chak notion, kreye kwiz ou. An franse oswa an kreyòl.',
     badgeAI: 'AI lekòl',
@@ -90,7 +91,7 @@ export const ht: Messages = {
     subjectsNeeded: 'Chwazi omwen yon matyè',
     ready: 'Tout bagay pare, {name} !',
     readySub:
-      'Chemen pèsonèl ou a pare. Chak jou, Ti Pwof ap di w kisa pou w etidye — epi li swiv pwogrè w pa etap.',
+      'Chemen pèsonèl ou a pare. Chak jou, M. Thomas ap di w kisa pou w etidye — epi li swiv pwogrè w pa etap.',
   },
 
   home: {
@@ -119,7 +120,7 @@ export const ht: Messages = {
     practice: 'Kwiz rapid',
     empty: 'Chwazi matyè ou yo ak klas ou pou n jenere chemen ou',
     emptyCta: 'Mete chemen mwen an sou pye',
-    tapToLearn: 'Peze yon notion → Ti Pwof esplike w li tousuit',
+    tapToLearn: 'Peze yon notion → M. Thomas esplike w li tousuit',
     statsTitle: 'Pwogrè ou',
     bySubject: 'Matyè pa matyè',
     weekXp: 'Semèn sa a',
@@ -127,11 +128,31 @@ export const ht: Messages = {
     quizzesDone: 'Kwiz ou fè',
   },
 
+  update: {
+    ready: 'Gen yon mizajou ki pare',
+    tap: 'Peze la a pou enstale l',
+    applying: 'Ap rekòmanse…',
+  },
+
+  board: {
+    title: 'Klasman',
+    subtitle: 'Elèv ki pi asidi nan EDEM',
+    yourRank: 'Pozisyon ou',
+    outOf: 'sou {total} elèv klase',
+    you: 'ou',
+    keepGoing: 'Kontinye : chak kwiz ak chak notion ou etidye fè w monte.',
+    emptyTitle: 'Klasman an vid',
+    emptyBody: 'Pèsonn poko genyen pwen. Se ou ki premye : fè yon kwiz !',
+    errorTitle: 'Klasman an pa disponib',
+    errorBody: 'Tcheke koneksyon ou, apre rale desann pou eseye ankò.',
+    privacy: 'Se sèlman non ou ({name}) ki parèt. Ni imel, ni kontak.',
+  },
+
   chat: {
-    title: 'Ti Pwof',
+    title: 'M. Thomas',
     subtitle: 'Pwofesè AI · sije lekòl',
     greeting:
-      'Bonjou! Mwen se Ti Pwof, pwofesè AI lekòl ou.\n\nPoze m kesyon ou — matematik, istwa, syans, lang… M ap esplike w li pa etap, sou NIVO PA W.',
+      'Bonjou! Mwen se M. Thomas, pwofesè AI lekòl ou.\n\nPoze m kesyon ou — matematik, istwa, syans, lang… M ap esplike w li pa etap, sou NIVO PA W.',
     schoolOnly: 'Mwen mete tout sou lekòl: diskisyon nou yo rete sou etid ou 🎓',
     placeholder: 'Kesyon lekòl ou…',
     tryThese: 'Pou kòmanse:',
@@ -141,7 +162,7 @@ export const ht: Messages = {
     chooseFile: 'Chwazi yon dokiman (PDF)',
     uploading: 'K ap voye…',
     readyToSend: 'Pare pou voye',
-    typing: 'Ti Pwof ap ekri…',
+    typing: 'M. Thomas ap ekri…',
     clear: 'Efase',
     clearConfirm: 'Efase tout konvèsasyon an?',
     setupTitle: 'Sèvè AI a poko konfigire',
@@ -158,6 +179,15 @@ export const ht: Messages = {
     heroEyebrow: 'Kwiz AI',
     heroTitle: 'Montre m 🏆',
     heroSub: 'Chak kwiz inik, AI a kreye l pou ou. 100 % = +20 pwen anplis.',
+    chooseLevel: 'Chwazi nivo ou',
+    chooseSubject: 'Chwazi matyè ou',
+    level_facile: 'Fasil',
+    level_moyen: 'Mwayen',
+    level_difficile: 'Difisil',
+    levelHint_facile: 'Kesyon dirèk, yon sèl etap. Pou revize trankil.',
+    levelHint_moyen: 'Nivo yon kontwòl òdinè. De etap rezònman.',
+    levelHint_difficile: 'Plizyè notion ansanm, nivo egzamen eta. Li bay plis pwen.',
+    difficulty: 'Nivo',
     question: 'Kesyon',
     correct: 'Bon repons !',
     wrong: 'Pa sa non…',
@@ -204,14 +234,14 @@ export const ht: Messages = {
     goal_english: 'Pale anglè pi byen',
     about: 'Konsènan',
     aboutText:
-      'Ti Pwof se yon pwofesè AI li fèt pou elèv ayisyen: franse ak kreyòl, chemen sou mezi, kwiz san limit, konvèsasyon ki rete sou sije lekòl pou w rete konsantre. Li fèt pou chak jenn — Pòtoprens, Okay, oswa kèlkeswa kote — gen yon vrè pwof nan poch li. 🇭🇹',
+      'EDEM se yon pwofesè AI li fèt pou elèv ayisyen: franse ak kreyòl, chemen sou mezi, kwiz san limit, konvèsasyon ki rete sou sije lekòl pou w rete konsantre. Li fèt pou chak jenn — Pòtoprens, Okay, oswa kèlkeswa kote — gen yon vrè pwof nan poch li. 🇭🇹',
     madeWith: 'Yo fè l ak ❤ pou elèv Ayiti',
     updates: 'Mizajou',
     checkUpdate: 'Chèche yon mizajou',
     updateHint: 'Peze pou tcheke kounye a',
     updateChecking: 'N ap chèche…',
     updateDownloading: 'N ap telechaje… app la ap rekòmanse',
-    updateNone: 'Ti Pwof deja ajou ✓',
+    updateNone: 'EDEM deja ajou ✓',
     updateUnavailable: 'Mizajou pa disponib sou vèsyon sa a.',
     channel: 'Kanal',
     runtime: 'Baz',

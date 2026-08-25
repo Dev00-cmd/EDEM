@@ -15,6 +15,7 @@ import {
 import { AuthProvider, useAuth } from '@/store/AuthContext';
 import { AppProvider, useApp } from '@/store/AppContext';
 import { ThemeProvider, useTheme } from '@/theme/ThemeContext';
+import { UpdateBanner } from '@/components/UpdateBanner';
 
 // Garde l'écran de démarrage tant que les polices ne sont pas
 // prêtes : évite le clignotement d'une police de secours.
@@ -81,6 +82,9 @@ function Navigator() {
         <Stack.Screen name="onboarding" />
         <Stack.Screen name="(tabs)" />
       </Stack>
+
+      {/* Au-dessus de tout : l'élève la voit quel que soit l'écran. */}
+      <UpdateBanner />
     </View>
   );
 }

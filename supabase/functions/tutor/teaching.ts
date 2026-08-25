@@ -194,7 +194,12 @@ tentante. Vise le niveau d'un examen d'État exigeant.`,
  * les mêmes, et l'élève finit par retenir des réponses plutôt que
  * des notions.
  */
-export function quizGuidance(avoid: string[], perf: Performance): string {
+export function quizGuidance(
+  avoid: string[],
+  perf: Performance,
+  /** Niveau explicitement choisi par l'élève, s'il en a choisi un. */
+  chosen?: 'facile' | 'moyen' | 'difficile',
+): string {
   const tier = difficultyTier(perf);
 
   const history =
@@ -202,12 +207,22 @@ export function quizGuidance(avoid: string[], perf: Performance): string {
       ? "C'est son premier quiz dans cette matière."
       : `Il a déjà passé ${perf.quizCount} quiz dans cette matière, avec une moyenne de ${Math.round(perf.averageScore ?? 0)} % et une maîtrise moyenne de ${Math.round(perf.averageMastery)} %.`;
 
+  // Quand l'élève a choisi son niveau, ce choix FAIT LOI : ses
+  // résultats passés servent seulement à doser à l'intérieur.
+  // Sans cette règle, un élève à 95 % qui demande « facile » pour
+  // réviser sereinement recevrait quand même un quiz difficile.
+  const calibration = chosen
+    ? `Le niveau demandé est « ${chosen} » : c'est LUI qui commande, ses
+résultats passés ne servent qu'à doser à l'intérieur de ce niveau.
+Ne monte ni ne descends d'un cran de ton propre chef.`
+    : TIER_BRIEF[tier];
+
   const base = `
 ═══ NIVEAU RÉEL DE CET ÉLÈVE ═══
 
 ${history}
 
-${TIER_BRIEF[tier]}
+${calibration}
 
 À l'intérieur du quiz, la difficulté monte encore : les premières
 questions mettent en confiance, les dernières font vraiment
