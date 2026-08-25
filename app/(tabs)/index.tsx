@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import { Screen } from '@/components/Screen';
 import { Card, SectionHeader } from '@/components/Card';
 import { Icon } from '@/components/Icon';
-import { LogoMark } from '@/components/LogoMark';
+import { EducareMark } from '@/components/EducareMark';
 import { StatTile, ProgressBar } from '@/components/Stats';
 import { useApp } from '@/store/AppContext';
 import { useTheme } from '@/theme/ThemeContext';
@@ -75,7 +75,7 @@ export default function HomeScreen() {
             {profile.name || 'Elève'} 👋
           </Text>
         </View>
-        <LogoMark size={44} />
+        <EducareMark size={44} />
       </View>
 
       {offline && (
