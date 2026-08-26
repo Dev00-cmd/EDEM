@@ -30,7 +30,7 @@ import {
   type UploadedFile,
 } from '@/lib/attachments';
 import { useTheme } from '@/theme/ThemeContext';
-import { useKeyboard } from '@/theme/useKeyboard';
+import { useKeyboard, useKeyboardShift } from '@/theme/useKeyboard';
 import { RADIUS } from '@/theme/colors';
 import { FONTS, type } from '@/theme/typography';
 import { askTutor } from '@/ai/tutor';
@@ -61,6 +61,9 @@ export default function ChatScreen() {
   const userId = user?.id ?? null;
   const { colors } = useTheme();
   const keyboard = useKeyboard();
+  // La barre de saisie mesure sa propre position et se remonte
+  // exactement de ce qu'il faut : aucune supposition sur Android.
+  const kb = useKeyboardShift();
   const insets = useSafeAreaInsets();
 
   const [subject, setSubject] = useState<string>(params.subject ?? 'general');
@@ -265,7 +268,7 @@ export default function ChatScreen() {
   // taper.
   useEffect(() => {
     scrollToEnd();
-  }, [messages.length, typing, keyboard.offset, scrollToEnd]);
+  }, [messages.length, typing, kb.shift, scrollToEnd]);
 
   const [askingClear, setAskingClear] = useState(false);
 
@@ -416,10 +419,9 @@ export default function ChatScreen() {
                             le champ passe dessous sur les appareils
                             à navigation gestuelle. */}
       <View
+        ref={kb.ref}
         style={{
-          paddingBottom: keyboard.visible
-            ? keyboard.offset
-            : Math.max(insets.bottom, 6),
+          paddingBottom: kb.visible ? kb.shift : Math.max(insets.bottom, 6),
         }}
       >
         {/* Erreur de pièce jointe */}

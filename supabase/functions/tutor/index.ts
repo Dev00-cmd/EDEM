@@ -398,7 +398,12 @@ Deno.serve(async (req: Request) => {
         // deno-lint-ignore no-explicit-any
         messages: history as any,
         output_config: {
-          effort: "medium",
+          // « low » plutot que « medium » : la METHODE est deja
+          // entierement decrite dans le prompt, le modele n a donc
+          // pas a chercher comment enseigner — juste a appliquer.
+          // On y gagne plusieurs secondes a chaque question, ce qui
+          // compte enormement pour un eleve qui attend.
+          effort: "low",
           format: { type: "json_schema", schema: CHAT_SCHEMA },
         },
       });
@@ -469,9 +474,10 @@ Deno.serve(async (req: Request) => {
         system: `Tu génères des quiz scolaires pour des élèves haïtiens, adaptés à leur classe et au programme du MENFP.\n\n${TEACHING_METHOD}\n\n${quizGuidance(seen, perf, chosen)}`,
         messages: [{ role: "user", content: prompt }],
         output_config: {
-          // Un quiz varié demande plus de recul qu'une réponse
-          // directe : mêmes notions, mais angles neufs.
-          effort: "high",
+          // Un quiz demande plus de recul qu'une réponse directe,
+          // mais « high » faisait attendre 30 à 40 secondes devant
+          // un écran de chargement — trop long pour un élève.
+          effort: "medium",
           format: { type: "json_schema", schema: QUIZ_SCHEMA },
         },
       });

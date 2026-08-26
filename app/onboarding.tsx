@@ -84,7 +84,7 @@ export default function Onboarding() {
         <ScrollView
           contentContainerStyle={[
             styles.scroll,
-            { paddingBottom: 40 + keyboard.offset },
+            { paddingBottom: 40 + keyboard.height },
           ]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
