@@ -78,10 +78,24 @@ export function masteryOf(progress: Progress, subjectId: string, level: string):
   return Math.round(sum / topics.length);
 }
 
-/** Notions faibles (travaillées mais < 60) — priorisent le plan IA. */
-export function weakTopicsOf(profile: Profile, progress: Progress): string[] {
+/**
+ * Notions faibles (travaillées mais < 60) — priorisent le plan IA.
+ *
+ * `onlySubject`, quand fourni, restreint aux notions de CETTE
+ * matière. Indispensable pour un quiz ou une conversation ciblée :
+ * sans ce filtre, un élève faible en informatique voyait ses
+ * lacunes d'informatique citées comme « notions prioritaires »
+ * dans un quiz d'histoire ou de créole, et le modèle finissait
+ * par y répondre au lieu de rester sur la bonne matière.
+ */
+export function weakTopicsOf(
+  profile: Profile,
+  progress: Progress,
+  onlySubject?: string,
+): string[] {
   const out: string[] = [];
-  for (const subjectId of profile.favorites) {
+  const subjects = onlySubject ? [onlySubject] : profile.favorites;
+  for (const subjectId of subjects) {
     for (const t of topicsFor(subjectId, profile.level)) {
       const score = progress.topics[topicKey(subjectId, t.id)] ?? 0;
       if (score > 0 && score < 60) out.push(`${t[profile.lang]} (${subjectId})`);
@@ -90,10 +104,15 @@ export function weakTopicsOf(profile: Profile, progress: Progress): string[] {
   return out;
 }
 
-/** Notions solides (≥ 80). */
-export function strongTopicsOf(profile: Profile, progress: Progress): string[] {
+/** Notions solides (≥ 80). Même filtre que {@link weakTopicsOf}. */
+export function strongTopicsOf(
+  profile: Profile,
+  progress: Progress,
+  onlySubject?: string,
+): string[] {
   const out: string[] = [];
-  for (const subjectId of profile.favorites) {
+  const subjects = onlySubject ? [onlySubject] : profile.favorites;
+  for (const subjectId of subjects) {
     for (const t of topicsFor(subjectId, profile.level)) {
       const score = progress.topics[topicKey(subjectId, t.id)] ?? 0;
       if (score >= 80) out.push(`${t[profile.lang]} (${subjectId})`);
@@ -108,14 +127,18 @@ export function studentContextOf(
   progress: Progress,
   subject?: string,
 ): StudentContext {
+  // Une matière précise (quiz, ou chat filtré) ne doit voir QUE
+  // ses propres notions faibles/fortes — jamais celles des autres
+  // matières favorites de l'élève.
+  const scope = subject && subject !== 'general' ? subject : undefined;
   return {
     name: profile.name,
     lang: profile.lang,
     level: profile.level,
     goal: profile.goal,
     subject,
-    weakTopics: weakTopicsOf(profile, progress).slice(0, 4),
-    strongTopics: strongTopicsOf(profile, progress).slice(0, 4),
+    weakTopics: weakTopicsOf(profile, progress, scope).slice(0, 4),
+    strongTopics: strongTopicsOf(profile, progress, scope).slice(0, 4),
   };
 }
 

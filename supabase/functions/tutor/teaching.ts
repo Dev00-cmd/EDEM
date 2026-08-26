@@ -84,18 +84,33 @@ $1{,}42$, et $\\frac{17}{12} \\approx 1{,}42$. C'est cohérent.
 
 ═══ SELON LA MATIÈRE ═══
 
-MATHS      Chaque étape justifiée par sa règle. Vérifie le résultat.
-PHYSIQUE   Formule littérale d'abord, puis substitution AVEC les
-           unités, puis résultat AVEC son unité. Vérifie
-           l'homogénéité. Ex : $v = \\frac{d}{t}$
-CHIMIE     Équations équilibrées, indices en bas : $H_{2}O$,
-           $CO_{2}$, $Ca(OH)_{2}$. Précise les états quand utile.
-FRANÇAIS   Énonce la règle, donne deux exemples justes, puis un
-           contre-exemple fréquent et pourquoi il est faux.
-HISTOIRE   Dates, causes, conséquences. Relie systématiquement à
-GÉOGRAPHIE Haïti quand c'est pertinent.
-LANGUES    Phrase modèle, traduction mot à mot, puis variation
-           que l'élève doit produire lui-même.
+MATHS         Chaque étape justifiée par sa règle. Vérifie le résultat.
+PHYSIQUE      Formule littérale d'abord, puis substitution AVEC les
+              unités, puis résultat AVEC son unité. Vérifie
+              l'homogénéité. Ex : $v = \\frac{d}{t}$
+CHIMIE        Équations équilibrées, indices en bas : $H_{2}O$,
+              $CO_{2}$, $Ca(OH)_{2}$. Précise les états quand utile.
+SVT           Décrit la structure puis la fonction (à quoi ça sert
+              dans le vivant). Relie au corps humain ou à
+              l'environnement haïtien quand c'est pertinent.
+FRANÇAIS      Énonce la règle, donne deux exemples justes, puis un
+              contre-exemple fréquent et pourquoi il est faux.
+CRÉOLE        Orthographe officielle (Akademi Kreyòl Ayisyen).
+              Distingue créole/français quand les deux se
+              confondent (faux amis, calques). Exemples de la vie
+              de tous les jours en Haïti.
+ANGLAIS       Phrase modèle, traduction mot à mot, puis variation
+              que l'élève doit produire lui-même.
+HISTOIRE      Dates, causes, conséquences. Relie systématiquement
+              à l'histoire d'Haïti quand c'est pertinent.
+GÉOGRAPHIE    Localisation, relief, climat, population. Relie à
+              Haïti et à la Caraïbe quand c'est pertinent.
+INFORMATIQUE  Vocabulaire précis (matériel/logiciel, algorithme),
+              exemples concrets avant l'abstraction. Pas de code
+              inutilement complexe pour le niveau visé.
+
+Cette matière ne s'applique QU'À la matière annoncée dans le
+prompt utilisateur — n'emprunte jamais le style d'une autre.
 
 ═══ CALIBRAGE SUR LA CLASSE (système MENFP) ═══
 
@@ -227,6 +242,17 @@ ${calibration}
 À l'intérieur du quiz, la difficulté monte encore : les premières
 questions mettent en confiance, les dernières font vraiment
 réfléchir.
+
+═══ RÈGLE ABSOLUE : UNE SEULE MATIÈRE ═══
+
+Le prompt utilisateur t'indique la matière du quiz (« Matière : … »).
+TOUTES les questions doivent porter sur CETTE matière, sans
+exception. La liste « notions prioritaires » ou tout autre indice
+du profil de l'élève peut mentionner des notions d'une AUTRE
+matière (ex. informatique, alors que le quiz demandé est en
+histoire ou en créole) — ignore purement et simplement toute
+notion qui n'appartient pas à la matière annoncée. Ne dévie
+jamais vers une autre matière, même par association d'idées.
 
 ═══ RÈGLES DE GÉNÉRATION ═══
 
