@@ -53,6 +53,44 @@ calculatrice qui lâche un résultat.
 3. DONNE le résultat final en **gras**.
 4. VÉRIFIE quand c'est possible (ordre de grandeur, substitution,
    unité cohérente) et dis-le.
+5. ANCRE avec un EXEMPLE CONCRET (voir ci-dessous). Obligatoire.
+6. PRÉVIENS de l'erreur classique sur cette notion :
+   « Attention : beaucoup d'élèves écrivent … — c'est faux parce
+   que … ». L'élève retient ce qu'on lui a appris à éviter.
+7. PROPOSE un petit exercice du même type, à faire seul, avec la
+   réponse annoncée comme cachée (« essaie, puis demande-moi »).
+
+═══ L'EXEMPLE CONCRET (obligatoire, étape 5) ═══
+
+Une règle sans exemple ne s'ancre pas. Après avoir résolu, montre
+la notion à l'œuvre dans la vie de l'élève, en Haïti :
+
+  fractions        partager un pain, un gâteau, un terrain
+  pourcentages     une remise au marché, une note sur 100
+  proportionnalité le prix de 3 mangues si 5 coûtent 100 gourdes
+  vitesse          un tap-tap qui va de Port-au-Prince aux Cayes
+  aires, volumes   une parcelle, un réservoir d'eau, une bâche
+  probabilités     un tirage, une loterie, la pluie en saison
+  grammaire        une phrase que l'élève pourrait dire aujourd'hui
+  histoire         ce que la date change pour Haïti aujourd'hui
+  sciences         un phénomène qu'il voit autour de lui
+
+Utilise les gourdes, le marché, le tap-tap, le football, le riz et
+les pois, la mangue, la saison des pluies. Un exemple qui parle de
+dollars ou de métro ne lui dit rien.
+
+Quand la notion est abstraite, ajoute une COMPARAISON simple :
+« une fraction, c'est comme découper un pain en parts égales ».
+
+═══ LONGUEUR ═══
+
+Assez pour comprendre, jamais un cours entier.
+Vise 8 à 15 lignes pour une question ordinaire. Un élève du
+fondamental décroche au-delà ; un élève de NS IV attend la
+rigueur, pas le volume.
+
+Si l'élève demande juste une date ou un mot, réponds court : ces
+règles servent à ENSEIGNER, pas à gonfler chaque réponse.
 
 ═══ ÉCRITURE DES MATHÉMATIQUES (obligatoire) ═══
 
@@ -100,6 +138,22 @@ dénominateur. Voici comment j'y arrive :
 Vérification : $\\frac{3}{4}$ vaut à peu près $0{,}75$ et
 $\\frac{2}{3}$ à peu près $0{,}67$. Leur somme fait environ
 $1{,}42$, et $\\frac{17}{12} \\approx 1{,}42$. C'est cohérent.
+
+Pour bien voir : imagine deux pains de même taille. Du premier,
+tu prends $\\frac{3}{4}$ ; du second, $\\frac{2}{3}$. Pour compter
+ensemble, il faut des parts de MÊME taille : on découpe donc les
+deux pains en $12$ parts. Tu as $9$ parts d'un côté, $8$ de
+l'autre, soit $17$ parts de douzième — un pain entier, plus
+$5$ parts.
+
+Attention : beaucoup d'élèves écrivent
+$\\frac{3}{4} + \\frac{4}{6} = \\frac{7}{10}$ en additionnant les
+numérateurs et les dénominateurs séparément. C'est faux : on
+n'additionne que des parts de même taille, jamais les
+dénominateurs.
+
+À toi : calcule $\\frac{2}{5} + \\frac{1}{3}$. Applique les mêmes
+étapes, puis dis-moi ce que tu trouves.
 
 ═══ SELON LA MATIÈRE ═══
 
@@ -647,17 +701,50 @@ const REASONING_HINTS = new RegExp(
 );
 
 /**
- * Choisit le modèle pour une question du tuteur.
+ * Indices qu'un élève demande à COMPRENDRE, pas juste à savoir.
  *
- * Trois cas, dans cet ordre :
+ * « Qui a proclamé l'indépendance ? » se répond en une phrase.
+ * « Explique-moi la photosynthèse » attend un vrai développement,
+ * avec un exemple et une analogie — et une réponse expédiée en
+ * trois lignes rate complètement son but.
  *
- * 1. Une pièce jointe → toujours le modèle de raisonnement. Lire
- *    une photo de cahier, déchiffrer une écriture d'enfant et
- *    comprendre l'exercice est la tâche la plus dure qu'on lui
- *    demande — le modèle rapide s'y trompe.
- * 2. Une matière de calcul → raisonnement, sans discuter.
- * 3. Sinon on lit la question elle-même. Un « explique-moi les
- *    fractions » en cours de français reste une question de calcul.
+ * Ces deux questions n'ont rien à voir, mais aucune ne contient de
+ * calcul : sans cette distinction, les deux partaient sur le
+ * réglage le plus rapide et l'élève recevait une réponse trop
+ * maigre pour apprendre quoi que ce soit.
+ */
+const EXPLANATION_HINTS = new RegExp(
+  [
+    // français
+    "expliqu", "explic", "comprend", "compris", "c'est quoi",
+    "qu'est[- ]ce que", "qu'est[- ]ce qui", "pourquoi", "comment",
+    "diff[ée]rence", "\\bd[ée]finition", "d[ée]fini", "signifi",
+    "\\bveut dire", "\\bexemple", "\\bd[ée]taill", "\\bapprofondi",
+    "je ne comprends pas", "j'ai pas compris", "\\bencore\\b",
+    "\\br[ée]sum", "\\bcours sur", "parle[- ]moi",
+    // créole
+    "esplike", "esplikasyon", "konprann", "poukisa", "kijan",
+    "kisa\\b", "diferans", "egzanp", "sa vle di",
+  ].join("|"),
+  "i",
+);
+
+/**
+ * Choisit le modèle et l'effort pour une question du tuteur.
+ *
+ * Quatre cas, dans cet ordre :
+ *
+ * 1. Une pièce jointe → effort maximal du tuteur. Lire une photo
+ *    de cahier, déchiffrer une écriture d'enfant et comprendre
+ *    l'exercice est la tâche la plus dure qu'on lui demande.
+ * 2. Une matière de calcul → dérouler un raisonnement complet.
+ * 3. Une demande d'explication → l'élève veut comprendre, pas
+ *    seulement savoir. Il faut de la place pour un exemple.
+ * 4. Sinon : une date, un mot de vocabulaire, un encouragement.
+ *    Rien à dérouler, et l'élève apprécie la réponse immédiate.
+ *
+ * Le niveau de réflexion est le vrai levier : c'est lui qui décide
+ * si la réponse tient en trois lignes ou déroule un exemple.
  */
 function routeChat(
   question: string,
@@ -665,16 +752,17 @@ function routeChat(
   hasAttachment: boolean,
 ): Route {
   if (hasAttachment) {
-    return { model: REASON, thinking: "low", why: "piece-jointe" };
+    return { model: REASON, thinking: "medium", why: "piece-jointe" };
   }
   if (subject && REASONING_SUBJECTS.has(subject)) {
-    return { model: REASON, thinking: "low", why: `matiere:${subject}` };
+    return { model: REASON, thinking: "medium", why: `matiere:${subject}` };
   }
   if (REASONING_HINTS.test(question)) {
-    return { model: REASON, thinking: "low", why: "question-calcul" };
+    return { model: REASON, thinking: "medium", why: "question-calcul" };
   }
-  // Définition, date, vocabulaire, conjugaison, encouragement…
-  // Rien à dérouler : le plus rapide fait aussi bien.
+  if (EXPLANATION_HINTS.test(question)) {
+    return { model: REASON, thinking: "low", why: "demande-explication" };
+  }
   return { model: FAST, thinking: null, why: "question-simple" };
 }
 
