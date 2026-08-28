@@ -15,6 +15,16 @@ export interface PlanItem {
   subjectId: string;
   kind: 'learn' | 'practice';
   topicId?: string;
+  /**
+   * Pour un point d'étape : les notions qu'il révise.
+   *
+   * Sans cette liste, tous les « Quiz éclair » d'une matière
+   * étaient indiscernables — même titre, et surtout même état
+   * d'avancement : un seul quiz réussi les cochait tous d'un coup
+   * et faisait bondir la progression sans que l'élève ait
+   * réellement avancé.
+   */
+  covers?: string[];
   title: Record<Lang, string>;
 }
 
@@ -36,12 +46,22 @@ export function buildPlan(profile: Profile): PlanItem[] {
         topicId: topic.id,
         title: { fr: topic.fr, ht: topic.ht },
       });
+
+      // Un point d'étape toutes les deux notions, qui NOMME les
+      // deux notions qu'il révise. « Quiz éclair » répété trois
+      // fois dans la même liste n'apprenait rien à l'élève sur ce
+      // qui l'attendait.
       if ((i + 1) % 2 === 0) {
+        const pair = topics.slice(i - 1, i + 1);
         items.push({
           id: `${subjectId}:${band}:quiz:${i}`,
           subjectId,
           kind: 'practice',
-          title: { fr: 'Quiz éclair', ht: 'Kwiz rapid' },
+          covers: pair.map((tp) => tp.id),
+          title: {
+            fr: `Quiz : ${pair.map((tp) => tp.fr).join(' · ')}`,
+            ht: `Kwiz : ${pair.map((tp) => tp.ht).join(' · ')}`,
+          },
         });
       }
     });
@@ -53,19 +73,45 @@ export function buildPlan(profile: Profile): PlanItem[] {
 export const isLearnDone = (p: Progress, subjectId: string, topicId: string) =>
   (p.topics[topicKey(subjectId, topicId)] ?? 0) >= 60;
 
-/** Un entraînement est « fait » quand le meilleur score ≥ 80 %. */
-export const isPracticeDone = (p: Progress, subjectId: string) => (p.quizBest[subjectId] ?? 0) >= 80;
+/**
+ * Un point d'étape est « fait » quand les notions qu'il révise
+ * sont acquises ET qu'un quiz de la matière a été réussi.
+ *
+ * La double condition est là pour que les points d'étape ne
+ * basculent plus tous ensemble : le premier ne dépend que des
+ * deux premières notions, le suivant des deux suivantes. La
+ * progression affichée suit alors le travail réel.
+ */
+export const isPracticeDone = (p: Progress, item: PlanItem) => {
+  if ((p.quizBest[item.subjectId] ?? 0) < 80) return false;
+  const covers = item.covers ?? [];
+  // Sans notions rattachées, on retombe sur l'ancien critère.
+  if (covers.length === 0) return true;
+  return covers.every((topicId) => isLearnDone(p, item.subjectId, topicId));
+};
 
 export const isItemDone = (p: Progress, item: PlanItem) =>
   item.kind === 'learn'
     ? item.topicId
       ? isLearnDone(p, item.subjectId, item.topicId)
       : false
-    : isPracticeDone(p, item.subjectId);
+    : isPracticeDone(p, item);
 
-/** Le plan du jour : les N prochaines actions non terminées. */
-export function dailyPlan(profile: Profile, progress: Progress, count = 3): PlanItem[] {
+/**
+ * Le plan du jour : les N prochaines actions non terminées.
+ *
+ * `onlySubject` restreint à une matière — indispensable pour les
+ * suggestions du tuteur : filtré sur « Mathématiques », l'élève
+ * se voyait proposer « Explique-moi l'ère Duvalier ».
+ */
+export function dailyPlan(
+  profile: Profile,
+  progress: Progress,
+  count = 3,
+  onlySubject?: string,
+): PlanItem[] {
   return buildPlan(profile)
+    .filter((item) => !onlySubject || item.subjectId === onlySubject)
     .filter((item) => !isItemDone(progress, item))
     .slice(0, count);
 }

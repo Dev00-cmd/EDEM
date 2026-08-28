@@ -86,16 +86,40 @@ export default function ChatScreen() {
 
   // Suggestions tirées du plan du jour — l'élève n'a pas à trouver
   // quoi demander devant une page vide.
+  //
+  // Elles suivent la matière sélectionnée. Sans ce filtre, un élève
+  // ayant choisi « Mathématiques » se voyait proposer « Explique-moi
+  // l'ère Duvalier » : le plan du jour puise dans TOUTES ses
+  // matières favorites.
   const suggestions = useMemo(() => {
-    const items = dailyPlan(profile, progress, 3);
+    const scope = subject === 'general' ? undefined : subject;
+    const items = dailyPlan(profile, progress, 3, scope);
+
     const s = items
       .filter((i) => i.kind === 'learn')
       .map((i) =>
         lang === 'ht' ? `Esplike m « ${i.title.ht} »` : `Explique-moi « ${i.title.fr} »`,
       );
+
     if (subject === 'math' || subject === 'general') {
       s.push(lang === 'ht' ? 'Rezoud 2x + 3 = 9' : 'Résous 2x + 3 = 9');
     }
+
+    // Une matière dont toutes les notions sont acquises ne
+    // produirait plus rien : mieux vaut une amorce générique
+    // qu'une page vide sous « Pour commencer ».
+    if (s.length === 0) {
+      const label = getSubject(subject).name[lang];
+      s.push(
+        lang === 'ht'
+          ? `Ban m yon egzèsis ${label}`
+          : `Donne-moi un exercice de ${label}`,
+        lang === 'ht'
+          ? `Kisa pou m revize nan ${label} ?`
+          : `Que dois-je réviser en ${label} ?`,
+      );
+    }
+
     return s.slice(0, 3);
   }, [profile, progress, lang, subject]);
 
