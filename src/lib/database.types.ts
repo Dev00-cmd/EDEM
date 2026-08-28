@@ -76,6 +76,8 @@ export type Database = {
       }
       profiles: {
         Row: {
+          board_alias: string | null
+          board_visible: boolean
           created_at: string
           favorites: string[]
           goal: string
@@ -88,6 +90,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          board_alias?: string | null
+          board_visible?: boolean
           created_at?: string
           favorites?: string[]
           goal?: string
@@ -100,6 +104,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          board_alias?: string | null
+          board_visible?: boolean
           created_at?: string
           favorites?: string[]
           goal?: string

@@ -236,6 +236,12 @@ export const ht: Messages = {
     aboutText:
       'EDEM se yon pwofesè AI li fèt pou elèv ayisyen: franse ak kreyòl, chemen sou mezi, kwiz san limit, konvèsasyon ki rete sou sije lekòl pou w rete konsantre. Li fèt pou chak jenn — Pòtoprens, Okay, oswa kèlkeswa kote — gen yon vrè pwof nan poch li. 🇭🇹',
     madeWith: 'Yo fè l ak ❤ pou elèv Ayiti',
+    boardPrivacy: 'Plas ou nan klasman an',
+    boardPrivacyHint: 'Klasman an montre non ou bay lòt elèv yo. Se ou ki deside sa yo wè.',
+    boardVisible: 'Parèt nan lis la',
+    boardAlias: 'Non yo afiche',
+    boardAliasPlaceholder: 'Ti non ou',
+    boardAliasHint: 'Kite l vid pou montre ti non ou. Ant 2 ak 24 karaktè.',
     updates: 'Mizajou',
     checkUpdate: 'Chèche yon mizajou',
     updateHint: 'Peze pou tcheke kounye a',

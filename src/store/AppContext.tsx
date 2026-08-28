@@ -39,6 +39,15 @@ export interface Profile {
   favorites: string[]; // ids de matières choisies
   theme: ThemeMode;
   onboarded: boolean;
+  /**
+   * Pseudonyme affiché au classement, à la place du prénom.
+   *
+   * Le classement montre l'élève à tous les autres utilisateurs,
+   * et ce sont des mineurs. Chaîne vide = on affiche le prénom.
+   */
+  boardAlias: string;
+  /** Apparaître ou non dans la liste publique du classement. */
+  boardVisible: boolean;
 }
 
 export interface Progress {
@@ -82,6 +91,11 @@ const DEFAULT_PROFILE: Profile = {
   favorites: [],
   theme: 'dark',
   onboarded: false,
+  boardAlias: '',
+  // Visible par défaut : rendre les comptes existants invisibles
+  // les ferait disparaître d'un classement où ils figurent déjà,
+  // sans explication.
+  boardVisible: true,
 };
 
 const DEFAULT_PROGRESS: Progress = {
@@ -224,6 +238,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
             favorites: p.favorites ?? [],
             theme: (p.theme as ThemeMode) ?? 'dark',
             onboarded: p.onboarded,
+            boardAlias: p.board_alias ?? '',
+            boardVisible: p.board_visible ?? true,
           }
         : DEFAULT_PROFILE;
 
@@ -370,6 +386,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
               favorites: next.favorites,
               theme: next.theme,
               onboarded: next.onboarded,
+              // La contrainte en base refuse un pseudonyme vide :
+              // on envoie null plutôt qu'une chaîne vide.
+              board_alias: next.boardAlias.trim() || null,
+              board_visible: next.boardVisible,
               updated_at: new Date().toISOString(),
             })
             .then(({ error }) => setOffline(!!error));

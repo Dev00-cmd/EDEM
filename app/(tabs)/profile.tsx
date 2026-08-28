@@ -46,6 +46,20 @@ export default function ProfileScreen() {
   const { colors } = useTheme();
   const lang = profile.lang;
 
+  // Le pseudonyme s'édite localement et ne part qu'à la sortie du
+  // champ : écrire en base à chaque lettre tapée enverrait une
+  // requête par frappe, coûteux sur un réseau haïtien.
+  const [alias, setAlias] = useState(profile.boardAlias);
+  const saveAlias = () => {
+    const clean = alias.trim();
+    // La base refuse un pseudonyme d'une seule lettre.
+    if (clean.length === 1) {
+      setAlias(profile.boardAlias);
+      return;
+    }
+    if (clean !== profile.boardAlias) updateProfile({ boardAlias: clean });
+  };
+
   const [editingName, setEditingName] = useState(false);
 
   // Boîte de confirmation ouverte, et son état d'exécution.
@@ -333,6 +347,62 @@ export default function ProfileScreen() {
         </View>
       </Section>
 
+      {/* ── Classement : ce que les autres voient ───────────── */}
+      <Section label={t('profile.boardPrivacy')}>
+        <Card>
+          <Text style={[type.caption, { color: colors.textSoft }]}>
+            {t('profile.boardPrivacyHint')}
+          </Text>
+
+          <View style={styles.boardRow}>
+            <View style={styles.settingLeft}>
+              <Icon name="award" size={18} color={colors.textSoft} />
+              <Text style={[type.bodyMedium, { color: colors.text }]}>
+                {t('profile.boardVisible')}
+              </Text>
+            </View>
+            <View style={styles.settingChips}>
+              <Chip
+                small
+                label={t('common.yes')}
+                selected={profile.boardVisible}
+                onPress={() => updateProfile({ boardVisible: true })}
+              />
+              <Chip
+                small
+                label={t('common.no')}
+                selected={!profile.boardVisible}
+                onPress={() => updateProfile({ boardVisible: false })}
+              />
+            </View>
+          </View>
+
+          <Text style={[type.caption, styles.boardLabel, { color: colors.textFaint }]}>
+            {t('profile.boardAlias')}
+          </Text>
+          <TextInput
+            value={alias}
+            onChangeText={setAlias}
+            onBlur={saveAlias}
+            placeholder={profile.name || t('profile.boardAliasPlaceholder')}
+            placeholderTextColor={colors.textFaint}
+            maxLength={24}
+            autoCapitalize="none"
+            style={[
+              styles.aliasInput,
+              {
+                color: colors.text,
+                backgroundColor: colors.surfaceAlt,
+                borderColor: colors.border,
+              },
+            ]}
+          />
+          <Text style={[type.caption, { color: colors.textFaint, marginTop: 6 }]}>
+            {t('profile.boardAliasHint')}
+          </Text>
+        </Card>
+      </Section>
+
       {/* ── À propos ────────────────────────────────────────── */}
       <Section label={t('profile.about')}>
         <Card>
@@ -471,6 +541,21 @@ export default function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
+  boardRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 14,
+  },
+  boardLabel: { marginTop: 16, marginBottom: 6 },
+  aliasInput: {
+    fontFamily: FONTS.regular,
+    fontSize: 15,
+    borderWidth: 1,
+    borderRadius: RADIUS.sm,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
   flex: { flex: 1 },
 
   identity: { alignItems: 'center' },

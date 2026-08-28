@@ -236,6 +236,12 @@ export const fr = {
     aboutText:
       "EDEM est un tuteur IA conçu pour les élèves haïtiens : français et créole, parcours sur mesure, quiz générés à l'infini, et des conversations strictement scolaires pour rester concentré. Fait pour que chaque jeune — à Port-au-Prince, aux Cayes ou ailleurs — ait un vrai prof dans sa poche. 🇭🇹",
     madeWith: 'Fait avec ❤ pour les élèves d’Haïti',
+    boardPrivacy: 'Ta place au classement',
+    boardPrivacyHint: 'Le classement montre ton nom aux autres élèves. Tu décides de ce qu’ils voient.',
+    boardVisible: 'Apparaître dans la liste',
+    boardAlias: 'Nom affiché',
+    boardAliasPlaceholder: 'Ton prénom',
+    boardAliasHint: 'Laisse vide pour afficher ton prénom. De 2 à 24 caractères.',
     updates: 'Mises à jour',
     checkUpdate: 'Rechercher une mise à jour',
     updateHint: 'Touche pour vérifier maintenant',

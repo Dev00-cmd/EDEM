@@ -43,7 +43,9 @@ create table if not exists public.profiles (
   theme text default 'dark'::text not null,
   onboarded boolean default false not null,
   created_at timestamp with time zone default now() not null,
-  updated_at timestamp with time zone default now() not null
+  updated_at timestamp with time zone default now() not null,
+  board_alias text,
+  board_visible boolean default true not null
 );
 
 create table if not exists public.progress (
@@ -78,12 +80,34 @@ create table if not exists public.quiz_seen_questions (
   created_at timestamp with time zone default now() not null
 );
 
+create table if not exists public.quiz_sessions (
+  id uuid default gen_random_uuid() not null,
+  user_id uuid not null,
+  subject_id text not null,
+  difficulty text default 'moyen'::text not null,
+  answers jsonb not null,
+  created_at timestamp with time zone default now() not null,
+  graded_at timestamp with time zone
+);
+
+create table if not exists public.schema_migrations (
+  name text not null,
+  applied_at timestamp with time zone default now() not null
+);
+
 create table if not exists public.topic_mastery (
   user_id uuid not null,
   subject_id text not null,
   topic_id text not null,
   mastery integer default 0 not null,
   updated_at timestamp with time zone default now() not null
+);
+
+create table if not exists public.usage_counters (
+  user_id uuid not null,
+  day date default ((now() AT TIME ZONE 'utc'::text))::date not null,
+  kind text not null,
+  count integer default 0 not null
 );
 
 -- ── Contraintes (clés primaires, étrangères, unicité) ────────
@@ -96,6 +120,7 @@ alter table daily_activity add constraint daily_activity_quizzes_done_check CHEC
 alter table daily_activity add constraint daily_activity_topics_studied_check CHECK ((topics_studied >= 0));
 alter table daily_activity add constraint daily_activity_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
 alter table daily_activity add constraint daily_activity_xp_gained_check CHECK ((xp_gained >= 0));
+alter table profiles add constraint profiles_board_alias_len CHECK (((board_alias IS NULL) OR ((char_length(btrim(board_alias)) >= 2) AND (char_length(btrim(board_alias)) <= 24))));
 alter table profiles add constraint profiles_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id) ON DELETE CASCADE;
 alter table profiles add constraint profiles_lang_check CHECK ((lang = ANY (ARRAY['fr'::text, 'ht'::text])));
 alter table profiles add constraint profiles_pkey PRIMARY KEY (id);
@@ -116,9 +141,14 @@ alter table quiz_results add constraint quiz_results_total_check CHECK ((total >
 alter table quiz_results add constraint quiz_results_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
 alter table quiz_seen_questions add constraint quiz_seen_questions_pkey PRIMARY KEY (id);
 alter table quiz_seen_questions add constraint quiz_seen_questions_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+alter table quiz_sessions add constraint quiz_sessions_pkey PRIMARY KEY (id);
+alter table quiz_sessions add constraint quiz_sessions_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+alter table schema_migrations add constraint schema_migrations_pkey PRIMARY KEY (name);
 alter table topic_mastery add constraint topic_mastery_mastery_check CHECK (((mastery >= 0) AND (mastery <= 100)));
 alter table topic_mastery add constraint topic_mastery_pkey PRIMARY KEY (user_id, subject_id, topic_id);
 alter table topic_mastery add constraint topic_mastery_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+alter table usage_counters add constraint usage_counters_pkey PRIMARY KEY (user_id, day, kind);
+alter table usage_counters add constraint usage_counters_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
 
 -- ── Index ────────────────────────────────────────────────────
 
@@ -126,6 +156,7 @@ CREATE INDEX chat_messages_user_thread_idx ON public.chat_messages USING btree (
 CREATE INDEX daily_activity_user_day_idx ON public.daily_activity USING btree (user_id, day DESC);
 CREATE INDEX quiz_results_user_created_idx ON public.quiz_results USING btree (user_id, created_at DESC);
 CREATE INDEX quiz_seen_user_subject_idx ON public.quiz_seen_questions USING btree (user_id, subject_id, created_at DESC);
+CREATE INDEX quiz_sessions_user_created_idx ON public.quiz_sessions USING btree (user_id, created_at DESC);
 CREATE INDEX topic_mastery_user_subject_idx ON public.topic_mastery USING btree (user_id, subject_id);
 
 -- ── Fonctions ────────────────────────────────────────────────
@@ -244,87 +275,6 @@ end;
 $function$
 ;
 
-CREATE OR REPLACE FUNCTION public.apply_quiz_results(p_subject_id text, p_results jsonb)
- RETURNS jsonb
- LANGUAGE plpgsql
- SET search_path TO ''
-AS $function$
-declare
-  uid       uuid := (select auth.uid());
-  v_total   integer;
-  v_correct integer;
-  v_perfect boolean;
-  v_gained  integer;
-  v_pct     integer;
-  r         jsonb;
-  row       public.progress;
-begin
-  if uid is null then
-    raise exception 'not authenticated';
-  end if;
-  if jsonb_typeof(p_results) <> 'array' or jsonb_array_length(p_results) = 0 then
-    raise exception 'p_results must be a non-empty array';
-  end if;
-
-  v_total   := jsonb_array_length(p_results);
-  select count(*) into v_correct
-    from jsonb_array_elements(p_results) e
-   where (e ->> 'ok')::boolean is true;
-
-  v_perfect := (v_correct = v_total);
-  v_gained  := v_correct * 10 + (case when v_perfect then 20 else 0 end);
-  v_pct     := round((v_correct::numeric / v_total) * 100);
-
-  -- Maîtrise : une bonne réponse fait bien progresser, un essai un peu
-  for r in select * from jsonb_array_elements(p_results)
-  loop
-    insert into public.topic_mastery (user_id, subject_id, topic_id, mastery, updated_at)
-    values (
-      uid, p_subject_id, coalesce(r ->> 'topic', 'general'),
-      case when (r ->> 'ok')::boolean is true then 28 else 8 end,
-      now()
-    )
-    on conflict (user_id, subject_id, topic_id) do update
-      set mastery = least(100, public.topic_mastery.mastery
-                    + case when (r ->> 'ok')::boolean is true then 28 else 8 end),
-          updated_at = now();
-  end loop;
-
-  update public.progress p
-     set xp           = p.xp + v_gained,
-         quizzes_done = p.quizzes_done + 1,
-         answered     = p.answered + v_total,
-         correct      = p.correct + v_correct,
-         streak       = case
-                          when p.last_active = current_date then p.streak
-                          when p.last_active = current_date - 1 then p.streak + 1
-                          else 1
-                        end,
-         last_active  = current_date,
-         updated_at   = now()
-   where p.user_id = uid
-  returning * into row;
-
-  insert into public.quiz_results (user_id, subject_id, total, correct, score_pct)
-  values (uid, p_subject_id, v_total, v_correct, v_pct);
-
-  insert into public.daily_activity (user_id, day, xp_gained, quizzes_done)
-  values (uid, current_date, v_gained, 1)
-  on conflict (user_id, day) do update
-    set xp_gained    = public.daily_activity.xp_gained + v_gained,
-        quizzes_done = public.daily_activity.quizzes_done + 1;
-
-  return jsonb_build_object(
-    'gained',   v_gained,
-    'pct',      v_pct,
-    'correct',  v_correct,
-    'total',    v_total,
-    'progress', to_jsonb(row)
-  );
-end;
-$function$
-;
-
 CREATE OR REPLACE FUNCTION public.auto_confirm_email()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -336,6 +286,96 @@ begin
     new.email_confirmed_at := now();
   end if;
   return new;
+end;
+$function$
+;
+
+CREATE OR REPLACE FUNCTION public.bump_usage(p_user_id uuid, p_kind text, p_limit integer)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare
+  v_count integer;
+begin
+  insert into public.usage_counters (user_id, day, kind, count)
+  values (p_user_id, (now() at time zone 'utc')::date, p_kind, 1)
+  on conflict (user_id, day, kind)
+    do update set count = public.usage_counters.count + 1
+  returning count into v_count;
+
+  return jsonb_build_object(
+    'allowed', v_count <= p_limit,
+    'used',    v_count,
+    'limit',   p_limit
+  );
+end;
+$function$
+;
+
+CREATE OR REPLACE FUNCTION public.grade_quiz(p_session_id uuid, p_picked jsonb)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare
+  uid       uuid := (select auth.uid());
+  v_session public.quiz_sessions;
+  v_results jsonb := '[]'::jsonb;
+  v_answer  jsonb;
+  v_pick    jsonb;
+  v_ok      boolean;
+  i         integer;
+begin
+  if uid is null then
+    raise exception 'not authenticated';
+  end if;
+
+  select * into v_session
+    from public.quiz_sessions
+   where id = p_session_id
+     and user_id = uid;
+
+  if not found then
+    raise exception 'session introuvable';
+  end if;
+
+  -- Une session déjà corrigée ne rapporte rien de plus : sinon on
+  -- la rejoue autant de fois qu'on veut pour empiler les XP.
+  if v_session.graded_at is not null then
+    raise exception 'session deja corrigee';
+  end if;
+
+  if jsonb_typeof(p_picked) <> 'array' then
+    raise exception 'p_picked must be an array';
+  end if;
+
+  -- On compare choix et bonne réponse, question par question.
+  for i in 0 .. jsonb_array_length(v_session.answers) - 1 loop
+    v_answer := v_session.answers -> i;
+    v_pick   := p_picked -> i;
+
+    v_ok := v_pick is not null
+        and jsonb_typeof(v_pick) = 'number'
+        and (v_pick)::text::integer = (v_answer ->> 'answer')::integer;
+
+    v_results := v_results || jsonb_build_object(
+      'topic', coalesce(v_answer ->> 'topic', 'general'),
+      'ok',    v_ok
+    );
+  end loop;
+
+  update public.quiz_sessions set graded_at = now() where id = p_session_id;
+
+  -- Le barème reste dans apply_quiz_results : un seul endroit où
+  -- les XP sont décidés.
+  return public.apply_quiz_results(
+    v_session.subject_id,
+    v_results,
+    v_session.difficulty
+  );
 end;
 $function$
 ;
@@ -370,18 +410,35 @@ CREATE OR REPLACE FUNCTION public.leaderboard(p_limit integer DEFAULT 50)
  SECURITY DEFINER
  SET search_path TO ''
 AS $function$
+  with classement as (
+    select
+      p.id,
+      (row_number() over (order by pr.xp desc, pr.updated_at asc))::integer as rang,
+      -- Le pseudonyme prime, puis le prénom, puis un repli neutre.
+      coalesce(
+        nullif(btrim(p.board_alias), ''),
+        nullif(btrim(p.name), ''),
+        'Élève'
+      ) as affiche,
+      pr.xp,
+      pr.updated_at,
+      p.board_visible
+    from public.progress pr
+    join public.profiles p on p.id = pr.user_id
+    -- Un compte qui n'a jamais rien fait n'a pas sa place ici.
+    where pr.xp > 0
+  )
   select
-    (row_number() over (order by pr.xp desc, pr.updated_at asc))::integer as rank,
-    -- Prénom seul, et un repli neutre si l'élève n'en a pas mis.
-    coalesce(nullif(btrim(p.name), ''), 'Élève')                          as name,
-    pr.xp,
-    (floor(sqrt(pr.xp / 60.0)) + 1)::integer                              as level,
-    (p.id = (select auth.uid()))                                          as is_me
-  from public.progress pr
-  join public.profiles p on p.id = pr.user_id
-  -- Un compte qui n'a jamais rien fait n'a pas sa place au classement.
-  where pr.xp > 0
-  order by pr.xp desc, pr.updated_at asc
+    rang,
+    affiche,
+    xp,
+    (floor(sqrt(xp / 60.0)) + 1)::integer,
+    (id = (select auth.uid()))
+  from classement
+  -- L'élève se voit toujours lui-même, même retiré de la liste :
+  -- sinon il croirait que sa progression n'est pas comptée.
+  where board_visible or id = (select auth.uid())
+  order by rang
   limit least(greatest(p_limit, 1), 100);
 $function$
 ;
@@ -512,7 +569,9 @@ alter table public.profiles enable row level security;
 alter table public.progress enable row level security;
 alter table public.quiz_results enable row level security;
 alter table public.quiz_seen_questions enable row level security;
+alter table public.quiz_sessions enable row level security;
 alter table public.topic_mastery enable row level security;
+alter table public.usage_counters enable row level security;
 
 create policy "chat_messages_delete_own" on public.chat_messages
   as permissive
@@ -667,6 +726,12 @@ create policy "topic_mastery_update_own" on public.topic_mastery
   to authenticated
   using ((( SELECT auth.uid() AS uid) = user_id))
   with check ((( SELECT auth.uid() AS uid) = user_id));
+
+create policy "usage_counters_select_own" on public.usage_counters
+  as permissive
+  for select
+  to authenticated
+  using ((( SELECT auth.uid() AS uid) = user_id));
 
 -- ── Triggers ─────────────────────────────────────────────────
 

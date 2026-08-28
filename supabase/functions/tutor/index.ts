@@ -1019,6 +1019,40 @@ function shuffleChoices(q: RawQuestion): RawQuestion {
   };
 }
 
+/**
+ * Rétablit les accents écrits en entités HTML.
+ *
+ * Gemini produit par moments « graph&egrave;mes » au lieu de
+ * « graphèmes » — de façon intermittente, la même consigne
+ * donnant l'un ou l'autre. L'élève voyait alors le code brut au
+ * milieu de sa question.
+ *
+ * On décode les entités nommées les plus courantes en français et
+ * en créole, plus les entités numériques, qui couvrent le reste.
+ */
+const ENTITIES: Record<string, string> = {
+  agrave: "à", acirc: "â", aelig: "æ", ccedil: "ç",
+  eacute: "é", egrave: "è", ecirc: "ê", euml: "ë",
+  icirc: "î", iuml: "ï", ocirc: "ô", oelig: "œ",
+  ugrave: "ù", ucirc: "û", uuml: "ü", ntilde: "ñ",
+  Agrave: "À", Acirc: "Â", Ccedil: "Ç", Eacute: "É",
+  Egrave: "È", Ecirc: "Ê", Icirc: "Î", Ocirc: "Ô",
+  Ugrave: "Ù", Ucirc: "Û",
+  nbsp: " ", amp: "&", lt: "<", gt: ">",
+  quot: '"', apos: "'", laquo: "«", raquo: "»",
+  hellip: "…", ndash: "–", mdash: "—", deg: "°",
+  times: "×", divide: "÷", frac12: "½", frac14: "¼",
+};
+
+function decodeEntities(text: string): string {
+  return text
+    .replace(/&([a-zA-Z]+);/g, (whole, name) => ENTITIES[name] ?? whole)
+    .replace(/&#(\d+);/g, (_, code) => String.fromCodePoint(Number(code)))
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, code) =>
+      String.fromCodePoint(parseInt(code, 16)),
+    );
+}
+
 /** Une question exploitable : 4 options distinctes, index valide. */
 function isSound(q: RawQuestion): boolean {
   if (!q || typeof q.question !== "string" || q.question.trim() === "") return false;
@@ -1207,7 +1241,7 @@ Deno.serve(async (req: Request) => {
       });
 
       const { reply, topic } = splitTopic(raw);
-      return json({ reply, topic });
+      return json({ reply: decodeEntities(reply), topic });
     }
 
     // ── Génération d'un quiz ──────────────────────────────────
@@ -1290,7 +1324,15 @@ Deno.serve(async (req: Request) => {
       // On écarte les questions bancales, puis on remélange les
       // options pour que la bonne réponse ne tombe pas toujours au
       // même endroit.
-      const questions = parsed.questions.filter(isSound).map(shuffleChoices);
+      const questions = parsed.questions
+        .map((q) => ({
+          ...q,
+          question: decodeEntities(String(q.question ?? "")),
+          choices: (q.choices ?? []).map((c) => decodeEntities(String(c))),
+          explanation: decodeEntities(String(q.explanation ?? "")),
+        }))
+        .filter(isSound)
+        .map(shuffleChoices);
 
       if (questions.length === 0) {
         return json({ error: "génération du quiz impossible" }, 502);
