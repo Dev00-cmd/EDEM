@@ -349,9 +349,9 @@ interface Turn {
  *   high     problème difficile
  *
  * `null` = ne rien envoyer, et laisser le défaut du modèle. C'est
- * ce qu'on veut sur les modèles dont la réflexion est déjà coupée
- * par défaut (gemini-2.5-flash-lite) : envoyer un niveau ne ferait
- * que la RALLUMER.
+ * ce qu'on veut sur gemini-3.5-flash-lite, dont le défaut est déjà
+ * « minimal » : envoyer un niveau explicite ne ferait que risquer
+ * de le RELEVER.
  */
 type Thinking = "minimal" | "low" | "medium" | "high" | null;
 
@@ -440,22 +440,49 @@ async function generate(o: GenerateOptions): Promise<string> {
     );
   }
 
-  const url = `${ENDPOINT}/${o.model}:generateContent`;
   const headers = {
     "Content-Type": "application/json",
     "x-goog-api-key": key,
   };
 
-  const send = (body: Record<string, unknown>) =>
-    fetch(url, { method: "POST", headers, body: JSON.stringify(body) });
+  const send = (model: string, body: Record<string, unknown>) =>
+    fetch(`${ENDPOINT}/${model}:generateContent`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(body),
+    });
 
-  let response = await send(buildBody(o));
+  let model = o.model;
+  let response = await send(model, buildBody(o));
 
+  // ── Modèle retiré ou inconnu ────────────────────────────────
+  // Google retire ses modèles sans préavis. Plutôt que de laisser
+  // l'élève devant un tuteur muet, on rejoue l'appel sur le modèle
+  // de secours.
+  if (
+    (response.status === 400 || response.status === 404) &&
+    model !== FALLBACK_MODEL
+  ) {
+    const detail = await response.text();
+    if (/no longer available|not found|not supported|is not valid/i.test(detail)) {
+      console.warn(`${model} indisponible, repli sur ${FALLBACK_MODEL}.`);
+      model = FALLBACK_MODEL;
+      response = await send(model, buildBody({ ...o, model }));
+    } else {
+      response = new Response(detail, { status: response.status });
+    }
+  }
+
+  // ── Niveau de réflexion refusé ──────────────────────────────
+  // Les niveaux acceptés varient d'un modèle à l'autre, et les
+  // modèles sont réglables par variable d'environnement. Priver
+  // l'élève de sa réponse pour un paramètre de confort n'aurait
+  // pas de sens : on réessaie sans lui.
   if (response.status === 400 && o.thinking) {
     const detail = await response.text();
     if (/thinking/i.test(detail)) {
-      console.warn(`thinkingLevel refusé par ${o.model}, second essai sans.`);
-      response = await send(buildBody({ ...o, thinking: null }));
+      console.warn(`thinkingLevel refusé par ${model}, second essai sans.`);
+      response = await send(model, buildBody({ ...o, model, thinking: null }));
     } else {
       throw new GeminiError(shortenApiError(detail));
     }
@@ -521,24 +548,38 @@ function shortenApiError(raw: string): string {
 
 
 /**
- * RAPIDE — le cheval de trait.
+ * Le modèle de base.
  *
- * gemini-2.5-flash-lite : le moins cher du catalogue
- * (0,10 $ / 0,40 $ le million de jetons) et, surtout, sa réflexion
- * est COUPÉE par défaut. C'est ce qui rend la réponse quasi
- * immédiate. On ne lui envoie donc jamais de `thinkingLevel` :
- * ce serait la rallumer et perdre l'intérêt.
+ * gemini-3.5-flash-lite : 0,30 $ / 2,50 $ le million de jetons, et
+ * sa réflexion est réglée sur « minimal » par défaut.
+ *
+ * On avait d'abord choisi gemini-2.5-flash-lite, trois fois moins
+ * cher. Google l'a retiré aux nouveaux comptes et renvoie
+ * explicitement vers celui-ci — d'où ce changement, constaté en
+ * production et pas supposé.
  */
-const FAST = Deno.env.get("GEMINI_MODEL_FAST") ?? "gemini-2.5-flash-lite";
+const BASE_MODEL = "gemini-3.5-flash-lite";
+
+/**
+ * RAPIDE — date, définition, vocabulaire, conjugaison.
+ *
+ * Rien à dérouler : la réflexion reste au minimum, ce qui rend la
+ * réponse quasi immédiate.
+ */
+const FAST = Deno.env.get("GEMINI_MODEL_FAST") ?? BASE_MODEL;
 
 /**
  * RAISONNEMENT — maths, sciences, et lecture des photos de devoirs.
  *
- * gemini-3.5-flash-lite : 0,30 $ / 2,50 $. Trois fois le prix du
- * précédent, mais il tient un calcul en plusieurs étapes et lit
- * une écriture manuscrite sur une photo — ce que le rapide rate.
+ * Même modèle, mais on lui laisse le droit de réfléchir : c'est ce
+ * qui fait la différence entre un résultat lâché et un calcul
+ * déroulé étape par étape.
+ *
+ * Pour plus de qualité en maths, poser le secret
+ * GEMINI_MODEL_REASON = gemini-3.7-flash (0,75 $ / 3,75 $, soit
+ * deux fois et demie le prix) — sans toucher au code.
  */
-const REASON = Deno.env.get("GEMINI_MODEL_REASON") ?? "gemini-3.5-flash-lite";
+const REASON = Deno.env.get("GEMINI_MODEL_REASON") ?? BASE_MODEL;
 
 /**
  * QUIZ — dix questions cohérentes, avec distracteurs crédibles.
@@ -548,7 +589,22 @@ const REASON = Deno.env.get("GEMINI_MODEL_REASON") ?? "gemini-3.5-flash-lite";
  * attend devant un écran de chargement, donc on ne monte pas
  * au-delà de `medium`.
  */
-const QUIZ = Deno.env.get("GEMINI_MODEL_QUIZ") ?? "gemini-3.5-flash-lite";
+const QUIZ = Deno.env.get("GEMINI_MODEL_QUIZ") ?? BASE_MODEL;
+
+/**
+ * Modèle de secours.
+ *
+ * Google retire ses modèles sans prévenir : gemini-2.5-flash-lite
+ * a disparu du jour au lendemain et l'app entière est tombée avec
+ * lui. Or le propriétaire n'a pas toujours le moyen de redéployer
+ * dans la minute.
+ *
+ * Quand un modèle est déclaré introuvable ou retiré, on refait
+ * donc l'appel avec celui-ci plutôt que de renvoyer une erreur à
+ * l'élève. Une réponse un peu moins ajustée vaut mieux qu'un
+ * tuteur muet.
+ */
+const FALLBACK_MODEL = BASE_MODEL;
 
 interface Route {
   model: string;
