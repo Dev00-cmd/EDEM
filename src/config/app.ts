@@ -55,7 +55,7 @@ export const STORAGE_KEYS = {
 //  données. Elle peut donc être versionnée sans risque.
 //
 //  (La vraie clé secrète, elle, est côté serveur uniquement :
-//  ANTHROPIC_API_KEY est un secret de l'Edge Function.)
+//  GEMINI_API_KEY est un secret de l'Edge Function.)
 // ═══════════════════════════════════════════════════════════════
 export const SUPABASE_URL =
   process.env.EXPO_PUBLIC_SUPABASE_URL ??

@@ -1,6 +1,6 @@
 // ═══════════════════════════════════════════════════════════════
 //  FAÇADE IA — le reste de l'app ne parle qu'à ce fichier.
-//  Le tuteur est 100 % en ligne : Claude, via l'Edge Function
+//  Le tuteur est 100 % en ligne : Gemini, via l'Edge Function
 //  Supabase « tutor » (clé API gardée côté serveur).
 // ═══════════════════════════════════════════════════════════════
 

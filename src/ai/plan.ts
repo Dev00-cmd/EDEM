@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════════════════════════════
 //  MOTEUR DE PARCOURS PERSONNALISÉ
 //  Le plan de chaque élève découle de : sa classe, ses matières,
-//  son objectif, et sa maîtrise réelle. L'IA (Claude) détecte les
+//  son objectif, et sa maîtrise réelle. L'IA (Gemini) détecte les
 //  notions travaillées en conversation → la maîtrise progresse.
 // ═══════════════════════════════════════════════════════════════
 
@@ -173,7 +173,7 @@ const normalize = (s: string) =>
     .trim();
 
 /**
- * Rattache un « topic » renvoyé par Claude à une notion du programme.
+ * Rattache un « topic » renvoyé par l'IA à une notion du programme.
  * Retourne l'id de la notion (ex. "fractions") ou undefined.
  */
 export function matchTopicId(

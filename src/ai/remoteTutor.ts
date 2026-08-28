@@ -1,6 +1,6 @@
 // ═══════════════════════════════════════════════════════════════
 //  TUTEUR EN LIGNE — appelle l'Edge Function Supabase « tutor »,
-//  qui parle à Claude avec la clé API gardée côté serveur.
+//  qui parle à Gemini avec la clé API gardée côté serveur.
 //
 //  L'appel est authentifié : Supabase joint automatiquement le
 //  jeton de l'élève connecté. Sans compte, pas d'accès à l'IA.
@@ -54,7 +54,7 @@ export interface RemoteAttachment {
   type: string;
 }
 
-/** Envoie la conversation au tuteur → réponse de Claude (+ notion détectée). */
+/** Envoie la conversation au tuteur → sa réponse (+ notion détectée). */
 export async function remoteAnswer(
   messages: AIMessage[],
   ctx: StudentContext,
@@ -66,6 +66,10 @@ export async function remoteAnswer(
     action: 'chat',
     system,
     messages,
+    // La matière sert au serveur à choisir le modèle : une question
+    // de maths part sur celui qui sait raisonner, une date
+    // d'histoire sur le plus rapide.
+    subjectId: ctx.subject ?? null,
     // Le serveur la rattache au dernier message de l'élève et
     // vérifie que le fichier lui appartient bien.
     attachment: attachment ?? null,
@@ -77,7 +81,7 @@ export async function remoteAnswer(
   return { text: data.reply, topic: data.topic ?? null };
 }
 
-/** Demande à Claude de générer un quiz. null si la génération échoue. */
+/** Demande à l'IA de générer un quiz. null si la génération échoue. */
 export async function remoteQuiz(
   ctx: StudentContext,
   subjectId: string,
