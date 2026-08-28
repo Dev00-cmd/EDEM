@@ -914,6 +914,68 @@ async function getUserId(req: Request): Promise<string | null> {
   return data?.user?.id ?? null;
 }
 
+/** Client d'administration : ignore les règles RLS. */
+function adminClient() {
+  return createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  Quota quotidien
+//
+//  Rien n'empêchait un compte de lancer trois cents quiz dans la
+//  journée. Tant que l'auteur était seul utilisateur, sans
+//  conséquence ; le jour où l'APK circule, c'est la facture.
+//
+//  Deux compteurs séparés : un élève bavard avec le tuteur ne doit
+//  pas se retrouver privé de quiz.
+//
+//  Les limites sont volontairement hautes. Elles ne visent pas à
+//  rationner le travail scolaire — un élève très assidu ne les
+//  atteindra jamais — mais à borner l'emballement d'un script ou
+//  d'un compte détourné.
+// ═══════════════════════════════════════════════════════════════
+
+const LIMITS: Record<string, number> = {
+  chat: Number(Deno.env.get("QUOTA_CHAT") ?? 80),
+  quiz: Number(Deno.env.get("QUOTA_QUIZ") ?? 20),
+};
+
+interface Quota {
+  allowed: boolean;
+  used: number;
+  limit: number;
+}
+
+/**
+ * Compte l'appel et dit s'il peut avoir lieu.
+ *
+ * Un échec de la base ne bloque PAS l'élève : mieux vaut laisser
+ * passer un appel que priver toute une classe de son tuteur parce
+ * qu'un compteur n'a pas répondu.
+ */
+async function checkQuota(userId: string, kind: "chat" | "quiz"): Promise<Quota> {
+  const limit = LIMITS[kind];
+  try {
+    const { data, error } = await adminClient().rpc("bump_usage", {
+      p_user_id: userId,
+      p_kind: kind,
+      p_limit: limit,
+    });
+    if (error || !data) return { allowed: true, used: 0, limit };
+    return data as Quota;
+  } catch {
+    return { allowed: true, used: 0, limit };
+  }
+}
+
+const quotaMessage = (q: Quota, kind: "chat" | "quiz") =>
+  kind === "quiz"
+    ? `Tu as déjà fait ${q.limit} quiz aujourd'hui — belle journée de travail. Reviens demain, ou continue avec le tuteur.`
+    : `Tu as posé ${q.limit} questions aujourd'hui. Repose-toi un peu, on continue demain.`;
+
 // ═══════════════════════════════════════════════════════════════
 //  Quiz : position de la bonne réponse
 // ═══════════════════════════════════════════════════════════════
@@ -1104,6 +1166,14 @@ Deno.serve(async (req: Request) => {
         return json({ error: "aucun message de l'élève" }, 400);
       }
 
+      const userId = await getUserId(req);
+      if (!userId) return json({ error: "non authentifié" }, 401);
+
+      const quota = await checkQuota(userId, "chat");
+      if (!quota.allowed) {
+        return json({ error: quotaMessage(quota, "chat") }, 429);
+      }
+
       const contents: Turn[] = recent.map((m) => ({
         role: m.role === "user" ? "user" : "model",
         parts: [{ text: String(m.content ?? "") }] as Part[],
@@ -1111,9 +1181,6 @@ Deno.serve(async (req: Request) => {
 
       // Le fichier se rattache au dernier message de l'élève.
       if (attachment?.path) {
-        const userId = await getUserId(req);
-        if (!userId) return json({ error: "non authentifié" }, 401);
-
         const part = await buildAttachmentPart(attachment, userId);
         contents[contents.length - 1].parts.unshift(part);
       }
@@ -1161,6 +1228,12 @@ Deno.serve(async (req: Request) => {
           : undefined;
       const supabase = userClient(req);
       const userId = await getUserId(req);
+      if (!userId) return json({ error: "non authentifié" }, 401);
+
+      const quota = await checkQuota(userId, "quiz");
+      if (!quota.allowed) {
+        return json({ error: quotaMessage(quota, "quiz") }, 429);
+      }
 
       // Ce que cet élève a déjà vu, et ce qu'il a déjà réussi.
       let seen: string[] = [];
@@ -1232,21 +1305,48 @@ Deno.serve(async (req: Request) => {
       //
       // Un échec ne doit pas priver l'élève de son quiz : on
       // journalise et on continue.
-      if (userId) {
-        const { error: memoryError } = await supabase
-          .from("quiz_seen_questions")
-          .insert(
-            questions.map((q) => ({
-              user_id: userId,
-              subject_id: subject,
-              question: q.question.slice(0, 500),
-              topic: q.topic ?? null,
-            })),
-          );
-        if (memoryError) console.error("memoire quiz:", memoryError.message);
-      }
+      const { error: memoryError } = await supabase
+        .from("quiz_seen_questions")
+        .insert(
+          questions.map((q) => ({
+            user_id: userId,
+            subject_id: subject,
+            question: q.question.slice(0, 500),
+            topic: q.topic ?? null,
+          })),
+        );
+      if (memoryError) console.error("memoire quiz:", memoryError.message);
 
-      return json({ questions });
+      // ── La session : le serveur retient les bonnes réponses ──
+      //
+      // C'est ce qui permet à la base de CORRIGER au lieu de
+      // croire l'application sur parole. Sans session, l'élève
+      // pourrait réclamer dix bonnes réponses sans avoir passé de
+      // quiz du tout.
+      //
+      // L'écriture est attendue, et un échec n'est pas fatal : le
+      // quiz reste jouable, il retombe simplement sur l'ancienne
+      // remise. Mieux vaut un quiz sans session qu'un élève
+      // bloqué devant un écran d'erreur.
+      let sessionId: string | null = null;
+      const { data: session, error: sessionError } = await adminClient()
+        .from("quiz_sessions")
+        .insert({
+          user_id: userId,
+          subject_id: subject,
+          difficulty: chosen ?? "moyen",
+          answers: questions.map((q) => ({
+            topic: q.topic ?? "general",
+            answer: q.answer,
+          })),
+        })
+        .select("id")
+        .single();
+
+      if (sessionError) console.error("session quiz:", sessionError.message);
+      else sessionId = session?.id ?? null;
+
+      return json({ questions, sessionId });
     }
 
     return json({ error: "action inconnue (chat | quiz)" }, 400);

@@ -116,6 +116,10 @@ interface AppState {
     subjectId: string,
     results: { topic: string; ok: boolean }[],
     difficulty: Difficulty,
+    /** Session ouverte par le serveur, qui corrigera lui-même. */
+    sessionId?: string | null,
+    /** Indice choisi par question, null si le temps a manqué. */
+    picked?: (number | null)[],
   ) => Promise<number>; // XP gagnés
   addChatMessages: (thread: string, msgs: ChatMsg[]) => void;
   clearChat: (thread: string) => void;
@@ -414,21 +418,37 @@ export function AppProvider({ children }: { children: ReactNode }) {
   );
 
   // ── Résultats d'un quiz ─────────────────────────────────────
+  //
+  // On envoie les CHOIX de l'élève, pas notre verdict : c'est le
+  // serveur qui corrige, à partir des bonnes réponses qu'il a
+  // gardées en ouvrant la session. Auparavant l'app annonçait
+  // elle-même « 10 bonnes réponses », et la base la croyait.
   const applyQuizResults = useCallback(
     async (
       subjectId: string,
       results: { topic: string; ok: boolean }[],
       difficulty: Difficulty,
+      sessionId?: string | null,
+      picked?: (number | null)[],
     ) => {
       if (!userId || results.length === 0) return 0;
 
-      // Le barème d'XP est appliqué par la base, pas ici : on lui
-      // transmet seulement le niveau choisi.
-      const { data, error } = await supabase.rpc('apply_quiz_results', {
-        p_subject_id: subjectId,
-        p_results: results,
-        p_difficulty: difficulty,
-      });
+      // Sans session — quiz local, ou enregistrement qui a échoué
+      // côté serveur — on retombe sur l'ancienne voie plutôt que
+      // de priver l'élève des XP qu'il a mérités.
+      const call =
+        sessionId && picked
+          ? supabase.rpc('grade_quiz', {
+              p_session_id: sessionId,
+              p_picked: picked,
+            })
+          : supabase.rpc('apply_quiz_results', {
+              p_subject_id: subjectId,
+              p_results: results,
+              p_difficulty: difficulty,
+            });
+
+      const { data, error } = await call;
 
       if (error || !data) {
         setOffline(true);

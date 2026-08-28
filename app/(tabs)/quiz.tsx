@@ -18,7 +18,14 @@ import { SUBJECTS, getSubject } from '@/data/subjects';
 import type { GeneratedQuiz, QuizQuestion } from '@/ai/types';
 import { DIFFICULTIES, difficultyReward, type Difficulty } from '@/config/app';
 
-type Answer = { topic: string; ok: boolean };
+/**
+ * Une réponse donnée.
+ *
+ * `pick` est l'indice RÉELLEMENT choisi (null si le temps a
+ * manqué). C'est lui qu'on envoie au serveur : `ok` ne sert plus
+ * qu'à l'affichage local, la correction se fait en base.
+ */
+type Answer = { topic: string; ok: boolean; pick: number | null };
 
 type Phase =
   | { name: 'select' }
@@ -343,7 +350,7 @@ export default function QuizScreen() {
       quiz,
       index,
       picked: i,
-      answers: [...answers, { topic: question.topic, ok }],
+      answers: [...answers, { topic: question.topic, ok, pick: i }],
       difficulty: phase.difficulty,
     });
   };
@@ -361,7 +368,7 @@ export default function QuizScreen() {
       quiz,
       index,
       picked: -1,
-      answers: [...answers, { topic: question.topic, ok: false }],
+      answers: [...answers, { topic: question.topic, ok: false, pick: null }],
       difficulty: phase.difficulty,
     });
   };
@@ -381,7 +388,13 @@ export default function QuizScreen() {
     // Le calcul des XP est fait par le serveur : on attend sa
     // réponse pour afficher un score qui soit bien celui enregistré.
     setSaving(true);
-    const xpGained = await applyQuizResults(quiz.subjectId, answers, phase.difficulty);
+    const xpGained = await applyQuizResults(
+      quiz.subjectId,
+      answers,
+      phase.difficulty,
+      quiz.sessionId,
+      answers.map((a) => a.pick),
+    );
     setSaving(false);
     setPhase({
       name: 'results',

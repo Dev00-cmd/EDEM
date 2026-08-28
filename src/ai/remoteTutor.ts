@@ -29,6 +29,8 @@ interface RawQuizQuestion {
 
 interface QuizResponse {
   questions?: RawQuizQuestion[];
+  /** Session ouverte par le serveur, qui corrigera la remise. */
+  sessionId?: string | null;
   error?: string;
 }
 
@@ -132,7 +134,9 @@ export async function remoteQuiz(
       expl: { fr: String(x.explanation ?? ''), ht: String(x.explanation ?? '') },
     }));
 
-    return questions.length > 0 ? { subjectId, source: 'ai', questions } : null;
+    return questions.length > 0
+      ? { subjectId, source: 'ai', questions, sessionId: data.sessionId ?? null }
+      : null;
   } catch {
     return null;
   }

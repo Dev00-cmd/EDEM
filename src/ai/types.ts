@@ -33,4 +33,13 @@ export interface GeneratedQuiz {
   subjectId: string;
   source: 'local' | 'ai';
   questions: QuizQuestion[];
+  /**
+   * Identifiant de la session ouverte par le serveur.
+   *
+   * C'est lui qui permet à la base de CORRIGER le quiz au lieu de
+   * croire l'app sur parole. Absent si le serveur n'a pas pu
+   * l'enregistrer : la remise retombe alors sur l'ancienne voie
+   * plutôt que de priver l'élève de ses XP.
+   */
+  sessionId?: string | null;
 }

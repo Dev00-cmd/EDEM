@@ -1,300 +1,509 @@
-// ═══════════════════════════════════════════════════════════════
-//  TYPES DE LA BASE — générés depuis Supabase.
-//  Ne pas modifier à la main : régénérer avec
-//    npx supabase gen types typescript --project-id qoyebljuvrxhcroxapys
-// ═══════════════════════════════════════════════════════════════
-
 export type Json =
   | string
   | number
   | boolean
   | null
   | { [key: string]: Json | undefined }
-  | Json[];
+  | Json[]
 
 export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: '14.17';
-  };
+    PostgrestVersion: "14.17"
+  }
   public: {
     Tables: {
       chat_messages: {
         Row: {
-          attachment_name: string | null;
-          attachment_path: string | null;
-          attachment_type: string | null;
-          created_at: string;
-          id: string;
-          role: string;
-          text: string;
-          thread: string;
-          user_id: string;
-        };
+          attachment_name: string | null
+          attachment_path: string | null
+          attachment_type: string | null
+          created_at: string
+          id: string
+          role: string
+          text: string
+          thread: string
+          user_id: string
+        }
         Insert: {
-          attachment_name?: string | null;
-          attachment_path?: string | null;
-          attachment_type?: string | null;
-          created_at?: string;
-          id?: string;
-          role: string;
-          text: string;
-          thread?: string;
-          user_id: string;
-        };
+          attachment_name?: string | null
+          attachment_path?: string | null
+          attachment_type?: string | null
+          created_at?: string
+          id?: string
+          role: string
+          text: string
+          thread?: string
+          user_id: string
+        }
         Update: {
-          attachment_name?: string | null;
-          attachment_path?: string | null;
-          attachment_type?: string | null;
-          created_at?: string;
-          id?: string;
-          role?: string;
-          text?: string;
-          thread?: string;
-          user_id?: string;
-        };
-        Relationships: [];
-      };
+          attachment_name?: string | null
+          attachment_path?: string | null
+          attachment_type?: string | null
+          created_at?: string
+          id?: string
+          role?: string
+          text?: string
+          thread?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       daily_activity: {
         Row: {
-          day: string;
-          quizzes_done: number;
-          topics_studied: number;
-          user_id: string;
-          xp_gained: number;
-        };
+          day: string
+          quizzes_done: number
+          topics_studied: number
+          user_id: string
+          xp_gained: number
+        }
         Insert: {
-          day: string;
-          quizzes_done?: number;
-          topics_studied?: number;
-          user_id: string;
-          xp_gained?: number;
-        };
+          day: string
+          quizzes_done?: number
+          topics_studied?: number
+          user_id: string
+          xp_gained?: number
+        }
         Update: {
-          day?: string;
-          quizzes_done?: number;
-          topics_studied?: number;
-          user_id?: string;
-          xp_gained?: number;
-        };
-        Relationships: [];
-      };
+          day?: string
+          quizzes_done?: number
+          topics_studied?: number
+          user_id?: string
+          xp_gained?: number
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
-          created_at: string;
-          favorites: string[];
-          goal: string;
-          id: string;
-          lang: string;
-          level: string;
-          name: string;
-          onboarded: boolean;
-          theme: string;
-          updated_at: string;
-        };
+          created_at: string
+          favorites: string[]
+          goal: string
+          id: string
+          lang: string
+          level: string
+          name: string
+          onboarded: boolean
+          theme: string
+          updated_at: string
+        }
         Insert: {
-          created_at?: string;
-          favorites?: string[];
-          goal?: string;
-          id: string;
-          lang?: string;
-          level?: string;
-          name?: string;
-          onboarded?: boolean;
-          theme?: string;
-          updated_at?: string;
-        };
+          created_at?: string
+          favorites?: string[]
+          goal?: string
+          id: string
+          lang?: string
+          level?: string
+          name?: string
+          onboarded?: boolean
+          theme?: string
+          updated_at?: string
+        }
         Update: {
-          created_at?: string;
-          favorites?: string[];
-          goal?: string;
-          id?: string;
-          lang?: string;
-          level?: string;
-          name?: string;
-          onboarded?: boolean;
-          theme?: string;
-          updated_at?: string;
-        };
-        Relationships: [];
-      };
+          created_at?: string
+          favorites?: string[]
+          goal?: string
+          id?: string
+          lang?: string
+          level?: string
+          name?: string
+          onboarded?: boolean
+          theme?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       progress: {
         Row: {
-          answered: number;
-          correct: number;
-          last_active: string | null;
-          quizzes_done: number;
-          streak: number;
-          studied_count: number;
-          updated_at: string;
-          user_id: string;
-          xp: number;
-        };
+          answered: number
+          correct: number
+          last_active: string | null
+          quizzes_done: number
+          streak: number
+          studied_count: number
+          updated_at: string
+          user_id: string
+          xp: number
+        }
         Insert: {
-          answered?: number;
-          correct?: number;
-          last_active?: string | null;
-          quizzes_done?: number;
-          streak?: number;
-          studied_count?: number;
-          updated_at?: string;
-          user_id: string;
-          xp?: number;
-        };
+          answered?: number
+          correct?: number
+          last_active?: string | null
+          quizzes_done?: number
+          streak?: number
+          studied_count?: number
+          updated_at?: string
+          user_id: string
+          xp?: number
+        }
         Update: {
-          answered?: number;
-          correct?: number;
-          last_active?: string | null;
-          quizzes_done?: number;
-          streak?: number;
-          studied_count?: number;
-          updated_at?: string;
-          user_id?: string;
-          xp?: number;
-        };
-        Relationships: [];
-      };
+          answered?: number
+          correct?: number
+          last_active?: string | null
+          quizzes_done?: number
+          streak?: number
+          studied_count?: number
+          updated_at?: string
+          user_id?: string
+          xp?: number
+        }
+        Relationships: []
+      }
       quiz_results: {
         Row: {
-          correct: number;
-          created_at: string;
-          id: string;
-          score_pct: number;
-          subject_id: string;
-          total: number;
-          user_id: string;
-        };
+          correct: number
+          created_at: string
+          difficulty: string
+          id: string
+          score_pct: number
+          subject_id: string
+          total: number
+          user_id: string
+        }
         Insert: {
-          correct: number;
-          created_at?: string;
-          id?: string;
-          score_pct: number;
-          subject_id: string;
-          total: number;
-          user_id: string;
-        };
+          correct: number
+          created_at?: string
+          difficulty?: string
+          id?: string
+          score_pct: number
+          subject_id: string
+          total: number
+          user_id: string
+        }
         Update: {
-          correct?: number;
-          created_at?: string;
-          id?: string;
-          score_pct?: number;
-          subject_id?: string;
-          total?: number;
-          user_id?: string;
-        };
-        Relationships: [];
-      };
+          correct?: number
+          created_at?: string
+          difficulty?: string
+          id?: string
+          score_pct?: number
+          subject_id?: string
+          total?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
+      quiz_seen_questions: {
+        Row: {
+          created_at: string
+          id: string
+          question: string
+          subject_id: string
+          topic: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          question: string
+          subject_id: string
+          topic?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          question?: string
+          subject_id?: string
+          topic?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      quiz_sessions: {
+        Row: {
+          answers: Json
+          created_at: string
+          difficulty: string
+          graded_at: string | null
+          id: string
+          subject_id: string
+          user_id: string
+        }
+        Insert: {
+          answers: Json
+          created_at?: string
+          difficulty?: string
+          graded_at?: string | null
+          id?: string
+          subject_id: string
+          user_id: string
+        }
+        Update: {
+          answers?: Json
+          created_at?: string
+          difficulty?: string
+          graded_at?: string | null
+          id?: string
+          subject_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      schema_migrations: {
+        Row: {
+          applied_at: string
+          name: string
+        }
+        Insert: {
+          applied_at?: string
+          name: string
+        }
+        Update: {
+          applied_at?: string
+          name?: string
+        }
+        Relationships: []
+      }
       topic_mastery: {
         Row: {
-          mastery: number;
-          subject_id: string;
-          topic_id: string;
-          updated_at: string;
-          user_id: string;
-        };
+          mastery: number
+          subject_id: string
+          topic_id: string
+          updated_at: string
+          user_id: string
+        }
         Insert: {
-          mastery?: number;
-          subject_id: string;
-          topic_id: string;
-          updated_at?: string;
-          user_id: string;
-        };
+          mastery?: number
+          subject_id: string
+          topic_id: string
+          updated_at?: string
+          user_id: string
+        }
         Update: {
-          mastery?: number;
-          subject_id?: string;
-          topic_id?: string;
-          updated_at?: string;
-          user_id?: string;
-        };
-        Relationships: [];
-      };
-    };
+          mastery?: number
+          subject_id?: string
+          topic_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      usage_counters: {
+        Row: {
+          count: number
+          day: string
+          kind: string
+          user_id: string
+        }
+        Insert: {
+          count?: number
+          day?: string
+          kind: string
+          user_id: string
+        }
+        Update: {
+          count?: number
+          day?: string
+          kind?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+    }
     Views: {
-      [_ in never]: never;
-    };
+      [_ in never]: never
+    }
     Functions: {
       apply_quiz_results: {
-        Args: { p_results: Json; p_subject_id: string; p_difficulty?: string };
-        Returns: Json;
-      };
+        Args: { p_difficulty?: string; p_results: Json; p_subject_id: string }
+        Returns: Json
+      }
+      bump_usage: {
+        Args: { p_kind: string; p_limit: number; p_user_id: string }
+        Returns: Json
+      }
+      grade_quiz: {
+        Args: { p_picked: Json; p_session_id: string }
+        Returns: Json
+      }
       leaderboard: {
-        Args: { p_limit?: number };
+        Args: { p_limit?: number }
         Returns: {
-          rank: number;
-          name: string;
-          xp: number;
-          level: number;
-          is_me: boolean;
-        }[];
-      };
+          is_me: boolean
+          level: number
+          name: string
+          rank: number
+          xp: number
+        }[]
+      }
       my_rank: {
-        Args: never;
-        Returns: { rank: number; total: number; xp: number }[];
-      };
-      reset_progress: { Args: never; Returns: undefined };
+        Args: never
+        Returns: {
+          rank: number
+          total: number
+          xp: number
+        }[]
+      }
+      reset_progress: { Args: never; Returns: undefined }
       study_topic: {
-        Args: { p_subject_id: string; p_topic_id: string; p_xp?: number };
+        Args: { p_subject_id: string; p_topic_id: string; p_xp?: number }
         Returns: {
-          answered: number;
-          correct: number;
-          last_active: string | null;
-          quizzes_done: number;
-          streak: number;
-          studied_count: number;
-          updated_at: string;
-          user_id: string;
-          xp: number;
-        };
+          answered: number
+          correct: number
+          last_active: string | null
+          quizzes_done: number
+          streak: number
+          studied_count: number
+          updated_at: string
+          user_id: string
+          xp: number
+        }
         SetofOptions: {
-          from: '*';
-          to: 'progress';
-          isOneToOne: true;
-          isSetofReturn: false;
-        };
-      };
+          from: "*"
+          to: "progress"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       touch_activity: {
-        Args: never;
+        Args: never
         Returns: {
-          answered: number;
-          correct: number;
-          last_active: string | null;
-          quizzes_done: number;
-          streak: number;
-          studied_count: number;
-          updated_at: string;
-          user_id: string;
-          xp: number;
-        };
+          answered: number
+          correct: number
+          last_active: string | null
+          quizzes_done: number
+          streak: number
+          studied_count: number
+          updated_at: string
+          user_id: string
+          xp: number
+        }
         SetofOptions: {
-          from: '*';
-          to: 'progress';
-          isOneToOne: true;
-          isSetofReturn: false;
-        };
-      };
-    };
+          from: "*"
+          to: "progress"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+    }
     Enums: {
-      [_ in never]: never;
-    };
+      [_ in never]: never
+    }
     CompositeTypes: {
-      [_ in never]: never;
-    };
-  };
-};
+      [_ in never]: never
+    }
+  }
+}
 
-type DatabaseWithoutInternals = Omit<Database, '__InternalSupabase'>;
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
 
-type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, 'public'>];
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
 export type Tables<
-  T extends keyof (DefaultSchema['Tables'] & DefaultSchema['Views']),
-> = (DefaultSchema['Tables'] & DefaultSchema['Views'])[T] extends {
-  Row: infer R;
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
 }
-  ? R
-  : never;
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R
+    }
+    ? R
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
 
-export type TablesInsert<T extends keyof DefaultSchema['Tables']> =
-  DefaultSchema['Tables'][T] extends { Insert: infer I } ? I : never;
+export type TablesInsert<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I
+    }
+    ? I
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
 
-export type TablesUpdate<T extends keyof DefaultSchema['Tables']> =
-  DefaultSchema['Tables'][T] extends { Update: infer U } ? U : never;
+export type TablesUpdate<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U
+    }
+    ? U
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
+
+export type Enums<
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
+
+export const Constants = {
+  public: {
+    Enums: {},
+  },
+} as const
