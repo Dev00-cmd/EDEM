@@ -1,148 +1,198 @@
-# 📦 Déploiement — Mettre Ti Pwof sur les stores
+# 📦 Déploiement — Livrer EDEM
 
-Guide pas à pas pour transformer ce projet en **vraie application publiée**, avec EAS (Expo Application Services).
-
----
-
-## 0. Avant tout : le backend est-il prêt ?
-
-Le backend (Supabase) est **déjà déployé** : base de données, comptes élèves, stockage des fichiers et Edge Function du tuteur.
-
-### Une seule chose à faire : poser la clé Anthropic
-
-**Dashboard → Edge Functions → Secrets** → ajouter `ANTHROPIC_API_KEY`.
-Détails et choix du modèle : [`docs/IA.md`](IA.md).
-
-Sans elle, tout fonctionne **sauf** les réponses du tuteur et la génération de quiz.
-
-### L'inscription : rien à régler
-
-Les comptes sont confirmés d'office par un trigger de base : l'inscription est instantanée et **n'envoie aucun e-mail**. Aucune limite d'envoi ne peut donc bloquer un élève.
-
-> Si un jour tu veux vraiment vérifier les adresses e-mail, il faudra retirer le trigger `on_auth_user_auto_confirm` **et** brancher un vrai service d'envoi (Resend, SendGrid…) dans **Authentication → Emails → SMTP Settings**. Le service d'envoi intégré de Supabase plafonne à quelques e-mails par heure et ne convient pas à une vraie mise en production.
+Comment publier une modification, selon ce qu'elle touche. **La plupart des changements ne demandent aucun nouvel APK.**
 
 ---
 
-## 1. Prérequis pour publier
+## 0. La question à se poser d'abord
 
-| Compte | Prix | Obligatoire pour |
-|---|---|---|
-| **Expo** (expo.dev) | Gratuit | Tout |
-| **Google Play Console** | **25 $** (une fois à vie) | Play Store |
-| **Apple Developer** | **99 $/an** | App Store |
+Avant toute chose : **qu'est-ce qui a changé ?** La réponse détermine tout le reste.
 
-> 💡 Commence par **Android** : moins cher, validation plus rapide, et la majorité des élèves haïtiens sont sur Android.
+| Ce qui change | Comment livrer | Délai | L'élève doit… |
+|---|---|---|---|
+| **Prompts, pédagogie, choix du modèle** | Redéployer l'Edge Function | ~1 min | **rien du tout** |
+| **Base de données, XP, classement** | Migration SQL | ~1 min | **rien du tout** |
+| **Écrans, textes, couleurs, logique de l'app** | `eas update` (OTA) | ~5 min | Profil → Mises à jour |
+| **Nom, permissions, dépendance native, `app.json`** | Nouveau build EAS | 15-20 min | Réinstaller l'APK |
+
+> 💡 Les deux premières lignes sont la raison pour laquelle la méthode d'enseignement vit côté serveur : on peut améliorer le tuteur sans que personne n'ait à mettre à jour quoi que ce soit.
 
 ---
 
-## 2. Se connecter à EAS
+## 1. Changement côté serveur (le plus fréquent)
+
+### L'IA — prompts, méthode, difficulté, modèles
+
+Tout est dans `supabase/functions/tutor/index.ts`, en un seul fichier.
+Procédure complète : **[`docs/IA.md`](IA.md) §4**.
+
+En résumé : pousser sur GitHub, puis Dashboard → Edge Functions → `tutor` → `index.ts` → Ctrl+A → coller → **Deploy updates**.
+
+### La base de données
+
+**Dashboard → SQL Editor**, ou :
 
 ```bash
-npx eas-cli login          # ton compte expo.dev
-npx eas-cli init           # relie le dossier à un projet EAS
+npx supabase db push --project-ref qoyebljuvrxhcroxapys
 ```
 
-`eas.json` est **déjà configuré** — inutile de lancer `eas build:configure`.
+**Aucune mise à jour de l'app n'est nécessaire** dans les deux cas.
 
 ---
 
-## 3. Premier APK de test
+## 2. Mise à jour OTA (code de l'app, sans recompiler)
 
 ```bash
-npx eas-cli build --platform android --profile preview
+npx eas-cli update --branch preview --environment preview \
+  --message "Ce que tu as changé"
 ```
 
-- ⏱️ 10–20 minutes dans le cloud ☁️
-- Tu reçois un **lien + QR code** → télécharge le `.apk` et installe-le sur n'importe quel Android (parfait pour tester en famille, à l'école)
+⏱️ 3 à 5 minutes. Aucun store, aucune réinstallation.
 
-> Les identifiants sont déjà définis dans `app.json` : `com.tipwof.app` (Android et iOS).
+### ⚠️ Le piège vérifié — l'OTA ne s'applique pas tout seul
+
+Sur l'appareil de l'auteur, **l'application automatique des mises à jour ne se fait pas**, alors que toute la chaîne est correcte : URL, canal `preview`, `runtimeVersion`, et l'asset bien présent dans le manifeste servi (vérifié jusqu'à la décompilation de l'APK). La cause n'a jamais été identifiée.
+
+**Donc :** ne jamais dire à un élève de « fermer et rouvrir l'app ». Le dire ainsi :
+
+> **Profil → Mises à jour → « Rechercher une mise à jour »**
+
+Ce bouton télécharge et redémarre l'app immédiatement. Il existe précisément pour ça.
 
 ---
 
-## 4. Build de production
+## 3. Nouvel APK (seulement si nécessaire)
 
 ```bash
-# Android — .aab, le format exigé par le Play Store
-npx eas-cli build --platform android --profile production
-
-# Android — .apk de production (distribution directe, hors store)
-npx eas-cli build --platform android --profile production-apk
-
-# iOS (nécessite le compte Apple Developer)
-npx eas-cli build --platform ios --profile production
+npx eas-cli build --platform android --profile preview          # APK de test
+npx eas-cli build --platform android --profile production       # .aab Play Store
+npx eas-cli build --platform android --profile production-apk   # APK hors store
 ```
 
----
+⏱️ 15 à 20 minutes dans le cloud. `eas.json` est déjà configuré.
 
-## 5. Publier sur Google Play
+> Le lien de téléchargement de l'APK **expire au bout de 14 jours**. Télécharge le fichier et garde-le si tu comptes le distribuer.
 
-1. **play.google.com/console** → Créer une application
-2. Nom : **Ti Pwof** · Catégorie : **Éducation**
-3. Visuels demandés :
-   - Icône 512×512 → régénère avec `python scripts/make_icons.py` puis redimensionne `assets/icon.png`
-   - Bannière 1024×500 → à créer (Canva)
-   - Captures d'écran → depuis un vrai téléphone ou l'émulateur
-4. **Production → Nouvelle version → téléverse le `.aab`**
-5. Questionnaire contenu : pas de pubs ; **déclare honnêtement le public visé** (13+ conseillé)
-6. Envoie en validation → ⏱️ quelques jours
+### ⚠️ `runtimeVersion` : à monter avec `version`
 
-### Soumission automatique
+`app.json` fixe `"runtimeVersion": "1.1.0"` en clair, plutôt que la politique automatique `appVersion`. Raison : sur Windows, le CLI d'`expo-updates` que cette politique déclenche à chaque requête du serveur de développement plante par intermittence (`0xC0000142`), et le manifeste ne se sert plus du tout.
 
-```bash
-npx eas-cli submit --platform android
-```
-
----
-
-## 6. Mettre à jour après publication
-
-| Type de changement | Comment |
-|---|---|
-| Code JS/TS, textes, couleurs, écrans | `eas update` → mise à jour **instantanée** OTA, sans repasser par le store 🚀 |
-| Base de données, prompts IA | Migration Supabase / redéploiement de la fonction — **aucune** mise à jour de l'app requise |
-| Version native (permissions, icône, dépendance native) | Nouveau `eas build` + soumission |
-
-```bash
-npx eas-cli update --branch production --message "Amélioration du tuteur"
-```
-
-### ⚠️ `runtimeVersion` : à bumper avec la version
-
-`app.json` fixe `"runtimeVersion": "1.0.0"` en clair, plutôt que la politique automatique `appVersion`. Raison : sur Windows, le CLI d'`expo-updates` que cette politique déclenche à chaque requête du serveur de développement plante par intermittence (`0xC0000142`), et le manifeste ne se sert plus du tout. Une valeur en clair donne exactement le même résultat sans ce sous-processus fragile.
-
-**Conséquence :** quand tu changes la version native de l'app (nouvelle dépendance native, nouvelle permission), incrémente **les deux** dans `app.json` :
+**Conséquence :** quand tu changes la version native, incrémente **les deux** :
 
 ```json
-"version": "1.0.1",
-"runtimeVersion": "1.0.1"
+"version": "1.1.1",
+"runtimeVersion": "1.1.1"
 ```
 
-Le `runtimeVersion` est ce qui garantit qu'une mise à jour OTA n'atterrit que sur des builds capables de l'exécuter. Le laisser en arrière enverrait du code neuf à une app native trop ancienne — et l'app planterait au démarrage.
+Le `runtimeVersion` garantit qu'une mise à jour OTA n'atterrit que sur des builds capables de l'exécuter. Le laisser en arrière enverrait du code neuf à une app native trop ancienne — et l'app planterait au démarrage.
 
 ---
 
-## 7. Checklist avant le lancement public ✅
+## 4. Tester avant de livrer
 
-- [ ] `ANTHROPIC_API_KEY` posée dans les secrets Supabase (§0)
-- [ ] Inscription + connexion testées sur un vrai téléphone
-- [ ] Le tuteur répond et un quiz se génère
+### Sur téléphone, via Expo Go
+
+```bash
+npm run go
+```
+
+Puis scanner le QR code, ou saisir `exp://<ip-du-pc>:8081` dans Expo Go. **Même Wi-Fi** que l'ordinateur.
+
+> **Pourquoi `npm run go` et pas `npx expo start` ?**
+> Expo Go n'embarque pas `expo-updates` et n'accepte que les runtimes `exposdk:<version>`. Or `app.json` déclare `runtimeVersion: "1.1.0"` — Expo Go refuse alors d'ouvrir le projet.
+> `app.config.js` retire `runtimeVersion` et `updates` **uniquement** quand `EXPO_GO=1`, ce que fait le script `go`. Les builds EAS et les mises à jour OTA reçoivent la configuration d'`app.json` intacte.
+>
+> Dans Expo Go, le bouton *Profil → Mises à jour* affiche « indisponible » : c'est normal et voulu.
+
+### Vérifications automatiques
+
+```bash
+npx tsc --noEmit    # types — doit être silencieux
+npx expo-doctor     # configuration
+```
+
+---
+
+## 5. La clé de signature Android — à protéger absolument
+
+Le keystore prouve à Google que les mises à jour viennent bien de toi. **Sans lui, tu ne pourras plus jamais mettre à jour l'app sur le Play Store** : il faudrait republier sous un autre nom et repartir de zéro. Il n'existe aucun recours.
+
+Il est sauvegardé dans `Documents\TiPwof-Keystore\` :
+
+- `tipwof-upload-key.jks` — la clé
+- `LISEZ-MOI-IMPORTANT.txt` — mots de passe, alias, empreintes, hash d'intégrité
+
+**Vérifier qu'il est intact :**
+
+```bash
+cd ~/Documents/TiPwof-Keystore
+sha256sum tipwof-upload-key.jks     # doit correspondre au hash du LISEZ-MOI
+```
+
+**Le mettre à l'abri — au moins deux endroits, jamais un seul disque :**
+
+- un gestionnaire de mots de passe (Bitwarden, 1Password…)
+- une clé USB rangée ailleurs que près du PC
+- un cloud privé chiffré
+
+Ne jamais l'envoyer par e-mail ou messagerie, ne jamais le versionner. `.gitignore` bloque déjà `*.jks`, `*.key`, `*.p12`, `*.p8`.
+
+> EAS en garde une copie côté serveur (`npx eas-cli credentials`), mais **ne compte pas dessus** : ton compte peut être perdu ou fermé.
+
+---
+
+## 6. Publier sur Google Play
+
+| Compte | Prix | Pour |
+|---|---|---|
+| **Expo** | Gratuit | Builds et OTA |
+| **Google Play Console** | **25 $** une fois à vie | Play Store |
+| **Apple Developer** | **99 $/an** | App Store |
+
+> 💡 Commence par Android : moins cher, validation plus rapide, et la quasi-totalité des élèves haïtiens sont sur Android.
+
+1. **play.google.com/console** → Créer une application
+2. Nom : **EDEM** · Catégorie : **Éducation**
+3. Visuels : icône 512×512 (`python scripts/make_icons.py`), bannière 1024×500, captures d'écran
+4. **Production → Nouvelle version → téléverser le `.aab`**
+5. Questionnaire contenu : pas de pubs ; déclarer honnêtement le public visé (13+ conseillé)
+6. Envoyer en validation → ⏱️ quelques jours
+
+```bash
+npx eas-cli submit --platform android     # soumission automatique
+```
+
+---
+
+## 7. Checklist avant une ouverture publique ✅
+
+- [ ] `GEMINI_API_KEY` posée dans les secrets Supabase
+- [ ] Le tuteur répond, et un quiz de 10 questions se génère
+- [ ] Les fractions s'affichent dessinées, pas en `17/12`
+- [ ] Un quiz d'histoire ne contient que de l'histoire (pas de fuite entre matières)
 - [ ] Envoi d'une photo de devoir testé (caméra **et** galerie)
-- [ ] Testé avec la taille de police système à 130 %
+- [ ] Inscription + connexion testées sur un vrai téléphone
 - [ ] Les deux langues fonctionnent partout (FR / HT)
-- [ ] Testé sur un Android d'entrée de gamme (fluidité, tailles de texte)
-- [ ] Mode avion testé : l'app s'ouvre et affiche les données en cache
-- [ ] Une page **Politique de confidentialité** existe (obligatoire — l'app collecte e-mail et progression)
-- [ ] Budget Anthropic surveillé, et `ANTHROPIC_MODEL` choisi en conscience ([`docs/IA.md`](IA.md) §3)
-- [ ] `version` incrémentée dans `app.json`
+- [ ] Testé avec la taille de police système à 130 %
+- [ ] Testé sur un Android d'entrée de gamme
+- [ ] Mode avion : l'app s'ouvre et affiche les données en cache
+- [ ] Page **Politique de confidentialité** en ligne (obligatoire — e-mail et progression collectés)
+- [ ] **Quota par élève en place** — sans lui, rien n'empêche 300 quiz dans la journée
+- [ ] Budget Google surveillé le premier mois
+- [ ] Keystore sauvegardé à **deux** endroits (§5)
+- [ ] `version` et `runtimeVersion` incrémentées ensemble (§3)
 
 ---
 
 ## 🆘 Problèmes fréquents
 
-| Erreur | Solution |
-|---|---|
-| « credentials » Android | Laisse EAS générer la clé de signature : réponds *yes* |
-| Build iOS échoue | Compte Apple Developer actif + termes acceptés sur developer.apple.com |
-| App rejetée (public enfant) | Complète honnêtement le questionnaire « Public cible » |
-| Le tuteur répond « configuration » | `ANTHROPIC_API_KEY` absente → §0 |
-| Photo refusée sur l'appareil | Permission caméra retirée → Réglages Android → Ti Pwof → Autorisations |
+| Symptôme | Cause | Solution |
+|---|---|---|
+| Le tuteur ne répond pas | `GEMINI_API_KEY` absente | [`docs/IA.md`](IA.md) §3 |
+| `no longer available` | Modèle retiré par Google | Repli automatique en place ; poser `GEMINI_MODEL_*` |
+| L'élève ne voit pas la mise à jour | L'OTA ne s'applique pas seul | Profil → Mises à jour (§2) |
+| Expo Go refuse d'ouvrir le projet | `runtimeVersion` incompatible | `npm run go` (§4) |
+| « Pas de connexion internet » | Projet Supabase en pause | Le tier gratuit se met en pause après 7 jours — un clic le réveille |
+| Build échoue en C++ / worklets | Conflit `reanimated`/`worklets` | `.npmrc` contient `legacy-peer-deps=true` — ne pas le supprimer |
+| Polices non chargées | Cache Metro | `npx expo start --clear` |
+| App rejetée (public enfant) | Questionnaire | Compléter honnêtement « Public cible » |

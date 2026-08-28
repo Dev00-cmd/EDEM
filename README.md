@@ -1,11 +1,11 @@
 <div align="center">
 
-# ✦ Ti Pwof
+# ✦ EDEM
 
 ### *Pwof AI ou nan poch ou* — ton prof IA dans ta poche
 
-Un tuteur **IA personnel**, **bilingue Français ↔ Kreyòl**, conçu pour les élèves haïtiens.
-Il explique chaque notion du programme, construit un parcours sur mesure, génère des quiz à l'infini —
+Un tuteur **IA personnel** nommé **M. Thomas**, **bilingue Français ↔ Kreyòl**, conçu pour les élèves haïtiens.
+Il explique chaque notion du programme MENFP, construit un parcours sur mesure, génère des quiz à l'infini —
 et sait **lire la photo d'un devoir** pour l'expliquer pas à pas.
 
 *« Chak jenn gen dwa a yon pwof nan poch li. »*
@@ -27,7 +27,7 @@ et sait **lire la photo d'un devoir** pour l'expliquer pas à pas.
 9. [La base de données](#9-la-base-de-données)
 10. [Sécurité](#10-sécurité)
 11. [Personnaliser l'app](#11-personnaliser-lapp)
-12. [Compiler l'APK](#12-compiler-lapk)
+12. [Livrer une modification](#12-livrer-une-modification)
 13. [Résoudre les problèmes](#13-résoudre-les-problèmes)
 
 ---
@@ -36,14 +36,17 @@ et sait **lire la photo d'un devoir** pour l'expliquer pas à pas.
 
 | | Fonctionnalité | Description |
 |---|---|---|
-| 🤖 | **Tuteur IA** | Explique n'importe quelle matière étape par étape, calibré à la classe de l'élève, avec des exemples de la vie haïtienne (gourdes, marché, tap-tap) |
+| 🤖 | **M. Thomas, le tuteur** | Explique n'importe quelle matière étape par étape, calibré à la classe de l'élève, avec des exemples de la vie haïtienne (gourdes, marché, tap-tap) |
+| ➗ | **Vraies mathématiques** | Fractions dessinées avec leur barre, exposants surélevés, racines — un rendu LaTeX maison, sans WebView |
 | 📸 | **Photo du devoir** | L'élève photographie son exercice ou envoie un PDF — le tuteur le lit et l'explique |
 | 🎓 | **Strictement scolaire** | Refuse poliment tout hors-sujet et recentre sur les études. Zéro dérive, parents rassurés |
 | 👤 | **Compte élève** | E-mail + mot de passe. La progression suit l'élève d'un téléphone à l'autre |
 | 🗺️ | **Parcours personnalisé** | Généré depuis la classe, l'objectif et les matières choisies ; il évolue avec la maîtrise réelle de chaque notion (0-100) |
 | 📈 | **Statistiques** | Courbe des XP sur 7 jours, série de jours d'affilée, précision, maîtrise par matière |
 | 🔍 | **Suivi automatique** | L'IA détecte la notion traitée dans chaque conversation → la maîtrise progresse toute seule |
-| 🏆 | **Quiz IA** | Générés à la demande dans toutes les matières, avec explications ; bonus pour les 100 % |
+| 🏆 | **Quiz IA** | 10 questions générées à la demande, **3 niveaux au choix** (facile / intermédiaire / difficile) avec des XP différents, chrono adapté à la matière, et jamais deux fois la même question |
+| 🥇 | **Classement** | Palmarès de tous les élèves de la base, avec la position de l'élève |
+| 🔄 | **Mise à jour intégrée** | Bouton dans le Profil : cherche, télécharge et applique une mise à jour sans passer par un store |
 | 🌗 | **Clair & sombre** | Deux thèmes complets, cohérents jusqu'au dernier détail |
 | 🇭🇹 | **Bilingue** | Français et Kreyòl ayisyen, partout, changeable à tout moment |
 
@@ -62,7 +65,7 @@ et sait **lire la photo d'un devoir** pour l'expliquer pas à pas.
 
 ```bash
 npm install      # une seule fois
-npx expo start   # à chaque fois
+npm run go       # à chaque fois — démarre pour Expo Go
 ```
 
 Un **QR code** s'affiche dans le terminal. Scanne-le avec **Expo Go** (Android) ou l'appareil photo (iPhone).
@@ -70,16 +73,18 @@ Un **QR code** s'affiche dans le terminal. Scanne-le avec **Expo Go** (Android) 
 > 💡 Ton téléphone et ton ordinateur doivent être sur le **même Wi-Fi**.
 > Pour tester dans un navigateur : `npx expo start --web`
 
+> ⚠️ **`npm run go`, pas `npx expo start`.** Expo Go n'embarque pas `expo-updates` et refuse les projets qui déclarent un `runtimeVersion` maison — ce que fait `app.json` pour les mises à jour OTA. Le script `go` pose `EXPO_GO=1`, et [`app.config.js`](app.config.js) retire alors ces clés. Les builds EAS et les mises à jour OTA, eux, reçoivent `app.json` intact.
+
 ### ⚠️ Une seule chose à configurer : la clé de l'IA
 
-Le tuteur ne répondra pas tant que la clé Anthropic n'est pas posée. **Tout le reste fonctionne déjà** (comptes, parcours, statistiques).
+Le tuteur ne répondra pas tant que la clé Gemini n'est pas posée. **Tout le reste fonctionne déjà** (comptes, parcours, statistiques, classement).
 
-1. Crée une clé sur **https://console.anthropic.com** (elle commence par `sk-ant-`)
+1. Crée une clé — gratuite — sur **[aistudio.google.com/apikey](https://aistudio.google.com/apikey)**
 2. Va sur **[les secrets du projet Supabase](https://supabase.com/dashboard/project/qoyebljuvrxhcroxapys/settings/functions)**
-3. **Add new secret** → nom `ANTHROPIC_API_KEY`, valeur : ta clé
+3. **Add new secret** → nom `GEMINI_API_KEY`, valeur : ta clé
 4. C'est tout — rien à redéployer
 
-Détails et choix du modèle : **[`docs/IA.md`](docs/IA.md)**
+Détails, choix du modèle et coûts : **[`docs/IA.md`](docs/IA.md)**
 
 ---
 
@@ -95,11 +100,11 @@ Détails et choix du modèle : **[`docs/IA.md`](docs/IA.md)**
    comptes élèves        PostgreSQL             « tutor »
    e-mail + mot de passe                              │
                          · profil                     │  clé API
-                         · XP, séries                 │  gardée ici
+                         · XP, séries, classement     │  gardée ici
                          · maîtrise par notion        ▼
-                         · quiz passés            🧠 CLAUDE
-                         · conversations
-                         · activité quotidienne
+                         · quiz passés + déjà vus  ✨ GEMINI
+                         · conversations              modèle choisi
+                         · activité quotidienne       par question
                          · 📎 fichiers joints
                               (stockage privé)
 
@@ -107,11 +112,12 @@ Détails et choix du modèle : **[`docs/IA.md`](docs/IA.md)**
                   aucun serveur à héberger toi-même
 ```
 
-**Pourquoi ce découpage ?** Trois raisons concrètes :
+**Pourquoi ce découpage ?** Quatre raisons concrètes :
 
 1. **La clé API ne peut pas être volée.** Elle vit dans la fonction serveur, jamais dans l'APK. Quelqu'un qui décompile l'application ne trouve rien.
 2. **Un élève ne peut pas tricher.** Les XP et la maîtrise sont calculés par des fonctions SQL sur le serveur, pas par l'app.
 3. **Rien n'est perdu.** L'élève change de téléphone, se reconnecte, retrouve tout.
+4. **La pédagogie s'améliore sans rien réinstaller.** La méthode d'enseignement et le choix du modèle vivent côté serveur : les retoucher ne demande aucune mise à jour de l'app.
 
 ---
 
@@ -119,6 +125,8 @@ Détails et choix du modèle : **[`docs/IA.md`](docs/IA.md)**
 
 ```
 Ti pwof/
+│
+├── app.config.js               ⚙️ Retire runtimeVersion/updates pour Expo Go
 │
 ├── app/                        LES ÉCRANS (routage par fichiers)
 │   ├── _layout.tsx             Providers + aiguillage login/onboarding/app
@@ -129,8 +137,9 @@ Ti pwof/
 │       ├── index.tsx           🏠 Accueil — question rapide, plan du jour
 │       ├── path.tsx            📈 Parcours & statistiques
 │       ├── chat.tsx            ✦ Tuteur IA — le cœur de l'app
-│       ├── quiz.tsx            🏆 Quiz générés par l'IA
-│       └── profile.tsx         👤 Profil & réglages
+│       ├── quiz.tsx            🏆 Quiz — 3 niveaux, chrono par matière
+│       ├── board.tsx           🥇 Classement de tous les élèves
+│       └── profile.tsx         👤 Profil, réglages & mises à jour
 │
 ├── src/
 │   ├── ai/
@@ -141,11 +150,15 @@ Ti pwof/
 │   │
 │   ├── components/
 │   │   ├── Icon.tsx            🎨 LES ~65 ICÔNES, dessinées à la main
+│   │   ├── MathText.tsx        ➗ RENDU DES MATHS — fractions, exposants
 │   │   ├── Button.tsx          Boutons (5 variantes)
 │   │   ├── Card.tsx            Cartes + en-têtes de section + états vides
 │   │   ├── Input.tsx           Champs de saisie
 │   │   ├── Chip.tsx            Pastilles sélectionnables
 │   │   ├── Stats.tsx           Tuiles, barres, anneaux, courbes
+│   │   ├── Countdown.tsx       Anneau de chrono par question de quiz
+│   │   ├── ConfirmDialog.tsx   Confirmation (Alert.alert n'existe pas sur web)
+│   │   ├── UpdateBanner.tsx    Bandeau « mise à jour prête »
 │   │   ├── ChatBubble.tsx      Bulles de conversation + aperçu de fichier
 │   │   ├── LogoMark.tsx        Le logo, en vectoriel
 │   │   └── Screen.tsx          Conteneur commun à tous les écrans
@@ -171,15 +184,22 @@ Ti pwof/
 │       ├── colors.ts           🎨 LA PALETTE (clair + sombre)
 │       ├── typography.ts       L'échelle typographique (Sora)
 │       ├── responsive.ts       📐 Adaptation aux tailles d'écran
+│       ├── useKeyboard.ts      ⌨️ Le clavier ne masque plus la saisie
 │       └── ThemeContext.tsx    Distribution du thème
 │
-├── supabase/functions/tutor/   ⚡ La fonction serveur qui parle à Claude
+├── supabase/functions/tutor/
+│   └── index.ts                ⚡ TOUT LE SERVEUR IA en un seul fichier :
+│                                  méthode d'enseignement, choix du modèle,
+│                                  difficulté adaptative, appel à Gemini
+│
 ├── scripts/make_icons.py       Régénère toutes les icônes de l'app
 ├── assets/                     Icônes, logo, illustration
 └── docs/
-    ├── IA.md                   Brancher et régler l'IA
-    └── DEPLOIEMENT.md          Publier sur les stores
+    ├── IA.md                   Régler l'IA, les modèles, les coûts
+    └── DEPLOIEMENT.md          Livrer une modification, publier
 ```
+
+> 📌 **Pourquoi la fonction serveur tient en un seul fichier ?** Parce qu'elle se déploie par copier-coller dans le dashboard Supabase. Chaque fichier supplémentaire est une occasion d'en oublier un et de casser le tuteur — c'est déjà arrivé.
 
 ---
 
@@ -340,7 +360,7 @@ L'élève bloque sur un exercice ? Il le photographie, le tuteur l'explique.
 
 ## 9. La base de données
 
-Six tables, toutes protégées.
+Toutes les tables sont protégées par Row Level Security.
 
 | Table | Ce qu'elle garde |
 |---|---|
@@ -348,19 +368,26 @@ Six tables, toutes protégées.
 | `progress` | XP, série de jours, compteurs de quiz |
 | `topic_mastery` | Maîtrise 0-100 pour chaque notion |
 | `quiz_results` | Historique des quiz passés |
+| `quiz_seen_questions` | Questions déjà posées → jamais deux fois la même |
 | `chat_messages` | Conversations + pièces jointes |
 | `daily_activity` | XP par jour → la courbe des statistiques |
 
 ### Les calculs se font sur le serveur
 
-Quatre fonctions SQL, pas de logique de score dans l'app :
+Pas de logique de score dans l'app :
 
 | Fonction | Rôle |
 |---|---|
 | `study_topic()` | L'élève étudie une notion → maîtrise +34, XP, série |
-| `apply_quiz_results()` | Résultats d'un quiz → XP, maîtrise, historique, activité |
+| `apply_quiz_results()` | Résultats d'un quiz → XP selon le **niveau choisi**, maîtrise, historique |
 | `touch_activity()` | Met à jour la série de jours d'affilée |
 | `reset_progress()` | Remet la progression à zéro |
+| `leaderboard()` | Le classement de tous les élèves |
+| `my_rank()` | La position de l'élève qui appelle |
+
+> 🔒 **Le barème des XP par niveau est appliqué par `apply_quiz_results()`, pas par l'app.** Les valeurs dans `src/config/app.ts` ne servent qu'à l'affichage : un élève ne peut donc pas s'attribuer les XP du niveau difficile en jouant en facile.
+>
+> Le classement passe par des fonctions `SECURITY DEFINER` qui ne renvoient que prénom, XP et rang — jamais l'e-mail ni les données d'un autre élève.
 
 **Pourquoi côté serveur ?** Parce qu'un calcul fait dans l'app peut être modifié par n'importe qui, et parce que deux appareils utilisés en même temps s'écraseraient l'un l'autre.
 
@@ -376,8 +403,8 @@ npx supabase gen types typescript --project-id qoyebljuvrxhcroxapys > src/lib/da
 
 | Garantie | Comment c'est obtenu |
 |---|---|
-| La clé API Anthropic est invisible | Secret serveur. Décompiler l'APK ne donne rien |
-| Un élève ne lit pas les données d'un autre | Row Level Security sur les 6 tables **et** sur le stockage |
+| La clé API Gemini est invisible | Secret serveur. Décompiler l'APK ne donne rien |
+| Un élève ne lit pas les données d'un autre | Row Level Security sur toutes les tables **et** sur le stockage |
 | Un élève ne peut pas se donner des XP | Calculs en SQL, pas dans l'app |
 | L'IA n'est accessible qu'aux inscrits | La fonction refuse tout appel sans jeton valide (401) |
 | Un fichier joint reste privé | Bucket privé + vérification du propriétaire côté serveur |
@@ -388,7 +415,7 @@ npx supabase gen types typescript --project-id qoyebljuvrxhcroxapys > src/lib/da
 
 La clé `sb_publishable_...` présente dans `src/config/app.ts` est **faite pour vivre dans l'application**. Elle n'ouvre aucune donnée par elle-même : ce sont les règles RLS qui protègent tout. C'est le fonctionnement prévu par Supabase.
 
-La vraie clé secrète — `ANTHROPIC_API_KEY` — n'est **jamais** dans le dépôt.
+La vraie clé secrète — `GEMINI_API_KEY` — n'est **jamais** dans le dépôt.
 
 ---
 
@@ -415,17 +442,32 @@ Redessine les six fichiers (icône iOS, icône adaptative Android, monochrome, f
 
 ---
 
-## 12. Compiler l'APK
+## 12. Livrer une modification
+
+**La plupart des changements ne demandent aucun nouvel APK.** La question à se poser d'abord : *qu'est-ce qui a changé ?*
+
+| Ce qui change | Comment livrer | Délai | L'élève doit… |
+|---|---|---|---|
+| **Prompts, pédagogie, modèles** | Redéployer l'Edge Function | ~1 min | **rien du tout** |
+| **Base de données, XP, classement** | Migration SQL | ~1 min | **rien du tout** |
+| **Écrans, textes, couleurs, logique** | `eas update` (OTA) | ~5 min | Profil → Mises à jour |
+| **Nom, permissions, `app.json`** | Nouveau build EAS | 15-20 min | Réinstaller l'APK |
+
+### Mise à jour OTA — sans recompiler
 
 ```bash
-npx eas-cli login                                        # ton compte expo.dev
-npx eas-cli init                                         # une seule fois
+npx eas-cli update --branch preview --environment preview --message "Ce que tu as changé"
+```
+
+> ⚠️ **L'OTA ne s'applique pas tout seul sur l'appareil de l'auteur** — vérifié jusqu'à la décompilation de l'APK, cause jamais identifiée. Ne jamais dire « ferme et rouvre l'app ». Dire : **Profil → Mises à jour → « Rechercher une mise à jour »**.
+
+### Nouvel APK — seulement si nécessaire
+
+```bash
 npx eas-cli build --platform android --profile preview   # → APK
 ```
 
-⏱️ 10 à 20 minutes dans le cloud. Tu reçois un lien et un QR code — l'APK s'installe sur n'importe quel Android.
-
-`eas.json` est **déjà configuré**, avec quatre profils :
+⏱️ 15 à 20 minutes dans le cloud. `eas.json` est déjà configuré, avec quatre profils :
 
 | Profil | Résultat |
 |---|---|
@@ -434,7 +476,13 @@ npx eas-cli build --platform android --profile preview   # → APK
 | `production-apk` | APK de production, distribution hors store |
 | `development` | Build de développement |
 
-Guide complet de publication : **[`docs/DEPLOIEMENT.md`](docs/DEPLOIEMENT.md)**
+> ⚠️ En changeant la version native, incrémente **`version` ET `runtimeVersion` ensemble** dans `app.json`. Le lien de téléchargement de l'APK expire au bout de **14 jours**.
+
+### 🔑 Le keystore — à protéger absolument
+
+`Documents\TiPwof-Keystore\` contient la clé de signature Android. **Sans elle, plus aucune mise à jour de l'app n'est possible sur le Play Store** — il faudrait republier sous un autre nom et repartir de zéro. Garde-en une copie sur **au moins deux supports**.
+
+Guide complet : **[`docs/DEPLOIEMENT.md`](docs/DEPLOIEMENT.md)**
 
 ---
 
@@ -442,12 +490,17 @@ Guide complet de publication : **[`docs/DEPLOIEMENT.md`](docs/DEPLOIEMENT.md)**
 
 | Symptôme | Cause | Solution |
 |---|---|---|
-| Le tuteur répond « configuration » | Clé Anthropic absente | [§2](#2-démarrage-rapide-5-minutes) |
+| Le tuteur ne répond pas | `GEMINI_API_KEY` absente | [§2](#2-démarrage-rapide-5-minutes) |
+| `no longer available` | Modèle retiré par Google | Un repli automatique évite la panne ; poser `GEMINI_MODEL_*` — [`docs/IA.md`](docs/IA.md) §3 |
+| **Expo Go refuse d'ouvrir le projet** | `runtimeVersion` incompatible | `npm run go`, pas `npx expo start` — [§2](#2-démarrage-rapide-5-minutes) |
+| L'élève ne voit pas la mise à jour | L'OTA ne s'applique pas seul | Profil → Mises à jour — [§12](#12-livrer-une-modification) |
+| Les fractions s'affichent `17/12` | La méthode n'est pas appliquée | Vérifier que l'Edge Function est bien déployée |
+| Un quiz sort de sa matière | Contexte d'une autre matière | Corrigé — vérifier que l'app est à jour (OTA) |
 | « Pas de connexion internet » | Réseau, ou projet Supabase en pause | Le tier gratuit se met en pause après 7 jours d'inactivité — un clic dans le dashboard le réveille |
 | Le QR code ne marche pas | Téléphone et PC sur des réseaux différents | Même Wi-Fi, ou `npx expo start --tunnel` |
 | Polices non chargées | Cache Metro | `npx expo start --clear` |
-| Erreur de build EAS | Configuration | `npx expo-doctor` doit afficher **21/21** |
-| Photo refusée | Permission caméra | Réglages Android → Applications → Ti Pwof → Autorisations |
+| Build échoue en C++ / worklets | Conflit `reanimated`/`worklets` | `.npmrc` contient `legacy-peer-deps=true` — **ne pas le supprimer** |
+| Photo refusée | Permission caméra | Réglages Android → Applications → EDEM → Autorisations |
 | Écran blanc au lancement | Erreur JavaScript | Regarde le terminal ; `npx expo start --clear` |
 
 ### Vérifier que tout est sain
@@ -461,11 +514,15 @@ npx expo-doctor     # configuration — doit afficher 21/21
 
 ## 🗺️ Feuille de route
 
-- [ ] Notes de cours et agenda des devoirs
+Par ordre d'utilité réelle. Les deux premières ne demandent **aucune mise à jour de l'app**.
+
+- [ ] **Cache de quiz partagé** — un quiz devient instantané au lieu de 15 s, et la génération n'est payée qu'une fois pour des dizaines d'élèves *(serveur seul)*
+- [ ] **Quota par élève** — sans lui, rien n'empêche 300 quiz dans la journée *(SQL seul)*
+- [ ] **Révision espacée** — toute question ratée revient après 1, 3, 7 et 21 jours. Le plus gros levier pédagogique : c'est ce qui fait *retenir* au lieu de seulement *évaluer*
+- [ ] **Mode « Examen d'État »** — épreuves blanches chronométrées 6e AF / 9e AF / Bac, au format réel
+- [ ] **Photo de leçon → fiche + quiz** — l'élève photographie son cahier, reçoit une fiche de révision et 5 questions dessus
 - [ ] Tableau de bord prof/parents
-- [ ] Mode « examen blanc » 9e AF / Bac, avec minuterie
 - [ ] Explications audio (synthèse vocale)
-- [ ] Défis de classe entre camarades
 - [ ] Mode hors-ligne complet pour les notions déjà consultées
 
 ---
