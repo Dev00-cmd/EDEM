@@ -91,23 +91,30 @@ Les trois derniers existent pour **changer de modèle sans toucher au code** —
 
 ## 4. Déployer la fonction
 
-> ⚠️ **Tout tient dans un seul fichier** : `supabase/functions/tutor/index.ts` (~1100 lignes). C'est délibéré — le déploiement se fait par copier-coller dans le dashboard, et chaque fichier supplémentaire est une occasion d'en oublier un et de casser la fonction. C'est déjà arrivé.
+> ⚠️ **Tout tient dans un seul fichier** : `supabase/functions/tutor/index.ts`. C'est délibéré — le déploiement s'est longtemps fait par copier-coller dans le dashboard, et chaque fichier supplémentaire était une occasion d'en oublier un et de casser la fonction. C'est déjà arrivé.
 
-### Par le dashboard (la méthode qui marche toujours)
+### En une commande
+
+```bash
+node scripts/deploy_function.mjs
+```
+
+Le jeton d'accès est lu dans `.env.secrets` (jamais versionné, jamais passé en argument de ligne de commande — un argument est visible par les autres processus de la machine).
+
+Si `.env.secrets` n'existe pas : créer un jeton sur
+[supabase.com/dashboard/account/tokens](https://supabase.com/dashboard/account/tokens)
+et l'y déposer sous la forme `SUPABASE_ACCESS_TOKEN=sbp_…`.
+
+### Par le dashboard, en secours
 
 1. **Dashboard → Edge Functions → `tutor` → onglet Code → `index.ts`**
 2. Copier le fichier depuis GitHub, bouton **« Copy raw file »** :
-   `https://github.com/Dev00-cmd/ti-pwof/blob/main/supabase/functions/tutor/index.ts`
+   `https://github.com/Dev00-cmd/EDEM/blob/main/supabase/functions/tutor/index.ts`
 3. Dans l'éditeur : **Ctrl+A**, coller, **Deploy updates**
 
 Ne pas créer d'autres fichiers. Laisser `deno.json` tel quel.
 
-### Par la CLI (si tu es connecté)
-
-```bash
-npx supabase login                                          # ouvre le navigateur
-npx supabase functions deploy tutor --project-ref qoyebljuvrxhcroxapys
-```
+> La CLI `supabase` n'est pas utilisable ici : le paquet npm n'a pas de binaire Windows fonctionnel, et `supabase login` exige un terminal interactif. Tout passe donc par l'API de gestion, ce que font les scripts.
 
 ---
 
