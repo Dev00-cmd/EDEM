@@ -124,7 +124,7 @@ Détails, choix du modèle et coûts : **[`docs/IA.md`](docs/IA.md)**
 ## 4. Où se trouve quoi
 
 ```
-Ti pwof/
+EDEM/
 │
 ├── app.config.js               ⚙️ Retire runtimeVersion/updates pour Expo Go
 │
