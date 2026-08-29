@@ -77,6 +77,24 @@ export interface ChatMsg {
 
 export type ChatThreads = Record<string, ChatMsg[]>;
 
+/**
+ * Une conversation avec M. Thomas.
+ *
+ * L'élève n'avait qu'un fil par matière, écrasé au fil du temps :
+ * poser une nouvelle question effaçait celui de la veille. Il en
+ * ouvre maintenant autant qu'il veut, et les retrouve toutes.
+ */
+export interface Conversation {
+  id: string;
+  subjectId: string;
+  /** Repris du premier message. null tant qu'il n'a rien écrit. */
+  title: string | null;
+  updatedAt: number;
+  messageCount: number;
+  /** Extrait du dernier message, pour la liste. */
+  preview: string;
+}
+
 /** Un point du graphique de progression (écran Parcours). */
 export interface ActivityPoint {
   day: string; // "AAAA-MM-JJ"
@@ -119,7 +137,6 @@ interface AppState {
   offline: boolean;
   profile: Profile;
   progress: Progress;
-  threads: ChatThreads;
   activity: ActivityPoint[];
   level: number;
   levelProgress: number;
@@ -135,8 +152,20 @@ interface AppState {
     /** Indice choisi par question, null si le temps a manqué. */
     picked?: (number | null)[],
   ) => Promise<number>; // XP gagnés
-  addChatMessages: (thread: string, msgs: ChatMsg[]) => void;
-  clearChat: (thread: string) => void;
+  /** Conversations, de la plus récente à la plus ancienne. */
+  conversations: Conversation[];
+  /** Celle qui est ouverte dans le tuteur. */
+  currentConversationId: string | null;
+  messages: ChatMsg[];
+  /** Ouvre une conversation existante et charge ses messages. */
+  openConversation: (id: string) => Promise<void>;
+  /** Repart de zéro. Rien n'est écrit en base tant que l'élève
+   *  n'a pas parlé : sinon la liste se remplirait de fils vides. */
+  startConversation: (subjectId: string) => void;
+  deleteConversation: (id: string) => Promise<void>;
+  refreshConversations: () => Promise<void>;
+  addChatMessages: (msgs: ChatMsg[]) => Promise<void>;
+  clearChat: () => void;
   touchActivity: () => void;
   resetAll: () => Promise<void>;
   refresh: () => Promise<void>;
@@ -193,7 +222,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [offline, setOffline] = useState(false);
   const [profile, setProfile] = useState<Profile>(DEFAULT_PROFILE);
   const [progress, setProgress] = useState<Progress>(DEFAULT_PROGRESS);
-  const [threads, setThreads] = useState<ChatThreads>({});
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
+  const [messages, setMessages] = useState<ChatMsg[]>([]);
+  // Matière d'une conversation pas encore créée en base : l'élève
+  // a ouvert un fil neuf mais n'a pas encore parlé.
+  const pendingSubject = useRef<string>('general');
   const [activity, setActivity] = useState<ActivityPoint[]>([]);
 
   // Évite d'écrire le cache pendant le tout premier chargement.
@@ -209,14 +243,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           supabase.from('progress').select('*').eq('user_id', uid).maybeSingle(),
           supabase.from('topic_mastery').select('subject_id, topic_id, mastery').eq('user_id', uid),
           supabase.from('quiz_results').select('subject_id, score_pct').eq('user_id', uid),
-          supabase
-            .from('chat_messages')
-            .select(
-              'id, thread, role, text, created_at, attachment_path, attachment_type, attachment_name',
-            )
-            .eq('user_id', uid)
-            .order('created_at', { ascending: true })
-            .limit(300),
+          supabase.rpc('conversation_list', { p_limit: 60 }),
           supabase
             .from('daily_activity')
             .select('day, xp_gained')
@@ -276,23 +303,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
         quizBest,
       };
 
-      // Conversations
-      const nextThreads: ChatThreads = {};
-      for (const row of chatRes.data ?? []) {
-        (nextThreads[row.thread] ??= []).push({
-          id: row.id,
-          role: row.role === 'user' ? 'user' : 'tutor',
-          text: row.text,
-          ts: new Date(row.created_at).getTime(),
-          attachment: row.attachment_path
-            ? {
-                path: row.attachment_path,
-                type: row.attachment_type ?? 'application/octet-stream',
-                name: row.attachment_name ?? 'fichier',
-              }
-            : null,
-        });
-      }
+      // Conversations : on ne charge que la LISTE. Rapatrier tous
+      // les messages de toutes les conversations pour afficher un
+      // écran d'accueil serait coûteux sur un réseau haïtien — le
+      // contenu se charge à l'ouverture d'une conversation.
+      const nextConversations: Conversation[] = (chatRes.data ?? []).map((c) => ({
+        id: c.id,
+        subjectId: c.subject_id,
+        title: c.title,
+        updatedAt: new Date(c.updated_at).getTime(),
+        messageCount: c.message_count ?? 0,
+        preview: c.preview ?? '',
+      }));
 
       const nextActivity: ActivityPoint[] = (activityRes.data ?? [])
         .map((r) => ({ day: r.day, xp: r.xp_gained }))
@@ -300,13 +322,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
       setProfile(nextProfile);
       setProgress(nextProgress);
-      setThreads(nextThreads);
+      setConversations(nextConversations);
       setActivity(nextActivity);
       setOffline(false);
 
       writeCache(cacheKey(STORAGE_KEYS.PROFILE, uid), nextProfile);
       writeCache(cacheKey(STORAGE_KEYS.PROGRESS, uid), nextProgress);
-      writeCache(cacheKey(STORAGE_KEYS.CHAT, uid), nextThreads);
+      writeCache(cacheKey(STORAGE_KEYS.CHAT, uid), nextConversations);
     } catch {
       // Pas de réseau : on garde ce que le cache a donné.
       setOffline(true);
@@ -323,7 +345,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       hydrated.current = false;
       setProfile(DEFAULT_PROFILE);
       setProgress(DEFAULT_PROGRESS);
-      setThreads({});
+      setConversations([]);
+      setCurrentConversationId(null);
+      setMessages([]);
       setActivity([]);
       setReady(true);
       return;
@@ -335,12 +359,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const [cp, cpr, ct] = await Promise.all([
         readCache(cacheKey(STORAGE_KEYS.PROFILE, userId), DEFAULT_PROFILE),
         readCache(cacheKey(STORAGE_KEYS.PROGRESS, userId), DEFAULT_PROGRESS),
-        readCache(cacheKey(STORAGE_KEYS.CHAT, userId), {} as ChatThreads),
+        readCache(cacheKey(STORAGE_KEYS.CHAT, userId), [] as Conversation[]),
       ]);
       if (!alive) return;
       setProfile(cp);
       setProgress(cpr);
-      setThreads(ct);
+      setConversations(Array.isArray(ct) ? ct : []);
       setReady(true);
       hydrated.current = true;
 
@@ -366,8 +390,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!hydrated.current || !userId) return;
-    writeCache(cacheKey(STORAGE_KEYS.CHAT, userId), threads);
-  }, [threads, userId]);
+    writeCache(cacheKey(STORAGE_KEYS.CHAT, userId), conversations);
+  }, [conversations, userId]);
 
   // ── Profil ──────────────────────────────────────────────────
   const updateProfile = useCallback(
@@ -499,53 +523,157 @@ export function AppProvider({ children }: { children: ReactNode }) {
   );
 
   // ── Conversations ───────────────────────────────────────────
-  const addChatMessages = useCallback(
-    (thread: string, msgs: ChatMsg[]) => {
-      setThreads((prev) => ({
-        ...prev,
-        [thread]: [...(prev[thread] ?? []), ...msgs].slice(-80),
-      }));
 
+  const refreshConversations = useCallback(async () => {
+    if (!userId) return;
+    const { data, error } = await supabase.rpc('conversation_list', { p_limit: 60 });
+    if (error || !data) return;
+    setConversations(
+      data.map((c) => ({
+        id: c.id,
+        subjectId: c.subject_id,
+        title: c.title,
+        updatedAt: new Date(c.updated_at).getTime(),
+        messageCount: c.message_count ?? 0,
+        preview: c.preview ?? '',
+      })),
+    );
+  }, [userId]);
+
+  /** Ouvre une conversation et charge SES messages seulement. */
+  const openConversation = useCallback(
+    async (id: string) => {
+      setCurrentConversationId(id);
+      setMessages([]);
       if (!userId) return;
-      supabase
+
+      const { data, error } = await supabase
         .from('chat_messages')
-        .insert(
-          msgs.map((m) => ({
-            user_id: userId,
-            thread,
-            role: m.role,
-            text: m.text,
-            attachment_path: m.attachment?.path ?? null,
-            attachment_type: m.attachment?.type ?? null,
-            attachment_name: m.attachment?.name ?? null,
-          })),
+        .select(
+          'id, role, text, created_at, attachment_path, attachment_type, attachment_name',
         )
-        .then(({ error }) => setOffline(!!error));
+        .eq('conversation_id', id)
+        .order('created_at', { ascending: true })
+        .limit(200);
+
+      if (error || !data) {
+        setOffline(true);
+        return;
+      }
+
+      setMessages(
+        data.map((row) => ({
+          id: row.id,
+          role: row.role === 'user' ? 'user' : 'tutor',
+          text: row.text,
+          ts: new Date(row.created_at).getTime(),
+          attachment: row.attachment_path
+            ? {
+                path: row.attachment_path,
+                type: row.attachment_type ?? 'application/octet-stream',
+                name: row.attachment_name ?? 'fichier',
+              }
+            : null,
+        })),
+      );
     },
     [userId],
   );
 
-  const clearChat = useCallback(
-    (thread: string) => {
+  /**
+   * Repart d'une conversation vide.
+   *
+   * Rien n'est écrit en base tant que l'élève n'a pas parlé :
+   * sinon un appui distrait sur « nouvelle » remplirait sa liste
+   * de fils vides.
+   */
+  const startConversation = useCallback((subjectId: string) => {
+    pendingSubject.current = subjectId;
+    setCurrentConversationId(null);
+    setMessages([]);
+  }, []);
+
+  const addChatMessages = useCallback(
+    async (msgs: ChatMsg[]) => {
+      setMessages((prev) => [...prev, ...msgs]);
+      if (!userId) return;
+
+      let convId = currentConversationId;
+
+      // Première parole : c'est maintenant qu'on crée la
+      // conversation, titrée par ce que l'élève vient d'écrire.
+      if (!convId) {
+        const first = msgs.find((m) => m.role === 'user');
+        const { data, error } = await supabase
+          .from('conversations')
+          .insert({
+            user_id: userId,
+            subject_id: pendingSubject.current,
+            title: first ? first.text.trim().slice(0, 60) : null,
+          })
+          .select('id')
+          .single();
+
+        if (error || !data) {
+          setOffline(true);
+          return;
+        }
+        convId = data.id;
+        setCurrentConversationId(convId);
+      }
+
+      const { error } = await supabase.from('chat_messages').insert(
+        msgs.map((m) => ({
+          user_id: userId,
+          conversation_id: convId,
+          // `thread` reste rempli : la colonne est NOT NULL, et
+          // d'anciennes versions de l'app la lisent encore.
+          thread: pendingSubject.current,
+          role: m.role,
+          text: m.text,
+          attachment_path: m.attachment?.path ?? null,
+          attachment_type: m.attachment?.type ?? null,
+          attachment_name: m.attachment?.name ?? null,
+        })),
+      );
+      setOffline(!!error);
+      if (!error) void refreshConversations();
+    },
+    [userId, currentConversationId, refreshConversations],
+  );
+
+  const deleteConversation = useCallback(
+    async (id: string) => {
+      setConversations((prev) => prev.filter((c) => c.id !== id));
+      if (id === currentConversationId) {
+        setCurrentConversationId(null);
+        setMessages([]);
+      }
+      if (!userId) return;
+
       // Les fichiers joints partent avec la conversation : sans ça
       // ils resteraient dans le stockage sans plus rien y renvoyer.
-      const paths = (threads[thread] ?? [])
-        .map((m) => m.attachment?.path)
-        .filter((p): p is string => !!p);
-
-      setThreads((prev) => ({ ...prev, [thread]: [] }));
-
-      if (!userId) return;
-      void removeAttachments(paths);
-      supabase
+      const { data } = await supabase
         .from('chat_messages')
-        .delete()
-        .eq('user_id', userId)
-        .eq('thread', thread)
-        .then(() => {});
+        .select('attachment_path')
+        .eq('conversation_id', id);
+
+      const paths = (data ?? [])
+        .map((r) => r.attachment_path)
+        .filter((p): p is string => !!p);
+      if (paths.length > 0) void removeAttachments(paths);
+
+      // Les messages suivent par cascade (clé étrangère).
+      await supabase.from('conversations').delete().eq('id', id);
     },
-    [userId, threads],
+    [userId, currentConversationId],
   );
+
+  /** Efface la conversation ouverte. */
+  const clearChat = useCallback(() => {
+    if (currentConversationId) void deleteConversation(currentConversationId);
+    else setMessages([]);
+  }, [currentConversationId, deleteConversation]);
 
   // ── Remise à zéro ───────────────────────────────────────────
   // Lève en cas d'échec : l'appelant doit pouvoir prévenir
@@ -557,7 +685,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (error) throw new Error(error.message);
     }
     setProgress(DEFAULT_PROGRESS);
-    setThreads({});
+    setConversations([]);
+    setCurrentConversationId(null);
+    setMessages([]);
     setActivity([]);
   }, [userId]);
 
@@ -584,7 +714,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     offline,
     profile,
     progress,
-    threads,
     activity,
     level,
     levelProgress,
@@ -592,6 +721,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     updateProfile,
     studyTopic,
     applyQuizResults,
+    conversations,
+    currentConversationId,
+    messages,
+    openConversation,
+    startConversation,
+    deleteConversation,
+    refreshConversations,
     addChatMessages,
     clearChat,
     touchActivity,

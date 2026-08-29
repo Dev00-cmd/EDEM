@@ -22,7 +22,17 @@ create table if not exists public.chat_messages (
   created_at timestamp with time zone default now() not null,
   attachment_path text,
   attachment_type text,
-  attachment_name text
+  attachment_name text,
+  conversation_id uuid
+);
+
+create table if not exists public.conversations (
+  id uuid default gen_random_uuid() not null,
+  user_id uuid not null,
+  subject_id text default 'general'::text not null,
+  title text,
+  created_at timestamp with time zone default now() not null,
+  updated_at timestamp with time zone default now() not null
 );
 
 create table if not exists public.daily_activity (
@@ -116,9 +126,12 @@ create table if not exists public.usage_counters (
 
 -- ── Contraintes (clés primaires, étrangères, unicité) ────────
 
+alter table chat_messages add constraint chat_messages_conversation_id_fkey FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE;
 alter table chat_messages add constraint chat_messages_pkey PRIMARY KEY (id);
 alter table chat_messages add constraint chat_messages_role_check CHECK ((role = ANY (ARRAY['user'::text, 'tutor'::text])));
 alter table chat_messages add constraint chat_messages_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+alter table conversations add constraint conversations_pkey PRIMARY KEY (id);
+alter table conversations add constraint conversations_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
 alter table daily_activity add constraint daily_activity_pkey PRIMARY KEY (user_id, day);
 alter table daily_activity add constraint daily_activity_quizzes_done_check CHECK ((quizzes_done >= 0));
 alter table daily_activity add constraint daily_activity_topics_studied_check CHECK ((topics_studied >= 0));
@@ -156,7 +169,9 @@ alter table usage_counters add constraint usage_counters_user_id_fkey FOREIGN KE
 
 -- ── Index ────────────────────────────────────────────────────
 
+CREATE INDEX chat_messages_conversation_idx ON public.chat_messages USING btree (conversation_id, created_at);
 CREATE INDEX chat_messages_user_thread_idx ON public.chat_messages USING btree (user_id, thread, created_at);
+CREATE INDEX conversations_user_recent_idx ON public.conversations USING btree (user_id, updated_at DESC);
 CREATE INDEX daily_activity_user_day_idx ON public.daily_activity USING btree (user_id, day DESC);
 CREATE INDEX progress_xp_rank_idx ON public.progress USING btree (xp DESC, updated_at) WHERE (xp > 0);
 CREATE INDEX quiz_results_user_created_idx ON public.quiz_results USING btree (user_id, created_at DESC);
@@ -318,6 +333,29 @@ begin
     'limit',   p_limit
   );
 end;
+$function$
+;
+
+CREATE OR REPLACE FUNCTION public.conversation_list(p_limit integer DEFAULT 50)
+ RETURNS TABLE(id uuid, subject_id text, title text, updated_at timestamp with time zone, message_count integer, preview text)
+ LANGUAGE sql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+  select
+    c.id,
+    c.subject_id,
+    c.title,
+    c.updated_at,
+    (select count(*)::integer from public.chat_messages m
+      where m.conversation_id = c.id),
+    (select left(btrim(m.text), 120) from public.chat_messages m
+      where m.conversation_id = c.id
+      order by m.created_at desc limit 1)
+  from public.conversations c
+  where c.user_id = (select auth.uid())
+  order by c.updated_at desc
+  limit least(greatest(p_limit, 1), 200);
 $function$
 ;
 
@@ -682,9 +720,27 @@ end;
 $function$
 ;
 
+CREATE OR REPLACE FUNCTION public.touch_conversation()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+begin
+  if new.conversation_id is not null then
+    update public.conversations
+       set updated_at = greatest(updated_at, new.created_at)
+     where id = new.conversation_id;
+  end if;
+  return new;
+end;
+$function$
+;
+
 -- ── Row Level Security ───────────────────────────────────────
 
 alter table public.chat_messages enable row level security;
+alter table public.conversations enable row level security;
 alter table public.daily_activity enable row level security;
 alter table public.profiles enable row level security;
 alter table public.progress enable row level security;
@@ -712,6 +768,31 @@ create policy "chat_messages_select_own" on public.chat_messages
   for select
   to authenticated
   using ((( SELECT auth.uid() AS uid) = user_id));
+
+create policy "conversations_delete_own" on public.conversations
+  as permissive
+  for delete
+  to authenticated
+  using ((user_id = ( SELECT auth.uid() AS uid)));
+
+create policy "conversations_insert_own" on public.conversations
+  as permissive
+  for insert
+  to authenticated
+  with check ((user_id = ( SELECT auth.uid() AS uid)));
+
+create policy "conversations_select_own" on public.conversations
+  as permissive
+  for select
+  to authenticated
+  using ((user_id = ( SELECT auth.uid() AS uid)));
+
+create policy "conversations_update_own" on public.conversations
+  as permissive
+  for update
+  to authenticated
+  using ((user_id = ( SELECT auth.uid() AS uid)))
+  with check ((user_id = ( SELECT auth.uid() AS uid)));
 
 create policy "daily_activity_delete_own" on public.daily_activity
   as permissive
@@ -863,6 +944,7 @@ create policy "usage_counters_select_own" on public.usage_counters
 
 -- ── Triggers ─────────────────────────────────────────────────
 
+CREATE TRIGGER chat_messages_touch_conversation AFTER INSERT ON public.chat_messages FOR EACH ROW EXECUTE FUNCTION touch_conversation();
 CREATE TRIGGER quiz_seen_skip_duplicates BEFORE INSERT ON public.quiz_seen_questions FOR EACH ROW EXECUTE FUNCTION skip_duplicate_seen_question();
 CREATE TRIGGER on_auth_user_auto_confirm BEFORE INSERT ON auth.users FOR EACH ROW EXECUTE FUNCTION auto_confirm_email();
 CREATE TRIGGER on_auth_user_created AFTER INSERT ON auth.users FOR EACH ROW EXECUTE FUNCTION handle_new_user();

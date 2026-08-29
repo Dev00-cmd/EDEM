@@ -19,6 +19,7 @@ export type Database = {
           attachment_name: string | null
           attachment_path: string | null
           attachment_type: string | null
+          conversation_id: string | null
           created_at: string
           id: string
           role: string
@@ -30,6 +31,7 @@ export type Database = {
           attachment_name?: string | null
           attachment_path?: string | null
           attachment_type?: string | null
+          conversation_id?: string | null
           created_at?: string
           id?: string
           role: string
@@ -41,11 +43,47 @@ export type Database = {
           attachment_name?: string | null
           attachment_path?: string | null
           attachment_type?: string | null
+          conversation_id?: string | null
           created_at?: string
           id?: string
           role?: string
           text?: string
           thread?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      conversations: {
+        Row: {
+          created_at: string
+          id: string
+          subject_id: string
+          title: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          subject_id?: string
+          title?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          subject_id?: string
+          title?: string | null
+          updated_at?: string
           user_id?: string
         }
         Relationships: []
@@ -329,6 +367,17 @@ export type Database = {
       bump_usage: {
         Args: { p_kind: string; p_limit: number; p_user_id: string }
         Returns: Json
+      }
+      conversation_list: {
+        Args: { p_limit?: number }
+        Returns: {
+          id: string
+          message_count: number
+          preview: string
+          subject_id: string
+          title: string
+          updated_at: string
+        }[]
       }
       grade_quiz: {
         Args: { p_picked: Json; p_session_id: string }

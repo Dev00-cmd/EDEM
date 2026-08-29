@@ -10,7 +10,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Screen } from '@/components/Screen';
 import { Chip } from '@/components/Chip';
@@ -45,18 +45,25 @@ export default function ChatScreen() {
     subject?: string;
     prefill?: string;
     planTopic?: string;
+    /** Conversation à rouvrir, depuis l'historique. */
+    conversation?: string;
   }>();
 
   const {
     t,
     profile,
     progress,
-    threads,
+    conversations,
+    currentConversationId,
+    messages,
+    openConversation,
+    startConversation,
     addChatMessages,
     clearChat,
     studyTopic,
     touchActivity,
   } = useApp();
+  const router = useRouter();
   const { user } = useAuth();
   const userId = user?.id ?? null;
   const { colors } = useTheme();
@@ -67,8 +74,13 @@ export default function ChatScreen() {
   const insets = useSafeAreaInsets();
 
   const [subject, setSubject] = useState<string>(params.subject ?? 'general');
-  const threadKey = subject ?? 'general';
-  const messages = useMemo(() => threads[threadKey] ?? [], [threads, threadKey]);
+
+  // Le titre affiché en en-tête : celui de la conversation
+  // ouverte, ou « Nouvelle discussion » tant qu'elle est vide.
+  const currentTitle = useMemo(
+    () => conversations.find((c) => c.id === currentConversationId)?.title ?? null,
+    [conversations, currentConversationId],
+  );
 
   const [input, setInput] = useState('');
   const [typing, setTyping] = useState(false);
@@ -171,11 +183,11 @@ export default function ChatScreen() {
         ts: Date.now(),
         attachment: uploaded,
       };
-      addChatMessages(threadKey, [userMsg]);
+      addChatMessages([userMsg]);
       scrollToEnd();
 
       if (!online) {
-        addChatMessages(threadKey, [
+        addChatMessages([
           {
             id: uid(),
             role: 'tutor',
@@ -205,7 +217,7 @@ export default function ChatScreen() {
           uploaded ? { path: uploaded.path, type: uploaded.type } : null,
         );
 
-        addChatMessages(threadKey, [
+        addChatMessages([
           { id: uid(), role: 'tutor', text: reply.text, ts: Date.now() },
         ]);
 
@@ -216,7 +228,7 @@ export default function ChatScreen() {
           studyTopic(params.subject, params.planTopic);
         }
       } catch {
-        addChatMessages(threadKey, [
+        addChatMessages([
           {
             id: uid(),
             role: 'tutor',
@@ -235,7 +247,6 @@ export default function ChatScreen() {
       profile,
       progress,
       subject,
-      threadKey,
       online,
       params,
       pending,
@@ -275,6 +286,16 @@ export default function ChatScreen() {
     }
   };
 
+  // Arrivée depuis l'historique : on ouvre la conversation
+  // demandée. `openedFor` évite de la recharger à chaque rendu.
+  const openedFor = useRef<string | null>(null);
+  useEffect(() => {
+    const wanted = params.conversation;
+    if (!wanted || openedFor.current === wanted) return;
+    openedFor.current = wanted;
+    void openConversation(wanted);
+  }, [params.conversation, openConversation]);
+
   // Arrivée avec une question déjà écrite (accueil, parcours).
   useEffect(() => {
     if (params.prefill && bootstrapped.current !== params.prefill) {
@@ -304,7 +325,12 @@ export default function ChatScreen() {
       <View style={styles.header}>
         <LogoMark size={38} />
         <View style={styles.flex}>
-          <Text style={[type.section, { color: colors.text }]}>{t('chat.title')}</Text>
+          {/* Le titre de la conversation prend la place du nom de
+              l'écran dès qu'il y en a une : l'élève sait alors
+              laquelle il est en train de lire. */}
+          <Text style={[type.section, { color: colors.text }]} numberOfLines={1}>
+            {currentTitle ?? t('chat.title')}
+          </Text>
           <View style={styles.statusRow}>
             <View
               style={[
@@ -312,17 +338,44 @@ export default function ChatScreen() {
                 { backgroundColor: online ? colors.success : colors.warning },
               ]}
             />
-            <Text style={[type.caption, { color: colors.textSoft }]}>
+            <Text style={[type.caption, { color: colors.textSoft }]} numberOfLines={1}>
               {online ? t('chat.subtitle') : t('chat.setupTitle')}
             </Text>
           </View>
         </View>
+
+        {/* Nouvelle conversation. Toujours visible : c'est le geste
+            le plus fréquent quand on change de sujet. */}
+        <Pressable
+          onPress={() => {
+            startConversation(subject);
+            openedFor.current = null;
+          }}
+          hitSlop={10}
+          accessibilityRole="button"
+          accessibilityLabel={t('chat.newConversation')}
+          style={styles.headerBtn}
+        >
+          <Icon name="plus" size={19} color={colors.textSoft} />
+        </Pressable>
+
+        <Pressable
+          onPress={() => router.push('/chat-history')}
+          hitSlop={10}
+          accessibilityRole="button"
+          accessibilityLabel={t('chat.history')}
+          style={styles.headerBtn}
+        >
+          <Icon name="clock" size={19} color={colors.textSoft} />
+        </Pressable>
+
         {messages.length > 0 && (
           <Pressable
             onPress={() => setAskingClear(true)}
             hitSlop={10}
             accessibilityRole="button"
             accessibilityLabel={t('chat.clear')}
+            style={styles.headerBtn}
           >
             <Icon name="trash" size={19} color={colors.textFaint} />
           </Pressable>
@@ -597,7 +650,7 @@ export default function ChatScreen() {
         confirmLabel={t('chat.clear')}
         cancelLabel={t('common.cancel')}
         onConfirm={() => {
-          clearChat(threadKey);
+          clearChat();
           setAskingClear(false);
         }}
         onCancel={() => setAskingClear(false)}
@@ -612,10 +665,11 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 6,
     paddingHorizontal: 16,
     paddingBottom: 8,
   },
+  headerBtn: { padding: 4 },
   statusRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 1 },
   statusDot: { width: 7, height: 7, borderRadius: 4 },
 

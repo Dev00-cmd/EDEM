@@ -186,6 +186,15 @@ export const fr = {
     errorTitle: 'Impossible de joindre le serveur IA',
     errorBody: 'Vérifie ta connexion et que le serveur tourne, puis réessaie.',
     xpGained: 'notion étudiée',
+    newConversation: 'Nouvelle discussion',
+    history: 'Mes discussions',
+    historyCount: '{count} discussions',
+    historyEmptyTitle: 'Aucune discussion',
+    historyEmptyBody: 'Pose ta première question à M. Thomas : tu retrouveras la discussion ici.',
+    untitled: 'Nouvelle discussion',
+    messageCount: '{count} messages',
+    deleteConversation: 'Supprimer',
+    deleteConfirm: 'Cette discussion et ses fichiers seront effacés. C’est définitif.',
   },
 
   quiz: {

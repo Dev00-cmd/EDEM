@@ -186,6 +186,15 @@ export const ht: Messages = {
     errorTitle: 'Nou pa ka kontakte sèvè AI a',
     errorBody: 'Verifye koneksyon ou ak si sèvè a ap travay, apre eseye ankò.',
     xpGained: 'notion etidye',
+    newConversation: 'Nouvo diskisyon',
+    history: 'Diskisyon mwen yo',
+    historyCount: '{count} diskisyon',
+    historyEmptyTitle: 'Pa gen diskisyon',
+    historyEmptyBody: 'Poze premye kesyon ou bay M. Thomas : w ap jwenn diskisyon an isit la.',
+    untitled: 'Nouvo diskisyon',
+    messageCount: '{count} mesaj',
+    deleteConversation: 'Efase',
+    deleteConfirm: 'Diskisyon sa a ak fichye li yo ap efase. Se definitif.',
   },
 
   quiz: {
