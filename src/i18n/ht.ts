@@ -134,6 +134,21 @@ export const ht: Messages = {
     applying: 'Ap rekòmanse…',
   },
 
+  history: {
+    title: 'Istorik kwiz yo',
+    recent: 'Dènye kwiz ou yo',
+    seeAll: 'Wè tout',
+    count: '{count} kwiz ou fè',
+    reviewTitle: 'Koreksyon',
+    correctOf: '{correct} bon repons sou {total}',
+    yourAnswer: 'repons ou',
+    noAnswer: 'Tan an fini — ou pa reponn.',
+    emptyTitle: 'Poko gen kwiz',
+    emptyBody: 'Fè premye kwiz ou : w ap ka tounen gade l isit la, ak esplikasyon yo.',
+    goneTitle: 'Nou pa jwenn kwiz la',
+    goneBody: 'Kwiz sa a pa disponib ankò. Petèt li efase ak pwogrè ou.',
+  },
+
   board: {
     title: 'Klasman',
     subtitle: 'Elèv ki pi asidi nan EDEM',

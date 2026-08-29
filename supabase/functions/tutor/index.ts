@@ -1377,9 +1377,21 @@ Deno.serve(async (req: Request) => {
           user_id: userId,
           subject_id: subject,
           difficulty: chosen ?? "moyen",
+          // Le strict nécessaire à la correction : léger à lire.
           answers: questions.map((q) => ({
             topic: q.topic ?? "general",
             answer: q.answer,
+          })),
+          // Le quiz complet, pour que l'élève puisse revenir
+          // dessus des semaines plus tard — avec les explications,
+          // qui sont ce qui fait apprendre. Cette colonne n'est
+          // lisible qu'une fois le quiz remis (politique RLS).
+          questions: questions.map((q) => ({
+            question: q.question,
+            choices: q.choices,
+            answer: q.answer,
+            explanation: q.explanation ?? "",
+            topic: q.topic ?? "general",
           })),
         })
         .select("id")

@@ -134,6 +134,21 @@ export const fr = {
     applying: 'Redémarrage…',
   },
 
+  history: {
+    title: 'Historique des quiz',
+    recent: 'Tes derniers quiz',
+    seeAll: 'Voir tout',
+    count: '{count} quiz passés',
+    reviewTitle: 'Correction',
+    correctOf: '{correct} bonnes réponses sur {total}',
+    yourAnswer: 'ta réponse',
+    noAnswer: 'Temps écoulé — tu n’as pas répondu.',
+    emptyTitle: 'Aucun quiz pour l’instant',
+    emptyBody: 'Passe ton premier quiz : tu pourras le revoir ici, avec les explications.',
+    goneTitle: 'Quiz introuvable',
+    goneBody: 'Ce quiz n’est plus disponible. Il a peut-être été effacé avec ta progression.',
+  },
+
   board: {
     title: 'Classement',
     subtitle: 'Les élèves les plus assidus d’EDEM',

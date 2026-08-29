@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.17"
+    PostgrestVersion: "14.5"
   }
   public: {
     Tables: {
@@ -192,6 +192,7 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          qhash: string | null
           question: string
           subject_id: string
           topic: string | null
@@ -200,6 +201,7 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          qhash?: string | null
           question: string
           subject_id: string
           topic?: string | null
@@ -208,6 +210,7 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          qhash?: string | null
           question?: string
           subject_id?: string
           topic?: string | null
@@ -222,6 +225,9 @@ export type Database = {
           difficulty: string
           graded_at: string | null
           id: string
+          picked: Json | null
+          questions: Json | null
+          score_pct: number | null
           subject_id: string
           user_id: string
         }
@@ -231,6 +237,9 @@ export type Database = {
           difficulty?: string
           graded_at?: string | null
           id?: string
+          picked?: Json | null
+          questions?: Json | null
+          score_pct?: number | null
           subject_id: string
           user_id: string
         }
@@ -240,6 +249,9 @@ export type Database = {
           difficulty?: string
           graded_at?: string | null
           id?: string
+          picked?: Json | null
+          questions?: Json | null
+          score_pct?: number | null
           subject_id?: string
           user_id?: string
         }
@@ -340,7 +352,32 @@ export type Database = {
           xp: number
         }[]
       }
+      purge_seen_questions: { Args: { p_keep?: number }; Returns: number }
+      quiz_history: {
+        Args: { p_limit?: number }
+        Returns: {
+          difficulty: string
+          graded_at: string
+          id: string
+          score_pct: number
+          subject_id: string
+          total: number
+        }[]
+      }
+      recent_seen_questions: {
+        Args: { p_limit?: number; p_subject_id: string }
+        Returns: {
+          stem: string
+        }[]
+      }
       reset_progress: { Args: never; Returns: undefined }
+      seen_topics: {
+        Args: { p_subject_id: string }
+        Returns: {
+          nb: number
+          topic: string
+        }[]
+      }
       study_topic: {
         Args: { p_subject_id: string; p_topic_id: string; p_xp?: number }
         Returns: {

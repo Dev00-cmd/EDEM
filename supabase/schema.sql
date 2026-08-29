@@ -5,7 +5,7 @@
 --  relancer le script après toute modification de la base.
 --
 --  Projet   : qoyebljuvrxhcroxapys
---  Exporté  : 2026-08-28
+--  Exporté  : 2026-08-29
 --
 --  Ce fichier est la SEULE copie hors ligne du backend. Sans
 --  lui, un projet Supabase perdu serait irrécupérable.
@@ -77,7 +77,8 @@ create table if not exists public.quiz_seen_questions (
   subject_id text not null,
   question text not null,
   topic text,
-  created_at timestamp with time zone default now() not null
+  created_at timestamp with time zone default now() not null,
+  qhash text default md5(lower(btrim(regexp_replace(question, '\s+'::text, ' '::text, 'g'::text))))
 );
 
 create table if not exists public.quiz_sessions (
@@ -87,7 +88,10 @@ create table if not exists public.quiz_sessions (
   difficulty text default 'moyen'::text not null,
   answers jsonb not null,
   created_at timestamp with time zone default now() not null,
-  graded_at timestamp with time zone
+  graded_at timestamp with time zone,
+  questions jsonb,
+  picked jsonb,
+  score_pct integer
 );
 
 create table if not exists public.schema_migrations (
@@ -154,8 +158,11 @@ alter table usage_counters add constraint usage_counters_user_id_fkey FOREIGN KE
 
 CREATE INDEX chat_messages_user_thread_idx ON public.chat_messages USING btree (user_id, thread, created_at);
 CREATE INDEX daily_activity_user_day_idx ON public.daily_activity USING btree (user_id, day DESC);
+CREATE INDEX progress_xp_rank_idx ON public.progress USING btree (xp DESC, updated_at) WHERE (xp > 0);
 CREATE INDEX quiz_results_user_created_idx ON public.quiz_results USING btree (user_id, created_at DESC);
+CREATE UNIQUE INDEX quiz_seen_unique_idx ON public.quiz_seen_questions USING btree (user_id, subject_id, qhash);
 CREATE INDEX quiz_seen_user_subject_idx ON public.quiz_seen_questions USING btree (user_id, subject_id, created_at DESC);
+CREATE INDEX quiz_sessions_history_idx ON public.quiz_sessions USING btree (user_id, graded_at DESC) WHERE (graded_at IS NOT NULL);
 CREATE INDEX quiz_sessions_user_created_idx ON public.quiz_sessions USING btree (user_id, created_at DESC);
 CREATE INDEX topic_mastery_user_subject_idx ON public.topic_mastery USING btree (user_id, subject_id);
 
@@ -323,10 +330,14 @@ AS $function$
 declare
   uid       uuid := (select auth.uid());
   v_session public.quiz_sessions;
+  v_source  jsonb;
   v_results jsonb := '[]'::jsonb;
   v_answer  jsonb;
   v_pick    jsonb;
   v_ok      boolean;
+  v_correct integer := 0;
+  v_total   integer;
+  v_outcome jsonb;
   i         integer;
 begin
   if uid is null then
@@ -352,14 +363,18 @@ begin
     raise exception 'p_picked must be an array';
   end if;
 
-  -- On compare choix et bonne réponse, question par question.
-  for i in 0 .. jsonb_array_length(v_session.answers) - 1 loop
-    v_answer := v_session.answers -> i;
+  v_source := coalesce(v_session.questions, v_session.answers);
+  v_total  := jsonb_array_length(v_source);
+
+  for i in 0 .. v_total - 1 loop
+    v_answer := v_source -> i;
     v_pick   := p_picked -> i;
 
     v_ok := v_pick is not null
         and jsonb_typeof(v_pick) = 'number'
         and (v_pick)::text::integer = (v_answer ->> 'answer')::integer;
+
+    if v_ok then v_correct := v_correct + 1; end if;
 
     v_results := v_results || jsonb_build_object(
       'topic', coalesce(v_answer ->> 'topic', 'general'),
@@ -367,15 +382,25 @@ begin
     );
   end loop;
 
-  update public.quiz_sessions set graded_at = now() where id = p_session_id;
+  update public.quiz_sessions
+     set graded_at = now(),
+         picked    = p_picked,
+         score_pct = case when v_total > 0
+                          then round((v_correct::numeric / v_total) * 100)
+                          else 0 end
+   where id = p_session_id;
 
   -- Le barème reste dans apply_quiz_results : un seul endroit où
   -- les XP sont décidés.
-  return public.apply_quiz_results(
+  v_outcome := public.apply_quiz_results(
     v_session.subject_id,
     v_results,
     v_session.difficulty
   );
+
+  -- L'app a besoin de l'identifiant pour ouvrir la correction
+  -- directement depuis l'écran de résultats.
+  return v_outcome || jsonb_build_object('session_id', p_session_id);
 end;
 $function$
 ;
@@ -463,6 +488,67 @@ AS $function$
 $function$
 ;
 
+CREATE OR REPLACE FUNCTION public.purge_seen_questions(p_keep integer DEFAULT 200)
+ RETURNS integer
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare
+  v_deleted integer;
+begin
+  with classe as (
+    select id,
+           row_number() over (
+             partition by user_id, subject_id order by created_at desc
+           ) as rang
+    from public.quiz_seen_questions
+  )
+  delete from public.quiz_seen_questions q
+   using classe c
+   where q.id = c.id and c.rang > greatest(p_keep, 20);
+  get diagnostics v_deleted = row_count;
+  return v_deleted;
+end;
+$function$
+;
+
+CREATE OR REPLACE FUNCTION public.quiz_history(p_limit integer DEFAULT 30)
+ RETURNS TABLE(id uuid, subject_id text, difficulty text, score_pct integer, total integer, graded_at timestamp with time zone)
+ LANGUAGE sql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+  select
+    s.id,
+    s.subject_id,
+    s.difficulty,
+    coalesce(s.score_pct, 0),
+    jsonb_array_length(coalesce(s.questions, s.answers))::integer,
+    s.graded_at
+  from public.quiz_sessions s
+  where s.user_id = (select auth.uid())
+    and s.graded_at is not null
+  order by s.graded_at desc
+  limit least(greatest(p_limit, 1), 100);
+$function$
+;
+
+CREATE OR REPLACE FUNCTION public.recent_seen_questions(p_subject_id text, p_limit integer DEFAULT 25)
+ RETURNS TABLE(stem text)
+ LANGUAGE sql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+  select left(q.question, 80)
+  from public.quiz_seen_questions q
+  where q.user_id = (select auth.uid())
+    and q.subject_id = p_subject_id
+  order by q.created_at desc
+  limit least(greatest(p_limit, 1), 50);
+$function$
+;
+
 CREATE OR REPLACE FUNCTION public.reset_progress()
  RETURNS void
  LANGUAGE plpgsql
@@ -485,6 +571,41 @@ begin
      set xp = 0, streak = 0, last_active = null, quizzes_done = 0,
          answered = 0, correct = 0, studied_count = 0, updated_at = now()
    where user_id = uid;
+end;
+$function$
+;
+
+CREATE OR REPLACE FUNCTION public.seen_topics(p_subject_id text)
+ RETURNS TABLE(topic text, nb integer)
+ LANGUAGE sql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+  select coalesce(q.topic, 'general'), count(*)::integer
+  from public.quiz_seen_questions q
+  where q.user_id = (select auth.uid())
+    and q.subject_id = p_subject_id
+  group by 1
+  order by 2 desc
+  limit 40;
+$function$
+;
+
+CREATE OR REPLACE FUNCTION public.skip_duplicate_seen_question()
+ RETURNS trigger
+ LANGUAGE plpgsql
+AS $function$
+begin
+  if exists (
+    select 1
+    from public.quiz_seen_questions q
+    where q.user_id = new.user_id
+      and q.subject_id = new.subject_id
+      and q.qhash = md5(lower(btrim(regexp_replace(new.question, '\s+', ' ', 'g'))))
+  ) then
+    return null;
+  end if;
+  return new;
 end;
 $function$
 ;
@@ -570,6 +691,7 @@ alter table public.progress enable row level security;
 alter table public.quiz_results enable row level security;
 alter table public.quiz_seen_questions enable row level security;
 alter table public.quiz_sessions enable row level security;
+alter table public.schema_migrations enable row level security;
 alter table public.topic_mastery enable row level security;
 alter table public.usage_counters enable row level security;
 
@@ -702,6 +824,12 @@ create policy "quiz_seen_select_own" on public.quiz_seen_questions
   to authenticated
   using ((( SELECT auth.uid() AS uid) = user_id));
 
+create policy "quiz_sessions_select_graded_own" on public.quiz_sessions
+  as permissive
+  for select
+  to authenticated
+  using (((user_id = ( SELECT auth.uid() AS uid)) AND (graded_at IS NOT NULL)));
+
 create policy "topic_mastery_delete_own" on public.topic_mastery
   as permissive
   for delete
@@ -735,6 +863,7 @@ create policy "usage_counters_select_own" on public.usage_counters
 
 -- ── Triggers ─────────────────────────────────────────────────
 
+CREATE TRIGGER quiz_seen_skip_duplicates BEFORE INSERT ON public.quiz_seen_questions FOR EACH ROW EXECUTE FUNCTION skip_duplicate_seen_question();
 CREATE TRIGGER on_auth_user_auto_confirm BEFORE INSERT ON auth.users FOR EACH ROW EXECUTE FUNCTION auto_confirm_email();
 CREATE TRIGGER on_auth_user_created AFTER INSERT ON auth.users FOR EACH ROW EXECUTE FUNCTION handle_new_user();
 

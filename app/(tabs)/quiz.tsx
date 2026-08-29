@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Screen } from '@/components/Screen';
 import { Card, SectionHeader } from '@/components/Card';
 import { Button } from '@/components/Button';
@@ -15,6 +15,8 @@ import { FONTS, type } from '@/theme/typography';
 import { generateQuiz } from '@/ai/tutor';
 import { studentContextOf } from '@/ai/plan';
 import { SUBJECTS, getSubject } from '@/data/subjects';
+import { QuizHistoryRow } from '@/components/QuizHistoryRow';
+import { fetchQuizHistory, type QuizHistoryEntry } from '@/lib/quizHistory';
 import type { GeneratedQuiz, QuizQuestion } from '@/ai/types';
 import { DIFFICULTIES, difficultyReward, type Difficulty } from '@/config/app';
 
@@ -59,6 +61,22 @@ export default function QuizScreen() {
   // travaille en difficile ne veut pas le re-selectionner a chaque fois.
   const [difficulty, setDifficulty] = useState<Difficulty>('moyen');
   const startedFor = useRef<string | null>(null);
+  const router = useRouter();
+
+  // Les trois derniers quiz, rechargés à chaque retour sur
+  // l'écran de sélection : sinon celui qu'on vient de passer
+  // n'apparaîtrait pas.
+  const [recent, setRecent] = useState<QuizHistoryEntry[]>([]);
+  useEffect(() => {
+    if (phase.name !== 'select') return;
+    let alive = true;
+    fetchQuizHistory(3).then((rows) => {
+      if (alive) setRecent(rows);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [phase.name]);
 
   const startQuiz = useCallback(
     async (subjectId: string, level: Difficulty) => {
@@ -173,6 +191,27 @@ export default function QuizScreen() {
         <Text style={[type.caption, styles.levelHint, { color: colors.textFaint }]}>
           {t(`quiz.levelHint_${difficulty}`)}
         </Text>
+
+        {recent.length > 0 && (
+          <>
+            <SectionHeader
+              dash
+              title={t('history.recent')}
+              actionLabel={t('history.seeAll')}
+              onAction={() => router.push('/quiz-history')}
+              style={styles.section}
+            />
+            {recent.map((row) => (
+              <QuizHistoryRow
+                key={row.id}
+                entry={row}
+                onPress={() =>
+                  router.push({ pathname: '/quiz-review', params: { id: row.id } })
+                }
+              />
+            ))}
+          </>
+        )}
 
         <SectionHeader dash title={t('quiz.chooseSubject')} style={styles.section} />
 
