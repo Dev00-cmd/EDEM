@@ -165,6 +165,54 @@ export const ht: Messages = {
     cardOpen: 'Kontinye',
   },
 
+  teacher: {
+    title: 'Mwen se yon pwofesè',
+    intro:
+      'Yon kont pwofesè rete kont elèv ou : ou kenbe pwofil ou, XP ou ak M. Thomas. Wòl la ajoute dwa pou louvri yon klas.',
+
+    whyTitle: 'POUKISA NOU VERIFYE',
+    whyBody:
+      'Yon klas mete yon granmoun an kontak ak elèv ki minè. Nou li chak demann ak men nou, epi nou rele anvan nou bay wòl la. Sa pran kèk jou.',
+
+    nameLabel: 'Non konplè ou',
+    namePlaceholder: 'Prenon ak siyati',
+    nameNeeded: 'Ekri non konplè ou',
+
+    contactLabel: 'Kijan pou nou jwenn ou pou verifye',
+    contactPlaceholder: 'Nimewo pwofesyonèl, imèl lekòl la, oswa yon referan',
+    contactWhy:
+      'Se sèl kowòdone aplikasyon an mande, epi li sèvi sèlman pou verifikasyon sa a. Elèv yo pa janm wè l.',
+    contactNeeded: 'Bay yon fason pou nou jwenn ou',
+
+    subjectsLabel: 'Matyè ou anseye',
+    subjectsNeeded: 'Chwazi omwen yon matyè',
+
+    schoolLabel: 'Lekòl ou',
+    schoolFromProfile: 'Nou pran l nan pwofil ou. Ou ka chanje l nan « Pèsonalizasyon ».',
+    schoolMissing: 'Chwazi lekòl mwen nan pwofil mwen',
+
+    messageLabel: 'Yon mo pou nou (si ou vle)',
+    messagePlaceholder: 'Klas ou, nivo a, sa ou vle fè ak EDEM…',
+
+    send: 'Voye demann lan',
+    failed: 'Demann lan pa pati. Eseye pita.',
+
+    pendingTitle: 'Demann voye',
+    pendingSub:
+      'Se yon moun ki li l, pa yon robo. N ap kontakte ou nan fason ou te bay la. Pandan tan an, ou kontinye sèvi ak EDEM nòmalman.',
+
+    rejectedTitle: 'Nou pa t kenbe demann ou',
+    rejectedSub: 'Ou ka voye l ankò ak enfòmasyon pi klè.',
+
+    alreadyTitle: 'Ou se yon pwofesè',
+    alreadySub:
+      'Ou ka louvri yon klas epi envite elèv ou yo. Kont elèv ou a pa chanje.',
+
+    cta: 'Mwen se yon pwofesè',
+    ctaSub: 'Louvri yon klas pou elèv mwen yo',
+  },
+
+
 
   home: {
     morning: 'Bonjou',

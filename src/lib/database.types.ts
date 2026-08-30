@@ -385,6 +385,33 @@ export type Database = {
         }
         Relationships: []
       }
+      role_events: {
+        Row: {
+          actor: string | null
+          created_at: string
+          event: string
+          id: number
+          reason: string | null
+          user_id: string
+        }
+        Insert: {
+          actor?: string | null
+          created_at?: string
+          event: string
+          id?: never
+          reason?: string | null
+          user_id: string
+        }
+        Update: {
+          actor?: string | null
+          created_at?: string
+          event?: string
+          id?: never
+          reason?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       schema_migrations: {
         Row: {
           applied_at: string
@@ -489,6 +516,62 @@ export type Database = {
           },
         ]
       }
+      teacher_requests: {
+        Row: {
+          contact: string
+          created_at: string
+          full_name: string
+          id: string
+          message: string | null
+          review_note: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          school_id: string | null
+          status: string
+          subjects: string[]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          contact: string
+          created_at?: string
+          full_name: string
+          id?: string
+          message?: string | null
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          school_id?: string | null
+          status?: string
+          subjects?: string[]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          contact?: string
+          created_at?: string
+          full_name?: string
+          id?: string
+          message?: string | null
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          school_id?: string | null
+          status?: string
+          subjects?: string[]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "teacher_requests_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       topic_mastery: {
         Row: {
           last_study_on: string | null
@@ -544,6 +627,10 @@ export type Database = {
     Functions: {
       apply_quiz_results: {
         Args: { p_difficulty?: string; p_results: Json; p_subject_id: string }
+        Returns: Json
+      }
+      approve_teacher_role: {
+        Args: { p_note?: string; p_user_id: string }
         Returns: Json
       }
       bump_usage: {
@@ -607,7 +694,25 @@ export type Database = {
           stem: string
         }[]
       }
+      reject_teacher_role: {
+        Args: { p_reason?: string; p_user_id: string }
+        Returns: Json
+      }
+      request_teacher_role: {
+        Args: {
+          p_contact: string
+          p_full_name: string
+          p_message?: string
+          p_school_id?: string
+          p_subjects?: string[]
+        }
+        Returns: Json
+      }
       reset_progress: { Args: never; Returns: undefined }
+      revoke_teacher_role: {
+        Args: { p_reason?: string; p_user_id: string }
+        Returns: Json
+      }
       search_schools: {
         Args: { p_commune_id?: string; p_query?: string }
         Returns: {
@@ -646,6 +751,23 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      teacher_requests_to_review: {
+        Args: { p_status?: string }
+        Returns: {
+          commune: string
+          compte_cree: string
+          contact: string
+          demande_le: string
+          ecole: string
+          matieres: string[]
+          message: string
+          nom_declare: string
+          quiz_faits: number
+          statut: string
+          user_id: string
+          xp: number
+        }[]
       }
       touch_activity: {
         Args: never

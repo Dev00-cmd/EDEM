@@ -124,6 +124,15 @@ create table if not exists public.quiz_sessions (
   score_pct integer
 );
 
+create table if not exists public.role_events (
+  id bigint not null,
+  user_id uuid not null,
+  event text not null,
+  actor uuid,
+  reason text,
+  created_at timestamp with time zone default now() not null
+);
+
 create table if not exists public.schema_migrations (
   name text not null,
   applied_at timestamp with time zone default now() not null
@@ -154,6 +163,22 @@ create table if not exists public.schools (
   status text default 'pending'::text not null,
   created_by uuid,
   created_at timestamp with time zone default now() not null
+);
+
+create table if not exists public.teacher_requests (
+  id uuid default gen_random_uuid() not null,
+  user_id uuid not null,
+  school_id uuid,
+  full_name text not null,
+  subjects text[] default '{}'::text[] not null,
+  contact text not null,
+  message text,
+  status text default 'pending'::text not null,
+  reviewed_by uuid,
+  reviewed_at timestamp with time zone,
+  review_note text,
+  created_at timestamp with time zone default now() not null,
+  updated_at timestamp with time zone default now() not null
 );
 
 create table if not exists public.topic_mastery (
@@ -219,6 +244,8 @@ alter table quiz_seen_questions add constraint quiz_seen_questions_pkey PRIMARY 
 alter table quiz_seen_questions add constraint quiz_seen_questions_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
 alter table quiz_sessions add constraint quiz_sessions_pkey PRIMARY KEY (id);
 alter table quiz_sessions add constraint quiz_sessions_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+alter table role_events add constraint role_events_event_check CHECK ((event = ANY (ARRAY['approved'::text, 'rejected'::text, 'revoked'::text])));
+alter table role_events add constraint role_events_pkey PRIMARY KEY (id);
 alter table schema_migrations add constraint schema_migrations_pkey PRIMARY KEY (name);
 alter table school_levels add constraint school_levels_cycle_check CHECK ((cycle = ANY (ARRAY['fondamental'::text, 'secondaire'::text, 'autre'::text])));
 alter table school_levels add constraint school_levels_pkey PRIMARY KEY (id);
@@ -229,6 +256,16 @@ alter table schools add constraint schools_name_check CHECK (((char_length(btrim
 alter table schools add constraint schools_pkey PRIMARY KEY (id);
 alter table schools add constraint schools_status_check CHECK ((status = ANY (ARRAY['approved'::text, 'pending'::text, 'rejected'::text])));
 alter table schools add constraint schools_type_check CHECK ((type = ANY (ARRAY['publique'::text, 'privee'::text, 'congreganiste'::text, 'autre'::text])));
+alter table teacher_requests add constraint teacher_requests_contact_check CHECK (((char_length(btrim(contact)) >= 5) AND (char_length(btrim(contact)) <= 200)));
+alter table teacher_requests add constraint teacher_requests_full_name_check CHECK (((char_length(btrim(full_name)) >= 3) AND (char_length(btrim(full_name)) <= 120)));
+alter table teacher_requests add constraint teacher_requests_message_check CHECK (((message IS NULL) OR (char_length(message) <= 1000)));
+alter table teacher_requests add constraint teacher_requests_pkey PRIMARY KEY (id);
+alter table teacher_requests add constraint teacher_requests_reviewed_by_fkey FOREIGN KEY (reviewed_by) REFERENCES auth.users(id) ON DELETE SET NULL;
+alter table teacher_requests add constraint teacher_requests_school_id_fkey FOREIGN KEY (school_id) REFERENCES schools(id) ON DELETE SET NULL;
+alter table teacher_requests add constraint teacher_requests_status_check CHECK ((status = ANY (ARRAY['pending'::text, 'approved'::text, 'rejected'::text])));
+alter table teacher_requests add constraint teacher_requests_subjects_check CHECK (((cardinality(subjects) >= 1) AND (cardinality(subjects) <= 8)));
+alter table teacher_requests add constraint teacher_requests_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+alter table teacher_requests add constraint teacher_requests_user_id_key UNIQUE (user_id);
 alter table topic_mastery add constraint topic_mastery_mastery_check CHECK (((mastery >= 0) AND (mastery <= 100)));
 alter table topic_mastery add constraint topic_mastery_pkey PRIMARY KEY (user_id, subject_id, topic_id);
 alter table topic_mastery add constraint topic_mastery_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
@@ -249,9 +286,12 @@ CREATE UNIQUE INDEX quiz_seen_unique_idx ON public.quiz_seen_questions USING btr
 CREATE INDEX quiz_seen_user_subject_idx ON public.quiz_seen_questions USING btree (user_id, subject_id, created_at DESC);
 CREATE INDEX quiz_sessions_history_idx ON public.quiz_sessions USING btree (user_id, graded_at DESC) WHERE (graded_at IS NOT NULL);
 CREATE INDEX quiz_sessions_user_created_idx ON public.quiz_sessions USING btree (user_id, created_at DESC);
+CREATE INDEX role_events_user_idx ON public.role_events USING btree (user_id, created_at DESC);
 CREATE INDEX schools_created_by_idx ON public.schools USING btree (created_by) WHERE (created_by IS NOT NULL);
 CREATE INDEX schools_name_trgm ON public.schools USING gin (norm_text(name) gin_trgm_ops);
 CREATE UNIQUE INDEX schools_unique_in_commune ON public.schools USING btree (commune_id, norm_text(name));
+CREATE INDEX teacher_requests_school_idx ON public.teacher_requests USING btree (school_id) WHERE (school_id IS NOT NULL);
+CREATE INDEX teacher_requests_status_idx ON public.teacher_requests USING btree (status, created_at);
 CREATE INDEX topic_mastery_user_subject_idx ON public.topic_mastery USING btree (user_id, subject_id);
 
 -- ── Fonctions ────────────────────────────────────────────────
@@ -367,6 +407,40 @@ begin
     'difficulty', v_diff,
     'progress',   to_jsonb(row)
   );
+end;
+$function$
+;
+
+CREATE OR REPLACE FUNCTION public.approve_teacher_role(p_user_id uuid, p_note text DEFAULT NULL::text)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare
+  v_nom text;
+begin
+  select full_name into v_nom
+    from public.teacher_requests where user_id = p_user_id;
+  if not found then
+    raise exception 'aucune demande pour cet utilisateur';
+  end if;
+
+  update public.teacher_requests
+     set status = 'approved', reviewed_at = now(),
+         reviewed_by = (select auth.uid()), review_note = p_note,
+         updated_at = now()
+   where user_id = p_user_id;
+
+  -- Le trigger profiles_guard_role laisse passer : à l'intérieur
+  -- d'une fonction DEFINER, current_user vaut postgres.
+  update public.profiles set role = 'prof', updated_at = now()
+   where id = p_user_id;
+
+  insert into public.role_events (user_id, event, actor, reason)
+  values (p_user_id, 'approved', (select auth.uid()), p_note);
+
+  return jsonb_build_object('user_id', p_user_id, 'name', v_nom, 'role', 'prof');
 end;
 $function$
 ;
@@ -855,6 +929,101 @@ AS $function$
 $function$
 ;
 
+CREATE OR REPLACE FUNCTION public.reject_teacher_role(p_user_id uuid, p_reason text DEFAULT NULL::text)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+begin
+  update public.teacher_requests
+     set status = 'rejected', reviewed_at = now(),
+         reviewed_by = (select auth.uid()), review_note = p_reason,
+         updated_at = now()
+   where user_id = p_user_id;
+  if not found then
+    raise exception 'aucune demande pour cet utilisateur';
+  end if;
+
+  insert into public.role_events (user_id, event, actor, reason)
+  values (p_user_id, 'rejected', (select auth.uid()), p_reason);
+
+  return jsonb_build_object('user_id', p_user_id, 'status', 'rejected');
+end;
+$function$
+;
+
+CREATE OR REPLACE FUNCTION public.request_teacher_role(p_full_name text, p_contact text, p_subjects text[] DEFAULT '{}'::text[], p_school_id uuid DEFAULT NULL::uuid, p_message text DEFAULT NULL::text)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare
+  uid       uuid := (select auth.uid());
+  v_nom     text := btrim(coalesce(p_full_name, ''));
+  v_contact text := btrim(coalesce(p_contact, ''));
+  v_actuel  public.teacher_requests;
+  v_role    text;
+  v_quota   jsonb;
+begin
+  if uid is null then
+    raise exception 'not authenticated';
+  end if;
+  if char_length(v_nom) < 3 then
+    raise exception 'nom complet requis';
+  end if;
+  if char_length(v_contact) < 5 then
+    raise exception 'moyen de verification requis';
+  end if;
+  if coalesce(cardinality(p_subjects), 0) = 0 then
+    raise exception 'au moins une matiere';
+  end if;
+
+  select role into v_role from public.profiles where id = uid;
+  if v_role = 'prof' then
+    raise exception 'deja professeur';
+  end if;
+
+  select * into v_actuel from public.teacher_requests where user_id = uid;
+
+  -- Une demande déjà acceptée ne se rejoue pas. Une demande
+  -- refusée, si : un professeur dont le premier justificatif était
+  -- illisible doit pouvoir en donner un autre.
+  if found and v_actuel.status = 'approved' then
+    raise exception 'demande deja acceptee';
+  end if;
+
+  -- Trois envois par jour. Le but n'est pas de brider un vrai
+  -- professeur — il n'en fait qu'un — mais d'empêcher qu'on
+  -- inonde la file d'attente que je dépouille à la main.
+  v_quota := public.bump_usage(uid, 'teacher_request', 3);
+  if not (v_quota ->> 'allowed')::boolean then
+    raise exception 'trop de demandes aujourd''hui, reessaie demain';
+  end if;
+
+  insert into public.teacher_requests
+    (user_id, school_id, full_name, subjects, contact, message, status, updated_at)
+  values
+    (uid, p_school_id, v_nom, p_subjects, v_contact, nullif(btrim(coalesce(p_message, '')), ''),
+     'pending', now())
+  on conflict (user_id) do update
+    set school_id   = excluded.school_id,
+        full_name   = excluded.full_name,
+        subjects    = excluded.subjects,
+        contact     = excluded.contact,
+        message     = excluded.message,
+        status      = 'pending',
+        reviewed_by = null,
+        reviewed_at = null,
+        review_note = null,
+        updated_at  = now();
+
+  return jsonb_build_object('status', 'pending');
+end;
+$function$
+;
+
 CREATE OR REPLACE FUNCTION public.reset_progress()
  RETURNS void
  LANGUAGE plpgsql
@@ -878,6 +1047,34 @@ begin
      set xp = 0, streak = 0, last_active = null, quizzes_done = 0,
          answered = 0, correct = 0, studied_count = 0, updated_at = now()
    where user_id = uid;
+end;
+$function$
+;
+
+CREATE OR REPLACE FUNCTION public.revoke_teacher_role(p_user_id uuid, p_reason text DEFAULT NULL::text)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+begin
+  update public.profiles set role = 'eleve', updated_at = now()
+   where id = p_user_id and role = 'prof';
+  if not found then
+    raise exception 'cet utilisateur n''est pas professeur';
+  end if;
+
+  update public.teacher_requests
+     set status = 'rejected', reviewed_at = now(),
+         reviewed_by = (select auth.uid()),
+         review_note = coalesce(p_reason, 'role retire'),
+         updated_at = now()
+   where user_id = p_user_id;
+
+  insert into public.role_events (user_id, event, actor, reason)
+  values (p_user_id, 'revoked', (select auth.uid()), p_reason);
+
+  return jsonb_build_object('user_id', p_user_id, 'role', 'eleve');
 end;
 $function$
 ;
@@ -1028,6 +1225,26 @@ end;
 $function$
 ;
 
+CREATE OR REPLACE FUNCTION public.teacher_requests_to_review(p_status text DEFAULT 'pending'::text)
+ RETURNS TABLE(user_id uuid, demande_le timestamp with time zone, nom_declare text, contact text, matieres text[], ecole text, commune text, message text, compte_cree timestamp with time zone, quiz_faits integer, xp integer, statut text)
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+  select
+    r.user_id, r.created_at, r.full_name, r.contact, r.subjects,
+    s.name, c.name, r.message,
+    p.created_at, coalesce(pr.quizzes_done, 0), coalesce(pr.xp, 0), r.status
+  from public.teacher_requests r
+  join public.profiles p        on p.id = r.user_id
+  left join public.progress pr  on pr.user_id = r.user_id
+  left join public.schools s    on s.id = r.school_id
+  left join public.communes c   on c.id = s.commune_id
+  where p_status is null or r.status = p_status
+  order by r.created_at;
+$function$
+;
+
 CREATE OR REPLACE FUNCTION public.touch_activity()
  RETURNS progress
  LANGUAGE plpgsql
@@ -1087,10 +1304,12 @@ alter table public.progress enable row level security;
 alter table public.quiz_results enable row level security;
 alter table public.quiz_seen_questions enable row level security;
 alter table public.quiz_sessions enable row level security;
+alter table public.role_events enable row level security;
 alter table public.schema_migrations enable row level security;
 alter table public.school_levels enable row level security;
 alter table public.school_sections enable row level security;
 alter table public.schools enable row level security;
+alter table public.teacher_requests enable row level security;
 alter table public.topic_mastery enable row level security;
 alter table public.usage_counters enable row level security;
 
@@ -1233,6 +1452,12 @@ create policy "schools_select" on public.schools
   for select
   to authenticated
   using (((status = 'approved'::text) OR (created_by = ( SELECT auth.uid() AS uid))));
+
+create policy "teacher_requests_select_own" on public.teacher_requests
+  as permissive
+  for select
+  to authenticated
+  using ((user_id = ( SELECT auth.uid() AS uid)));
 
 create policy "topic_mastery_select_own" on public.topic_mastery
   as permissive

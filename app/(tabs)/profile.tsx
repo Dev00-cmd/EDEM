@@ -292,6 +292,31 @@ export default function ProfileScreen() {
         </Section>
       )}
 
+      {/* ── Professeur ──────────────────────────────────────── */}
+      {/* Sans point d'entrée, la demande de rôle serait
+          injoignable : la RPC existerait sans que personne ne
+          puisse l'appeler. */}
+      <Section label={t('teacher.title')}>
+        <Card onPress={() => router.push('/teacher-request')}>
+          <View style={styles.settingLeft}>
+            <Icon
+              name={profile.role === 'prof' ? 'check-circle' : 'user'}
+              size={18}
+              color={profile.role === 'prof' ? colors.accent : colors.textSoft}
+            />
+            <View style={{ flex: 1 }}>
+              <Text style={[type.bodyMedium, { color: colors.text }]}>
+                {profile.role === 'prof' ? t('teacher.alreadyTitle') : t('teacher.cta')}
+              </Text>
+              <Text style={[type.caption, { color: colors.textFaint, marginTop: 2 }]}>
+                {profile.role === 'prof' ? t('teacher.alreadySub') : t('teacher.ctaSub')}
+              </Text>
+            </View>
+            <Icon name="chevron-right" size={16} color={colors.textFaint} />
+          </View>
+        </Card>
+      </Section>
+
       {/* ── Réglages ────────────────────────────────────────── */}
       <Section label={t('profile.settings')}>
         <Card flush>

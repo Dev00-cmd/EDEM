@@ -165,6 +165,54 @@ export const fr = {
     cardOpen: 'Continuer',
   },
 
+  teacher: {
+    title: 'Je suis professeur',
+    intro:
+      "Un compte professeur reste ton compte d'élève : tu gardes ton profil, tes XP et M. Thomas. Le rôle ajoute le droit d'ouvrir une classe.",
+
+    whyTitle: 'POURQUOI ON VÉRIFIE',
+    whyBody:
+      "Une classe met un adulte en contact avec des élèves mineurs. On lit chaque demande à la main, et on rappelle avant d'accorder le rôle. Ça prend quelques jours.",
+
+    nameLabel: 'Ton nom complet',
+    namePlaceholder: 'Prénom et nom',
+    nameNeeded: 'Écris ton nom complet',
+
+    contactLabel: 'Comment te joindre pour vérifier',
+    contactPlaceholder: "Numéro professionnel, mail de l'école, ou un référent",
+    contactWhy:
+      "C'est la seule coordonnée que l'application demande, et elle ne sert qu'à cette vérification. Elle n'est jamais montrée aux élèves.",
+    contactNeeded: 'Donne un moyen de te joindre',
+
+    subjectsLabel: 'Les matières que tu enseignes',
+    subjectsNeeded: 'Choisis au moins une matière',
+
+    schoolLabel: 'Ton école',
+    schoolFromProfile: "Reprise de ton profil. Tu peux la changer dans « Personnalisation ».",
+    schoolMissing: "Choisir mon école dans mon profil",
+
+    messageLabel: 'Un mot pour nous (facultatif)',
+    messagePlaceholder: 'Ta classe, ton niveau, ce que tu veux faire avec EDEM…',
+
+    send: 'Envoyer la demande',
+    failed: "La demande n'est pas partie. Réessaie plus tard.",
+
+    pendingTitle: 'Demande envoyée',
+    pendingSub:
+      "Elle est lue par un humain, pas par un robot. On te recontacte au moyen que tu as donné. En attendant, tu continues à utiliser EDEM normalement.",
+
+    rejectedTitle: "Ta demande n'a pas été retenue",
+    rejectedSub: 'Tu peux la renvoyer avec des informations plus précises.',
+
+    alreadyTitle: 'Tu es professeur',
+    alreadySub:
+      "Tu peux ouvrir une classe et y inviter tes élèves. Ton compte d'élève, lui, n'a pas changé.",
+
+    cta: 'Je suis professeur',
+    ctaSub: 'Ouvrir une classe pour mes élèves',
+  },
+
+
 
   home: {
     morning: 'Bonjour',
