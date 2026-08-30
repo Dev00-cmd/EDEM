@@ -1,21 +1,27 @@
 // ═══════════════════════════════════════════════════════════════
 //  NIVEAUX SCOLAIRES HAÏTIENS (système MENFP)
-//  Les noms sont identiques en français et en créole à Haïti.
+//
+//  Ce fichier ne contient plus la liste : elle vient du
+//  référentiel, lui-même recopié de la base. Une seule source de
+//  vérité, sinon les deux divergent au premier oubli.
+//
+//  UNE CORRECTION AU PASSAGE. La 6e AF était marquée comme année
+//  d'examen d'État. Elle ne l'est plus : les examens de 6e année
+//  fondamentale ont été supprimés à la rentrée 2014-2015. Les
+//  examens d'État d'aujourd'hui sont la 9e AF et le NS4 (plus le
+//  bac traditionnel, pour les élèves encore en Philo).
+//
+//  L'erreur n'était heureusement affichée nulle part —
+//  EXAM_LEVELS n'était utilisé par aucun écran. C'était un piège
+//  posé pour plus tard, pas un bug visible.
 // ═══════════════════════════════════════════════════════════════
 
-export const LEVELS: string[] = [
-  '4e AF',
-  '5e AF',
-  '6e AF', // ← examen d'État (Certificat)
-  '7e AF',
-  '8e AF',
-  '9e AF', // ← examen d'État
-  'NS I',
-  'NS II',
-  'NS III',
-  'NS IV',
-  'Philo', // ← Baccalauréat !
-  'Autre',
-];
+import { SCHOOL_LEVELS } from './haiti';
 
-export const EXAM_LEVELS = new Set(['6e AF', '9e AF', 'Philo']);
+/** Les niveaux, dans l'ordre de la scolarité. */
+export const LEVELS: string[] = SCHOOL_LEVELS.map((l) => l.id);
+
+/** Les années qui se terminent par un examen d'État. */
+export const EXAM_LEVELS: Set<string> = new Set(
+  SCHOOL_LEVELS.filter((l) => l.hasExam).map((l) => l.id),
+);

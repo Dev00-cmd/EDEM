@@ -61,6 +61,32 @@ export type Database = {
           },
         ]
       }
+      communes: {
+        Row: {
+          departement_id: string
+          id: string
+          name: string
+        }
+        Insert: {
+          departement_id: string
+          id: string
+          name: string
+        }
+        Update: {
+          departement_id?: string
+          id?: string
+          name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "communes_departement_id_fkey"
+            columns: ["departement_id"]
+            isOneToOne: false
+            referencedRelation: "departements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       conversations: {
         Row: {
           created_at: string
@@ -112,10 +138,29 @@ export type Database = {
         }
         Relationships: []
       }
+      departements: {
+        Row: {
+          id: string
+          name: string
+          rank: number
+        }
+        Insert: {
+          id: string
+          name: string
+          rank: number
+        }
+        Update: {
+          id?: string
+          name?: string
+          rank?: number
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           board_alias: string | null
           board_visible: boolean
+          commune_id: string | null
           created_at: string
           favorites: string[]
           goal: string
@@ -124,12 +169,17 @@ export type Database = {
           level: string
           name: string
           onboarded: boolean
+          profile_completed_at: string | null
+          role: string
+          school_id: string | null
+          section: string | null
           theme: string
           updated_at: string
         }
         Insert: {
           board_alias?: string | null
           board_visible?: boolean
+          commune_id?: string | null
           created_at?: string
           favorites?: string[]
           goal?: string
@@ -138,12 +188,17 @@ export type Database = {
           level?: string
           name?: string
           onboarded?: boolean
+          profile_completed_at?: string | null
+          role?: string
+          school_id?: string | null
+          section?: string | null
           theme?: string
           updated_at?: string
         }
         Update: {
           board_alias?: string | null
           board_visible?: boolean
+          commune_id?: string | null
           created_at?: string
           favorites?: string[]
           goal?: string
@@ -152,10 +207,36 @@ export type Database = {
           level?: string
           name?: string
           onboarded?: boolean
+          profile_completed_at?: string | null
+          role?: string
+          school_id?: string | null
+          section?: string | null
           theme?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_commune_id_fkey"
+            columns: ["commune_id"]
+            isOneToOne: false
+            referencedRelation: "communes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profiles_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profiles_section_fkey"
+            columns: ["section"]
+            isOneToOne: false
+            referencedRelation: "school_sections"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       progress: {
         Row: {
@@ -310,8 +391,98 @@ export type Database = {
         }
         Relationships: []
       }
+      school_levels: {
+        Row: {
+          cycle: string
+          has_exam: boolean
+          id: string
+          label_fr: string
+          label_ht: string
+          needs_section: boolean
+          rank: number
+        }
+        Insert: {
+          cycle: string
+          has_exam?: boolean
+          id: string
+          label_fr: string
+          label_ht: string
+          needs_section?: boolean
+          rank: number
+        }
+        Update: {
+          cycle?: string
+          has_exam?: boolean
+          id?: string
+          label_fr?: string
+          label_ht?: string
+          needs_section?: boolean
+          rank?: number
+        }
+        Relationships: []
+      }
+      school_sections: {
+        Row: {
+          id: string
+          label_fr: string
+          label_ht: string
+          rank: number
+        }
+        Insert: {
+          id: string
+          label_fr: string
+          label_ht: string
+          rank: number
+        }
+        Update: {
+          id?: string
+          label_fr?: string
+          label_ht?: string
+          rank?: number
+        }
+        Relationships: []
+      }
+      schools: {
+        Row: {
+          commune_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+          status: string
+          type: string
+        }
+        Insert: {
+          commune_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name: string
+          status?: string
+          type?: string
+        }
+        Update: {
+          commune_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
+          status?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "schools_commune_id_fkey"
+            columns: ["commune_id"]
+            isOneToOne: false
+            referencedRelation: "communes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       topic_mastery: {
         Row: {
+          last_study_on: string | null
           mastery: number
           subject_id: string
           topic_id: string
@@ -319,6 +490,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          last_study_on?: string | null
           mastery?: number
           subject_id: string
           topic_id: string
@@ -326,6 +498,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          last_study_on?: string | null
           mastery?: number
           subject_id?: string
           topic_id?: string
@@ -401,6 +574,11 @@ export type Database = {
           xp: number
         }[]
       }
+      norm_text: { Args: { p_text: string }; Returns: string }
+      propose_school: {
+        Args: { p_commune_id: string; p_name: string; p_type?: string }
+        Returns: Json
+      }
       purge_seen_questions: { Args: { p_keep?: number }; Returns: number }
       quiz_history: {
         Args: { p_limit?: number }
@@ -420,6 +598,18 @@ export type Database = {
         }[]
       }
       reset_progress: { Args: never; Returns: undefined }
+      search_schools: {
+        Args: { p_commune_id?: string; p_query?: string }
+        Returns: {
+          commune: string
+          commune_id: string
+          departement: string
+          id: string
+          name: string
+          status: string
+          type: string
+        }[]
+      }
       seen_topics: {
         Args: { p_subject_id: string }
         Returns: {
@@ -428,7 +618,7 @@ export type Database = {
         }[]
       }
       study_topic: {
-        Args: { p_subject_id: string; p_topic_id: string; p_xp?: number }
+        Args: { p_subject_id: string; p_topic_id: string }
         Returns: {
           answered: number
           correct: number

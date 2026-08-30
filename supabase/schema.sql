@@ -26,6 +26,12 @@ create table if not exists public.chat_messages (
   conversation_id uuid
 );
 
+create table if not exists public.communes (
+  id text not null,
+  departement_id text not null,
+  name text not null
+);
+
 create table if not exists public.conversations (
   id uuid default gen_random_uuid() not null,
   user_id uuid not null,
@@ -43,6 +49,12 @@ create table if not exists public.daily_activity (
   quizzes_done integer default 0 not null
 );
 
+create table if not exists public.departements (
+  id text not null,
+  name text not null,
+  rank integer not null
+);
+
 create table if not exists public.profiles (
   id uuid not null,
   name text default ''::text not null,
@@ -55,7 +67,12 @@ create table if not exists public.profiles (
   created_at timestamp with time zone default now() not null,
   updated_at timestamp with time zone default now() not null,
   board_alias text,
-  board_visible boolean default true not null
+  board_visible boolean default true not null,
+  school_id uuid,
+  section text,
+  commune_id text,
+  role text default 'eleve'::text not null,
+  profile_completed_at timestamp with time zone
 );
 
 create table if not exists public.progress (
@@ -109,6 +126,33 @@ create table if not exists public.schema_migrations (
   applied_at timestamp with time zone default now() not null
 );
 
+create table if not exists public.school_levels (
+  id text not null,
+  label_fr text not null,
+  label_ht text not null,
+  cycle text not null,
+  rank integer not null,
+  has_exam boolean default false not null,
+  needs_section boolean default false not null
+);
+
+create table if not exists public.school_sections (
+  id text not null,
+  label_fr text not null,
+  label_ht text not null,
+  rank integer not null
+);
+
+create table if not exists public.schools (
+  id uuid default gen_random_uuid() not null,
+  name text not null,
+  commune_id text not null,
+  type text default 'autre'::text not null,
+  status text default 'pending'::text not null,
+  created_by uuid,
+  created_at timestamp with time zone default now() not null
+);
+
 create table if not exists public.topic_mastery (
   user_id uuid not null,
   subject_id text not null,
@@ -131,6 +175,8 @@ alter table chat_messages add constraint chat_messages_conversation_id_fkey FORE
 alter table chat_messages add constraint chat_messages_pkey PRIMARY KEY (id);
 alter table chat_messages add constraint chat_messages_role_check CHECK ((role = ANY (ARRAY['user'::text, 'tutor'::text])));
 alter table chat_messages add constraint chat_messages_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+alter table communes add constraint communes_departement_id_fkey FOREIGN KEY (departement_id) REFERENCES departements(id);
+alter table communes add constraint communes_pkey PRIMARY KEY (id);
 alter table conversations add constraint conversations_pkey PRIMARY KEY (id);
 alter table conversations add constraint conversations_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
 alter table daily_activity add constraint daily_activity_pkey PRIMARY KEY (user_id, day);
@@ -138,10 +184,15 @@ alter table daily_activity add constraint daily_activity_quizzes_done_check CHEC
 alter table daily_activity add constraint daily_activity_topics_studied_check CHECK ((topics_studied >= 0));
 alter table daily_activity add constraint daily_activity_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
 alter table daily_activity add constraint daily_activity_xp_gained_check CHECK ((xp_gained >= 0));
+alter table departements add constraint departements_pkey PRIMARY KEY (id);
 alter table profiles add constraint profiles_board_alias_len CHECK (((board_alias IS NULL) OR ((char_length(btrim(board_alias)) >= 2) AND (char_length(btrim(board_alias)) <= 24))));
+alter table profiles add constraint profiles_commune_id_fkey FOREIGN KEY (commune_id) REFERENCES communes(id);
 alter table profiles add constraint profiles_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id) ON DELETE CASCADE;
 alter table profiles add constraint profiles_lang_check CHECK ((lang = ANY (ARRAY['fr'::text, 'ht'::text])));
 alter table profiles add constraint profiles_pkey PRIMARY KEY (id);
+alter table profiles add constraint profiles_role_check CHECK ((role = ANY (ARRAY['eleve'::text, 'prof'::text])));
+alter table profiles add constraint profiles_school_id_fkey FOREIGN KEY (school_id) REFERENCES schools(id) ON DELETE SET NULL;
+alter table profiles add constraint profiles_section_fkey FOREIGN KEY (section) REFERENCES school_sections(id);
 alter table profiles add constraint profiles_theme_check CHECK ((theme = ANY (ARRAY['system'::text, 'light'::text, 'dark'::text])));
 alter table progress add constraint progress_answered_check CHECK ((answered >= 0));
 alter table progress add constraint progress_correct_check CHECK ((correct >= 0));
@@ -162,6 +213,15 @@ alter table quiz_seen_questions add constraint quiz_seen_questions_user_id_fkey 
 alter table quiz_sessions add constraint quiz_sessions_pkey PRIMARY KEY (id);
 alter table quiz_sessions add constraint quiz_sessions_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
 alter table schema_migrations add constraint schema_migrations_pkey PRIMARY KEY (name);
+alter table school_levels add constraint school_levels_cycle_check CHECK ((cycle = ANY (ARRAY['fondamental'::text, 'secondaire'::text, 'autre'::text])));
+alter table school_levels add constraint school_levels_pkey PRIMARY KEY (id);
+alter table school_sections add constraint school_sections_pkey PRIMARY KEY (id);
+alter table schools add constraint schools_commune_id_fkey FOREIGN KEY (commune_id) REFERENCES communes(id);
+alter table schools add constraint schools_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id) ON DELETE SET NULL;
+alter table schools add constraint schools_name_check CHECK (((char_length(btrim(name)) >= 3) AND (char_length(btrim(name)) <= 120)));
+alter table schools add constraint schools_pkey PRIMARY KEY (id);
+alter table schools add constraint schools_status_check CHECK ((status = ANY (ARRAY['approved'::text, 'pending'::text, 'rejected'::text])));
+alter table schools add constraint schools_type_check CHECK ((type = ANY (ARRAY['publique'::text, 'privee'::text, 'congreganiste'::text, 'autre'::text])));
 alter table topic_mastery add constraint topic_mastery_mastery_check CHECK (((mastery >= 0) AND (mastery <= 100)));
 alter table topic_mastery add constraint topic_mastery_pkey PRIMARY KEY (user_id, subject_id, topic_id);
 alter table topic_mastery add constraint topic_mastery_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
@@ -172,14 +232,19 @@ alter table usage_counters add constraint usage_counters_user_id_fkey FOREIGN KE
 
 CREATE INDEX chat_messages_conversation_idx ON public.chat_messages USING btree (conversation_id, created_at);
 CREATE INDEX chat_messages_user_thread_idx ON public.chat_messages USING btree (user_id, thread, created_at);
+CREATE INDEX communes_departement_idx ON public.communes USING btree (departement_id, name);
 CREATE INDEX conversations_user_recent_idx ON public.conversations USING btree (user_id, updated_at DESC);
 CREATE INDEX daily_activity_user_day_idx ON public.daily_activity USING btree (user_id, day DESC);
+CREATE INDEX profiles_school_idx ON public.profiles USING btree (school_id) WHERE (school_id IS NOT NULL);
 CREATE INDEX progress_xp_rank_idx ON public.progress USING btree (xp DESC, updated_at) WHERE (xp > 0);
 CREATE INDEX quiz_results_user_created_idx ON public.quiz_results USING btree (user_id, created_at DESC);
 CREATE UNIQUE INDEX quiz_seen_unique_idx ON public.quiz_seen_questions USING btree (user_id, subject_id, qhash);
 CREATE INDEX quiz_seen_user_subject_idx ON public.quiz_seen_questions USING btree (user_id, subject_id, created_at DESC);
 CREATE INDEX quiz_sessions_history_idx ON public.quiz_sessions USING btree (user_id, graded_at DESC) WHERE (graded_at IS NOT NULL);
 CREATE INDEX quiz_sessions_user_created_idx ON public.quiz_sessions USING btree (user_id, created_at DESC);
+CREATE INDEX schools_commune_idx ON public.schools USING btree (commune_id, status);
+CREATE INDEX schools_name_trgm ON public.schools USING gin (norm_text(name) gin_trgm_ops);
+CREATE UNIQUE INDEX schools_unique_in_commune ON public.schools USING btree (commune_id, norm_text(name));
 CREATE INDEX topic_mastery_user_subject_idx ON public.topic_mastery USING btree (user_id, subject_id);
 
 -- ── Fonctions ────────────────────────────────────────────────
@@ -445,6 +510,22 @@ end;
 $function$
 ;
 
+CREATE OR REPLACE FUNCTION public.guard_profile_role()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+begin
+  if new.role is distinct from old.role
+     and current_user not in ('postgres', 'service_role') then
+    raise exception 'le role ne se modifie pas depuis le client';
+  end if;
+  return new;
+end;
+$function$
+;
+
 CREATE OR REPLACE FUNCTION public.handle_new_user()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -525,6 +606,90 @@ AS $function$
     coalesce((select r from classement where user_id = (select auth.uid())), 0),
     (select count(*)::integer from classement),
     coalesce((select xp from classement where user_id = (select auth.uid())), 0);
+$function$
+;
+
+CREATE OR REPLACE FUNCTION public.norm_text(p_text text)
+ RETURNS text
+ LANGUAGE sql
+ IMMUTABLE PARALLEL SAFE
+ SET search_path TO ''
+AS $function$
+  select lower(
+    extensions.unaccent('extensions.unaccent'::regdictionary, coalesce(p_text, ''))
+  )
+$function$
+;
+
+CREATE OR REPLACE FUNCTION public.propose_school(p_name text, p_commune_id text, p_type text DEFAULT 'autre'::text)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare
+  uid     uuid  := (select auth.uid());
+  v_name  text  := btrim(coalesce(p_name, ''));
+  v_type  text  := coalesce(nullif(btrim(p_type), ''), 'autre');
+  v_quota jsonb;
+  v_id    uuid;
+  v_neuve boolean := false;
+begin
+  if uid is null then
+    raise exception 'not authenticated';
+  end if;
+  if char_length(v_name) < 3 or char_length(v_name) > 120 then
+    raise exception 'nom d''ecole invalide';
+  end if;
+  if v_type not in ('publique','privee','congreganiste','autre') then
+    v_type := 'autre';
+  end if;
+  if not exists (select 1 from public.communes c where c.id = p_commune_id) then
+    raise exception 'commune inconnue';
+  end if;
+
+  -- Si l'école existe déjà dans cette commune, on la RETOURNE au
+  -- lieu d'en créer une deuxième. L'élève qui ne l'a pas trouvée
+  -- avait sans doute écrit « lycee petion » au lieu du nom complet.
+  -- C'est exactement le doublon qu'on cherche à empêcher.
+  select s.id into v_id
+    from public.schools s
+   where s.commune_id = p_commune_id
+     and public.norm_text(s.name) = public.norm_text(v_name);
+
+  if v_id is null then
+    -- Trois propositions par jour : de quoi corriger une faute de
+    -- frappe, pas de quoi remplir la table de bêtises. On réutilise
+    -- usage_counters plutôt que d'inventer un compteur de plus.
+    v_quota := public.bump_usage(uid, 'school_proposal', 3);
+    if not (v_quota ->> 'allowed')::boolean then
+      raise exception 'trop de propositions aujourd''hui, reessaie demain';
+    end if;
+
+    insert into public.schools (name, commune_id, type, created_by)
+    values (v_name, p_commune_id, v_type, uid)
+    returning schools.id into v_id;
+
+    v_neuve := true;
+  end if;
+
+  return (
+    select jsonb_build_object(
+      'id',          s.id,
+      'name',        s.name,
+      'type',        s.type,
+      'status',      s.status,
+      'commune_id',  s.commune_id,
+      'commune',     c.name,
+      'departement', d.name,
+      'created',     v_neuve
+    )
+    from public.schools s
+    join public.communes c     on c.id = s.commune_id
+    join public.departements d on d.id = c.departement_id
+   where s.id = v_id
+  );
+end;
 $function$
 ;
 
@@ -613,6 +778,29 @@ begin
          answered = 0, correct = 0, studied_count = 0, updated_at = now()
    where user_id = uid;
 end;
+$function$
+;
+
+CREATE OR REPLACE FUNCTION public.search_schools(p_query text DEFAULT NULL::text, p_commune_id text DEFAULT NULL::text)
+ RETURNS TABLE(id uuid, name text, type text, status text, commune_id text, commune text, departement text)
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+  select s.id, s.name, s.type, s.status, s.commune_id, c.name, d.name
+    from public.schools s
+    join public.communes c     on c.id = s.commune_id
+    join public.departements d on d.id = c.departement_id
+   where (s.status = 'approved' or s.created_by = (select auth.uid()))
+     and (p_commune_id is null or s.commune_id = p_commune_id)
+     and public.norm_text(s.name) like '%' || public.norm_text(p_query) || '%'
+   order by
+     -- Ce qui COMMENCE par la recherche remonte en premier :
+     -- « petion » doit donner le lycée avant « Sainte-Pétionville ».
+     case when public.norm_text(s.name) like public.norm_text(p_query) || '%'
+          then 0 else 1 end,
+     s.name
+   limit 20;
 $function$
 ;
 
@@ -789,14 +977,19 @@ $function$
 -- ── Row Level Security ───────────────────────────────────────
 
 alter table public.chat_messages enable row level security;
+alter table public.communes enable row level security;
 alter table public.conversations enable row level security;
 alter table public.daily_activity enable row level security;
+alter table public.departements enable row level security;
 alter table public.profiles enable row level security;
 alter table public.progress enable row level security;
 alter table public.quiz_results enable row level security;
 alter table public.quiz_seen_questions enable row level security;
 alter table public.quiz_sessions enable row level security;
 alter table public.schema_migrations enable row level security;
+alter table public.school_levels enable row level security;
+alter table public.school_sections enable row level security;
+alter table public.schools enable row level security;
 alter table public.topic_mastery enable row level security;
 alter table public.usage_counters enable row level security;
 
@@ -817,6 +1010,12 @@ create policy "chat_messages_select_own" on public.chat_messages
   for select
   to authenticated
   using ((( SELECT auth.uid() AS uid) = user_id));
+
+create policy "communes_select" on public.communes
+  as permissive
+  for select
+  to authenticated
+  using (true);
 
 create policy "conversations_delete_own" on public.conversations
   as permissive
@@ -848,6 +1047,12 @@ create policy "daily_activity_select_own" on public.daily_activity
   for select
   to authenticated
   using ((( SELECT auth.uid() AS uid) = user_id));
+
+create policy "departements_select" on public.departements
+  as permissive
+  for select
+  to authenticated
+  using (true);
 
 create policy "profiles_delete_own" on public.profiles
   as permissive
@@ -910,6 +1115,24 @@ create policy "quiz_sessions_select_graded_own" on public.quiz_sessions
   to authenticated
   using (((user_id = ( SELECT auth.uid() AS uid)) AND (graded_at IS NOT NULL)));
 
+create policy "school_levels_select" on public.school_levels
+  as permissive
+  for select
+  to authenticated
+  using (true);
+
+create policy "school_sections_select" on public.school_sections
+  as permissive
+  for select
+  to authenticated
+  using (true);
+
+create policy "schools_select" on public.schools
+  as permissive
+  for select
+  to authenticated
+  using (((status = 'approved'::text) OR (created_by = ( SELECT auth.uid() AS uid))));
+
 create policy "topic_mastery_select_own" on public.topic_mastery
   as permissive
   for select
@@ -925,6 +1148,7 @@ create policy "usage_counters_select_own" on public.usage_counters
 -- ── Triggers ─────────────────────────────────────────────────
 
 CREATE TRIGGER chat_messages_touch_conversation AFTER INSERT ON public.chat_messages FOR EACH ROW EXECUTE FUNCTION touch_conversation();
+CREATE TRIGGER profiles_guard_role BEFORE UPDATE ON public.profiles FOR EACH ROW EXECUTE FUNCTION guard_profile_role();
 CREATE TRIGGER quiz_seen_skip_duplicates BEFORE INSERT ON public.quiz_seen_questions FOR EACH ROW EXECUTE FUNCTION skip_duplicate_seen_question();
 CREATE TRIGGER on_auth_user_auto_confirm BEFORE INSERT ON auth.users FOR EACH ROW EXECUTE FUNCTION auto_confirm_email();
 CREATE TRIGGER on_auth_user_created AFTER INSERT ON auth.users FOR EACH ROW EXECUTE FUNCTION handle_new_user();
