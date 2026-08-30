@@ -61,6 +61,98 @@ export type Database = {
           },
         ]
       }
+      classroom_members: {
+        Row: {
+          classroom_id: string
+          created_at: string
+          joined_at: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          classroom_id: string
+          created_at?: string
+          joined_at?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          classroom_id?: string
+          created_at?: string
+          joined_at?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "classroom_members_classroom_id_fkey"
+            columns: ["classroom_id"]
+            isOneToOne: false
+            referencedRelation: "classrooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      classrooms: {
+        Row: {
+          archived_at: string | null
+          created_at: string
+          current_focus: string | null
+          focus_note: string | null
+          grade_level: string
+          id: string
+          is_open: boolean
+          join_code: string
+          name: string
+          school_id: string
+          subject_id: string
+          teacher_id: string
+        }
+        Insert: {
+          archived_at?: string | null
+          created_at?: string
+          current_focus?: string | null
+          focus_note?: string | null
+          grade_level: string
+          id?: string
+          is_open?: boolean
+          join_code: string
+          name: string
+          school_id: string
+          subject_id: string
+          teacher_id: string
+        }
+        Update: {
+          archived_at?: string | null
+          created_at?: string
+          current_focus?: string | null
+          focus_note?: string | null
+          grade_level?: string
+          id?: string
+          is_open?: boolean
+          join_code?: string
+          name?: string
+          school_id?: string
+          subject_id?: string
+          teacher_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "classrooms_grade_level_fkey"
+            columns: ["grade_level"]
+            isOneToOne: false
+            referencedRelation: "school_levels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "classrooms_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       communes: {
         Row: {
           departement_id: string
@@ -638,13 +730,29 @@ export type Database = {
         Args: { p_difficulty?: string; p_results: Json; p_subject_id: string }
         Returns: Json
       }
+      approve_member: {
+        Args: { p_classroom_id: string; p_user_id: string }
+        Returns: Json
+      }
       approve_teacher_role: {
         Args: { p_note?: string; p_user_id: string }
         Returns: Json
       }
+      archive_classroom: { Args: { p_classroom_id: string }; Returns: Json }
       bump_usage: {
         Args: { p_kind: string; p_limit: number; p_user_id: string }
         Returns: Json
+      }
+      classroom_roster: {
+        Args: { p_classroom_id: string }
+        Returns: {
+          affiche: string
+          is_teacher: boolean
+          joined_at: string
+          status: string
+          user_id: string
+          vrai_nom: string
+        }[]
       }
       conversation_list: {
         Args: { p_limit?: number }
@@ -657,10 +765,29 @@ export type Database = {
           updated_at: string
         }[]
       }
+      create_classroom: {
+        Args: {
+          p_grade_level: string
+          p_name: string
+          p_school_id: string
+          p_subject_id: string
+        }
+        Returns: Json
+      }
+      generate_join_code: { Args: never; Returns: string }
       grade_quiz: {
         Args: { p_picked: Json; p_session_id: string }
         Returns: Json
       }
+      is_classroom_member: {
+        Args: { p_classroom_id: string }
+        Returns: boolean
+      }
+      is_classroom_teacher: {
+        Args: { p_classroom_id: string }
+        Returns: boolean
+      }
+      join_classroom: { Args: { p_code: string }; Returns: Json }
       leaderboard: {
         Args: { p_limit?: number }
         Returns: {
@@ -669,6 +796,25 @@ export type Database = {
           name: string
           rank: number
           xp: number
+        }[]
+      }
+      my_classrooms: {
+        Args: never
+        Returns: {
+          current_focus: string
+          focus_note: string
+          grade_level: string
+          id: string
+          is_open: boolean
+          is_teacher: boolean
+          join_code: string
+          members: number
+          my_status: string
+          name: string
+          pending: number
+          school: string
+          subject_id: string
+          teacher: string
         }[]
       }
       my_rank: {
@@ -707,6 +853,10 @@ export type Database = {
         Args: { p_reason?: string; p_user_id: string }
         Returns: Json
       }
+      remove_member: {
+        Args: { p_classroom_id: string; p_user_id: string }
+        Returns: Json
+      }
       request_teacher_role: {
         Args: {
           p_contact: string
@@ -722,6 +872,7 @@ export type Database = {
         Args: { p_reason?: string; p_user_id: string }
         Returns: Json
       }
+      rotate_join_code: { Args: { p_classroom_id: string }; Returns: Json }
       search_schools: {
         Args: { p_commune_id?: string; p_query?: string }
         Returns: {
@@ -740,6 +891,14 @@ export type Database = {
           nb: number
           topic: string
         }[]
+      }
+      set_classroom_focus: {
+        Args: { p_classroom_id: string; p_focus: string; p_note?: string }
+        Returns: Json
+      }
+      set_classroom_open: {
+        Args: { p_classroom_id: string; p_open: boolean }
+        Returns: Json
       }
       study_topic: {
         Args: { p_subject_id: string; p_topic_id: string }

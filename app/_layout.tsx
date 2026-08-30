@@ -82,6 +82,9 @@ function Navigator() {
         <Stack.Screen name="onboarding" />
         <Stack.Screen name="tune-profile" />
         <Stack.Screen name="teacher-request" />
+        <Stack.Screen name="classes" />
+        <Stack.Screen name="classroom/new" />
+        <Stack.Screen name="classroom/[id]" />
         <Stack.Screen name="(tabs)" />
       </Stack>
 

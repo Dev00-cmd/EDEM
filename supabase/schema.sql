@@ -26,6 +26,29 @@ create table if not exists public.chat_messages (
   conversation_id uuid
 );
 
+create table if not exists public.classroom_members (
+  classroom_id uuid not null,
+  user_id uuid not null,
+  status text default 'pending'::text not null,
+  joined_at timestamp with time zone,
+  created_at timestamp with time zone default now() not null
+);
+
+create table if not exists public.classrooms (
+  id uuid default gen_random_uuid() not null,
+  school_id uuid not null,
+  teacher_id uuid not null,
+  name text not null,
+  subject_id text not null,
+  grade_level text not null,
+  join_code text not null,
+  is_open boolean default true not null,
+  current_focus text,
+  focus_note text,
+  created_at timestamp with time zone default now() not null,
+  archived_at timestamp with time zone
+);
+
 create table if not exists public.communes (
   id text not null,
   departement_id text not null,
@@ -206,6 +229,20 @@ alter table chat_messages add constraint chat_messages_conversation_id_fkey FORE
 alter table chat_messages add constraint chat_messages_pkey PRIMARY KEY (id);
 alter table chat_messages add constraint chat_messages_role_check CHECK ((role = ANY (ARRAY['user'::text, 'tutor'::text])));
 alter table chat_messages add constraint chat_messages_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+alter table classroom_members add constraint classroom_members_classroom_id_fkey FOREIGN KEY (classroom_id) REFERENCES classrooms(id) ON DELETE CASCADE;
+alter table classroom_members add constraint classroom_members_pkey PRIMARY KEY (classroom_id, user_id);
+alter table classroom_members add constraint classroom_members_status_check CHECK ((status = ANY (ARRAY['pending'::text, 'active'::text, 'removed'::text])));
+alter table classroom_members add constraint classroom_members_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+alter table classrooms add constraint classrooms_current_focus_check CHECK (((current_focus IS NULL) OR (char_length(current_focus) <= 200)));
+alter table classrooms add constraint classrooms_focus_note_check CHECK (((focus_note IS NULL) OR (char_length(focus_note) <= 500)));
+alter table classrooms add constraint classrooms_grade_level_fkey FOREIGN KEY (grade_level) REFERENCES school_levels(id);
+alter table classrooms add constraint classrooms_join_code_check CHECK ((join_code ~ '^[2-9A-HJ-KM-NP-Z]{6}$'::text));
+alter table classrooms add constraint classrooms_join_code_key UNIQUE (join_code);
+alter table classrooms add constraint classrooms_name_check CHECK (((char_length(btrim(name)) >= 2) AND (char_length(btrim(name)) <= 80)));
+alter table classrooms add constraint classrooms_pkey PRIMARY KEY (id);
+alter table classrooms add constraint classrooms_school_id_fkey FOREIGN KEY (school_id) REFERENCES schools(id);
+alter table classrooms add constraint classrooms_subject_id_check CHECK (((char_length(subject_id) >= 1) AND (char_length(subject_id) <= 40)));
+alter table classrooms add constraint classrooms_teacher_id_fkey FOREIGN KEY (teacher_id) REFERENCES auth.users(id) ON DELETE CASCADE;
 alter table communes add constraint communes_departement_id_fkey FOREIGN KEY (departement_id) REFERENCES departements(id);
 alter table communes add constraint communes_pkey PRIMARY KEY (id);
 alter table conversations add constraint conversations_pkey PRIMARY KEY (id);
@@ -280,6 +317,10 @@ alter table usage_counters add constraint usage_counters_user_id_fkey FOREIGN KE
 
 CREATE INDEX chat_messages_conversation_idx ON public.chat_messages USING btree (conversation_id, created_at);
 CREATE INDEX chat_messages_user_thread_idx ON public.chat_messages USING btree (user_id, thread, created_at);
+CREATE INDEX classroom_members_actifs_idx ON public.classroom_members USING btree (classroom_id) WHERE (status = 'active'::text);
+CREATE INDEX classroom_members_user_idx ON public.classroom_members USING btree (user_id, status);
+CREATE INDEX classrooms_school_idx ON public.classrooms USING btree (school_id);
+CREATE INDEX classrooms_teacher_idx ON public.classrooms USING btree (teacher_id) WHERE (archived_at IS NULL);
 CREATE INDEX communes_departement_idx ON public.communes USING btree (departement_id, name);
 CREATE INDEX communes_pcode_idx ON public.communes USING btree (pcode);
 CREATE UNIQUE INDEX communes_pcode_officiel_idx ON public.communes USING btree (pcode) WHERE official;
@@ -417,6 +458,36 @@ end;
 $function$
 ;
 
+CREATE OR REPLACE FUNCTION public.approve_member(p_classroom_id uuid, p_user_id uuid)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare v_actifs integer;
+begin
+  if not public.is_classroom_teacher(p_classroom_id) then
+    raise exception 'reserve au professeur de la classe';
+  end if;
+
+  select count(*) into v_actifs from public.classroom_members
+   where classroom_id = p_classroom_id and status = 'active';
+  if v_actifs >= 60 then
+    raise exception 'cette classe est complete';
+  end if;
+
+  update public.classroom_members
+     set status = 'active', joined_at = now()
+   where classroom_id = p_classroom_id and user_id = p_user_id and status = 'pending';
+  if not found then
+    raise exception 'aucune demande en attente';
+  end if;
+
+  return jsonb_build_object('user_id', p_user_id, 'status', 'active');
+end;
+$function$
+;
+
 CREATE OR REPLACE FUNCTION public.approve_teacher_role(p_user_id uuid, p_note text DEFAULT NULL::text)
  RETURNS jsonb
  LANGUAGE plpgsql
@@ -447,6 +518,24 @@ begin
   values (p_user_id, 'approved', (select auth.uid()), p_note);
 
   return jsonb_build_object('user_id', p_user_id, 'name', v_nom, 'role', 'prof');
+end;
+$function$
+;
+
+CREATE OR REPLACE FUNCTION public.archive_classroom(p_classroom_id uuid)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+begin
+  if not public.is_classroom_teacher(p_classroom_id) then
+    raise exception 'reserve au professeur de la classe';
+  end if;
+  update public.classrooms
+     set archived_at = now(), is_open = false
+   where id = p_classroom_id and archived_at is null;
+  return jsonb_build_object('classroom_id', p_classroom_id, 'archived', true);
 end;
 $function$
 ;
@@ -490,6 +579,34 @@ end;
 $function$
 ;
 
+CREATE OR REPLACE FUNCTION public.classroom_roster(p_classroom_id uuid)
+ RETURNS TABLE(user_id uuid, affiche text, vrai_nom text, status text, is_teacher boolean, joined_at timestamp with time zone)
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+  with moi as (
+    select public.is_classroom_teacher(p_classroom_id) as prof,
+           public.is_classroom_member(p_classroom_id)  as membre
+  )
+  select
+    m.user_id,
+    coalesce(nullif(btrim(p.board_alias), ''), nullif(btrim(p.name), ''), 'Élève'),
+    case when (select prof from moi) then nullif(btrim(p.name), '') else null end,
+    m.status,
+    false,
+    m.joined_at
+  from public.classroom_members m
+  join public.profiles p on p.id = m.user_id
+  where (select prof or membre from moi)
+    and m.classroom_id = p_classroom_id
+    -- Un élève ne voit que les membres actifs ; le prof voit tout.
+    and (m.status = 'active' or (select prof from moi))
+    and m.status <> 'removed'
+  order by m.status, 2;
+$function$
+;
+
 CREATE OR REPLACE FUNCTION public.conversation_list(p_limit integer DEFAULT 50)
  RETURNS TABLE(id uuid, subject_id text, title text, updated_at timestamp with time zone, message_count integer, preview text)
  LANGUAGE sql
@@ -510,6 +627,82 @@ AS $function$
   where c.user_id = (select auth.uid())
   order by c.updated_at desc
   limit least(greatest(p_limit, 1), 200);
+$function$
+;
+
+CREATE OR REPLACE FUNCTION public.create_classroom(p_school_id uuid, p_name text, p_subject_id text, p_grade_level text)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare
+  uid    uuid := (select auth.uid());
+  v_role text;
+  v_nom  text := btrim(coalesce(p_name, ''));
+  v_code text;
+  v_id   uuid;
+begin
+  if uid is null then
+    raise exception 'not authenticated';
+  end if;
+
+  select role into v_role from public.profiles where id = uid;
+  if v_role is distinct from 'prof' then
+    raise exception 'seul un professeur peut ouvrir une classe';
+  end if;
+  if char_length(v_nom) < 2 then
+    raise exception 'nom de classe trop court';
+  end if;
+  if not exists (select 1 from public.schools where id = p_school_id) then
+    raise exception 'ecole inconnue';
+  end if;
+  if not exists (select 1 from public.school_levels where id = p_grade_level) then
+    raise exception 'niveau inconnu';
+  end if;
+
+  -- Dix classes actives par professeur : un vrai prof en a trois ou
+  -- quatre. Au-delà, c'est un compte qui fabrique des codes.
+  if (select count(*) from public.classrooms
+       where teacher_id = uid and archived_at is null) >= 10 then
+    raise exception 'trop de classes ouvertes';
+  end if;
+
+  v_code := public.generate_join_code();
+
+  insert into public.classrooms (school_id, teacher_id, name, subject_id, grade_level, join_code)
+  values (p_school_id, uid, v_nom, p_subject_id, p_grade_level, v_code)
+  returning classrooms.id into v_id;
+
+  return jsonb_build_object('id', v_id, 'join_code', v_code, 'name', v_nom);
+end;
+$function$
+;
+
+CREATE OR REPLACE FUNCTION public.generate_join_code()
+ RETURNS text
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare
+  c_alphabet constant text := '23456789ABCDEFGHJKMNPQRSTUVWXYZ';
+  v_code     text;
+  v_essais   integer := 0;
+begin
+  loop
+    v_code := '';
+    for i in 1..6 loop
+      v_code := v_code || substr(c_alphabet, 1 + floor(random() * 31)::integer, 1);
+    end loop;
+    exit when not exists (select 1 from public.classrooms where join_code = v_code);
+    v_essais := v_essais + 1;
+    if v_essais > 50 then
+      raise exception 'impossible de generer un code';
+    end if;
+  end loop;
+  return v_code;
+end;
 $function$
 ;
 
@@ -637,6 +830,129 @@ end;
 $function$
 ;
 
+CREATE OR REPLACE FUNCTION public.is_classroom_member(p_classroom_id uuid)
+ RETURNS boolean
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+  select exists (
+    select 1 from public.classroom_members m
+     where m.classroom_id = p_classroom_id
+       and m.user_id = (select auth.uid())
+       and m.status = 'active'
+  );
+$function$
+;
+
+CREATE OR REPLACE FUNCTION public.is_classroom_teacher(p_classroom_id uuid)
+ RETURNS boolean
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+  select exists (
+    select 1 from public.classrooms c
+     where c.id = p_classroom_id
+       and c.teacher_id = (select auth.uid())
+  );
+$function$
+;
+
+CREATE OR REPLACE FUNCTION public.join_classroom(p_code text)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare
+  uid      uuid := (select auth.uid());
+  v_code   text := upper(btrim(coalesce(p_code, '')));
+  v_classe public.classrooms;
+  v_statut text;
+  v_quota  jsonb;
+  v_actifs integer;
+  v_ecole  text;
+  v_prof   text;
+begin
+  if uid is null then
+    raise exception 'not authenticated';
+  end if;
+
+  -- Compteur horaire : usage_counters est journalier, on met donc
+  -- l'heure dans le libellé plutôt que d'inventer une table.
+  v_quota := public.bump_usage(
+    uid,
+    'join_' || to_char((now() at time zone 'utc'), 'YYYYMMDDHH24'),
+    10
+  );
+  if not (v_quota ->> 'allowed')::boolean then
+    return jsonb_build_object('ok', false, 'error', 'trop_de_tentatives');
+  end if;
+
+  select * into v_classe from public.classrooms
+   where join_code = v_code and archived_at is null and is_open;
+
+  -- Même réponse qu'un code inexistant si la classe est fermée ou
+  -- archivée : sinon on apprend, code par code, lesquels existent.
+  if not found then
+    return jsonb_build_object('ok', false, 'error', 'code_invalide');
+  end if;
+
+  if v_classe.teacher_id = uid then
+    return jsonb_build_object('ok', false, 'error', 'tu_es_le_professeur');
+  end if;
+
+  select status into v_statut from public.classroom_members
+   where classroom_id = v_classe.id and user_id = uid;
+
+  if v_statut = 'active' then
+    return jsonb_build_object('ok', false, 'error', 'deja_membre');
+  end if;
+  if v_statut = 'pending' then
+    return jsonb_build_object('ok', false, 'error', 'deja_en_attente');
+  end if;
+  if v_statut = 'removed' then
+    -- Volontairement le même message qu'un code invalide : un élève
+    -- exclu n'a pas à savoir que la classe existe encore.
+    return jsonb_build_object('ok', false, 'error', 'code_invalide');
+  end if;
+
+  select count(*) into v_actifs from public.classroom_members
+   where classroom_id = v_classe.id and status = 'active';
+  if v_actifs >= 60 then
+    return jsonb_build_object('ok', false, 'error', 'classe_complete');
+  end if;
+
+  insert into public.classroom_members (classroom_id, user_id, status)
+  values (v_classe.id, uid, 'pending')
+  on conflict (classroom_id, user_id) do nothing;
+
+  select s.name into v_ecole from public.schools s where s.id = v_classe.school_id;
+  -- Le nom professionnel du professeur, tel qu'il l'a déclaré en
+  -- demandant le rôle. Jamais son moyen de contact.
+  select coalesce(nullif(btrim(t.full_name), ''), nullif(btrim(p.name), ''), 'Professeur')
+    into v_prof
+    from public.profiles p
+    left join public.teacher_requests t on t.user_id = p.id
+   where p.id = v_classe.teacher_id;
+
+  -- L'élève doit voir où il vient d'entrer : rejoindre une classe
+  -- sans savoir chez qui, c'est précisément ce qu'on évite.
+  return jsonb_build_object(
+    'ok',           true,
+    'classroom_id', v_classe.id,
+    'name',         v_classe.name,
+    'subject_id',   v_classe.subject_id,
+    'grade_level',  v_classe.grade_level,
+    'school',       v_ecole,
+    'teacher',      v_prof,
+    'status',       'pending'
+  );
+end;
+$function$
+;
+
 CREATE OR REPLACE FUNCTION public.leaderboard(p_limit integer DEFAULT 50)
  RETURNS TABLE(rank integer, name text, xp integer, level integer, is_me boolean)
  LANGUAGE sql
@@ -673,6 +989,40 @@ AS $function$
   where board_visible or id = (select auth.uid())
   order by rang
   limit least(greatest(p_limit, 1), 100);
+$function$
+;
+
+CREATE OR REPLACE FUNCTION public.my_classrooms()
+ RETURNS TABLE(id uuid, name text, subject_id text, grade_level text, school text, teacher text, is_teacher boolean, my_status text, members integer, pending integer, join_code text, is_open boolean, current_focus text, focus_note text)
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+  select
+    c.id, c.name, c.subject_id, c.grade_level,
+    s.name,
+    coalesce(nullif(btrim(t.full_name), ''), nullif(btrim(pp.name), ''), 'Professeur'),
+    c.teacher_id = (select auth.uid()),
+    case when c.teacher_id = (select auth.uid()) then 'teacher' else m.status end,
+    (select count(*)::integer from public.classroom_members x
+      where x.classroom_id = c.id and x.status = 'active'),
+    (select count(*)::integer from public.classroom_members x
+      where x.classroom_id = c.id and x.status = 'pending'),
+    -- Le code ne se montre qu'au professeur : affiché à un élève,
+    -- il circulerait hors de la classe en une récréation.
+    case when c.teacher_id = (select auth.uid()) then c.join_code else null end,
+    c.is_open, c.current_focus,
+    case when c.teacher_id = (select auth.uid()) then c.focus_note else null end
+  from public.classrooms c
+  join public.schools s   on s.id = c.school_id
+  join public.profiles pp on pp.id = c.teacher_id
+  left join public.teacher_requests t on t.user_id = c.teacher_id
+  left join public.classroom_members m
+         on m.classroom_id = c.id and m.user_id = (select auth.uid())
+  where c.archived_at is null
+    and (c.teacher_id = (select auth.uid())
+         or m.status in ('active', 'pending'))
+  order by c.created_at desc;
 $function$
 ;
 
@@ -959,6 +1309,32 @@ end;
 $function$
 ;
 
+CREATE OR REPLACE FUNCTION public.remove_member(p_classroom_id uuid, p_user_id uuid)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+begin
+  if not public.is_classroom_teacher(p_classroom_id) then
+    raise exception 'reserve au professeur de la classe';
+  end if;
+
+  -- On marque « removed » plutôt que de supprimer : la ligne
+  -- empêche de revenir par le code, et l'étape 8 aura besoin de
+  -- savoir qu'une exclusion a eu lieu.
+  update public.classroom_members
+     set status = 'removed'
+   where classroom_id = p_classroom_id and user_id = p_user_id;
+  if not found then
+    raise exception 'membre introuvable';
+  end if;
+
+  return jsonb_build_object('user_id', p_user_id, 'status', 'removed');
+end;
+$function$
+;
+
 CREATE OR REPLACE FUNCTION public.request_teacher_role(p_full_name text, p_contact text, p_subjects text[] DEFAULT '{}'::text[], p_school_id uuid DEFAULT NULL::uuid, p_message text DEFAULT NULL::text)
  RETURNS jsonb
  LANGUAGE plpgsql
@@ -1063,12 +1439,19 @@ CREATE OR REPLACE FUNCTION public.revoke_teacher_role(p_user_id uuid, p_reason t
  SECURITY DEFINER
  SET search_path TO ''
 AS $function$
+declare
+  v_classes integer;
 begin
   update public.profiles set role = 'eleve', updated_at = now()
    where id = p_user_id and role = 'prof';
   if not found then
     raise exception 'cet utilisateur n''est pas professeur';
   end if;
+
+  update public.classrooms
+     set archived_at = now(), is_open = false
+   where teacher_id = p_user_id and archived_at is null;
+  get diagnostics v_classes = row_count;
 
   update public.teacher_requests
      set status = 'rejected', reviewed_at = now(),
@@ -1080,7 +1463,29 @@ begin
   insert into public.role_events (user_id, event, actor, reason)
   values (p_user_id, 'revoked', (select auth.uid()), p_reason);
 
-  return jsonb_build_object('user_id', p_user_id, 'role', 'eleve');
+  return jsonb_build_object(
+    'user_id', p_user_id,
+    'role', 'eleve',
+    'classes_archivees', v_classes
+  );
+end;
+$function$
+;
+
+CREATE OR REPLACE FUNCTION public.rotate_join_code(p_classroom_id uuid)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare v_code text;
+begin
+  if not public.is_classroom_teacher(p_classroom_id) then
+    raise exception 'reserve au professeur de la classe';
+  end if;
+  v_code := public.generate_join_code();
+  update public.classrooms set join_code = v_code where id = p_classroom_id;
+  return jsonb_build_object('join_code', v_code);
 end;
 $function$
 ;
@@ -1121,6 +1526,43 @@ AS $function$
   group by 1
   order by 2 desc
   limit 40;
+$function$
+;
+
+CREATE OR REPLACE FUNCTION public.set_classroom_focus(p_classroom_id uuid, p_focus text, p_note text DEFAULT NULL::text)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+begin
+  if not public.is_classroom_teacher(p_classroom_id) then
+    raise exception 'reserve au professeur de la classe';
+  end if;
+
+  update public.classrooms
+     set current_focus = nullif(btrim(coalesce(p_focus, '')), ''),
+         focus_note    = nullif(btrim(coalesce(p_note, '')), '')
+   where id = p_classroom_id;
+
+  return jsonb_build_object('classroom_id', p_classroom_id, 'focus', p_focus);
+end;
+$function$
+;
+
+CREATE OR REPLACE FUNCTION public.set_classroom_open(p_classroom_id uuid, p_open boolean)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+begin
+  if not public.is_classroom_teacher(p_classroom_id) then
+    raise exception 'reserve au professeur de la classe';
+  end if;
+  update public.classrooms set is_open = coalesce(p_open, true) where id = p_classroom_id;
+  return jsonb_build_object('is_open', p_open);
+end;
 $function$
 ;
 
@@ -1301,6 +1743,8 @@ $function$
 -- ── Row Level Security ───────────────────────────────────────
 
 alter table public.chat_messages enable row level security;
+alter table public.classroom_members enable row level security;
+alter table public.classrooms enable row level security;
 alter table public.communes enable row level security;
 alter table public.conversations enable row level security;
 alter table public.daily_activity enable row level security;
@@ -1336,6 +1780,18 @@ create policy "chat_messages_select_own" on public.chat_messages
   for select
   to authenticated
   using ((( SELECT auth.uid() AS uid) = user_id));
+
+create policy "classroom_members_select" on public.classroom_members
+  as permissive
+  for select
+  to authenticated
+  using (((user_id = ( SELECT auth.uid() AS uid)) OR is_classroom_teacher(classroom_id) OR ((status = 'active'::text) AND is_classroom_member(classroom_id))));
+
+create policy "classrooms_select" on public.classrooms
+  as permissive
+  for select
+  to authenticated
+  using (((teacher_id = ( SELECT auth.uid() AS uid)) OR is_classroom_member(id)));
 
 create policy "communes_select" on public.communes
   as permissive

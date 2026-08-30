@@ -292,6 +292,28 @@ export default function ProfileScreen() {
         </Section>
       )}
 
+      {/* ── Mes classes ─────────────────────────────────────── */}
+      {/* Point d'entrée volontairement dans le profil et pas dans
+          la barre d'onglets : tant qu'aucune classe n'existe, un
+          onglet vide accueillerait tout le monde. Il deviendra un
+          onglet quand de vraies classes tourneront. */}
+      <Section label={t('classes.title')}>
+        <Card onPress={() => router.push('/classes')}>
+          <View style={styles.settingLeft}>
+            <Icon name="path" size={18} color={colors.textSoft} />
+            <View style={{ flex: 1 }}>
+              <Text style={[type.bodyMedium, { color: colors.text }]}>
+                {t('classes.title')}
+              </Text>
+              <Text style={[type.caption, { color: colors.textFaint, marginTop: 2 }]}>
+                {profile.role === 'prof' ? t('classes.create') : t('classes.joinTitle')}
+              </Text>
+            </View>
+            <Icon name="chevron-right" size={16} color={colors.textFaint} />
+          </View>
+        </Card>
+      </Section>
+
       {/* ── Professeur ──────────────────────────────────────── */}
       {/* Sans point d'entrée, la demande de rôle serait
           injoignable : la RPC existerait sans que personne ne

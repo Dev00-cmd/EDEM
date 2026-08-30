@@ -21,6 +21,7 @@ export const fr = {
     no: 'Non',
     retry: 'Réessayer',
     change: 'Changer',
+    loading: 'Chargement…',
   },
 
   tabs: {
@@ -211,6 +212,83 @@ export const fr = {
     cta: 'Je suis professeur',
     ctaSub: 'Ouvrir une classe pour mes élèves',
   },
+
+  classes: {
+    title: 'Mes classes',
+    joinTitle: 'Rejoindre une classe',
+    joinSub:
+      "Ton professeur te donne un code de 6 caractères. Il valide ensuite ton entrée : personne n'entre dans une classe sans son accord.",
+    codePlaceholder: 'Ex. TVT36F',
+    codeLength: 'Le code fait 6 caractères',
+    join: 'Entrer',
+    joined: 'Demande envoyée à {teacher} pour « {name} ». Il doit encore la valider.',
+    create: 'Ouvrir une classe',
+    mine: 'MES CLASSES',
+    empty: "Tu n'es dans aucune classe pour l'instant. Demande son code à ton professeur.",
+    waiting: 'En attente',
+    membersN: '{n} élèves',
+    pendingN: '{n} en attente',
+    privacy:
+      "Dans une classe, les autres voient ton pseudonyme, jamais ton nom. Seul ton professeur voit ton vrai prénom.",
+
+    err_code_invalide: "Ce code ne correspond à aucune classe ouverte. Vérifie-le avec ton professeur.",
+    err_trop_de_tentatives: 'Trop de tentatives. Réessaie dans une heure.',
+    err_deja_membre: 'Tu es déjà dans cette classe.',
+    err_deja_en_attente: 'Ta demande est déjà partie. Ton professeur doit la valider.',
+    err_tu_es_le_professeur: 'C\'est ta propre classe.',
+    err_classe_complete: 'Cette classe est complète.',
+    err_echec: "Ça n'a pas marché. Réessaie.",
+  },
+
+  classroom: {
+    title: 'Classe',
+    newTitle: 'Ouvrir une classe',
+    nameLabel: 'Nom de la classe',
+    namePlaceholder: 'Ex. NS3 A — Mathématiques',
+    nameNeeded: 'Donne un nom à ta classe',
+    subjectLabel: 'La matière',
+    subjectNeeded: 'Choisis une matière',
+    levelLabel: 'Le niveau',
+    levelNeeded: 'Choisis un niveau',
+    schoolNeeded: 'Choisis ton école avant',
+    schoolMissing: "Ton profil n'indique pas encore ton école. Une classe doit être rattachée à un établissement.",
+    chooseSchool: 'Choisir mon école',
+    create: 'Ouvrir la classe',
+    failed: "La classe n'a pas pu être créée.",
+    created: 'Classe ouverte',
+    codeLabel: "CODE D'INVITATION",
+    codeHint: "Donne ce code à tes élèves. Chacun devra quand même être validé par toi. Tu peux le changer à tout moment s'il a trop circulé.",
+    backToClasses: 'Voir mes classes',
+
+    youTeach: 'Tu es le professeur de cette classe.',
+    taughtBy: 'Professeur : {name}',
+    pendingYou: "Ta demande est partie. Ton professeur doit encore la valider avant que tu voies la classe.",
+
+    focusTitle: 'CHAPITRE EN COURS',
+    focusLabel: 'Sur quoi travaille la classe',
+    focusPlaceholder: 'Ex. Les fonctions affines',
+    noFocus: "Ton professeur n'a pas encore indiqué le chapitre en cours.",
+    noteLabel: 'Précision pour M. Thomas',
+    notePlaceholder: 'Ex. On utilise la notation f(x) = ax + b, pas y = mx + p',
+    noteWhy:
+      "Ces deux champs servent à M. Thomas : il alignera ses explications sur ton cours plutôt que sur une convention étrangère. Tes élèves ne voient que le chapitre, pas la précision.",
+
+    codeSection: "CODE D'INVITATION",
+    rotate: 'Changer le code',
+
+    pendingSection: '{n} DEMANDE(S) EN ATTENTE',
+    approve: 'Accepter',
+    refuse: 'Refuser',
+
+    membersSection: '{n} ÉLÈVE(S)',
+    noMembers: "Personne n'a encore rejoint.",
+    removeTitle: 'Retirer cet élève ?',
+    removeBody: '{name} ne verra plus la classe et ne pourra pas y revenir avec le code.',
+    remove: 'Retirer',
+    privacy:
+      'Les élèves se voient entre eux sous leur pseudonyme. Toi seul, comme professeur, vois leur vrai prénom.',
+  },
+
 
 
 

@@ -21,6 +21,7 @@ export const ht: Messages = {
     no: 'Non',
     retry: 'Eseye ankò',
     change: 'Chanje',
+    loading: 'L ap chaje…',
   },
 
   tabs: {
@@ -211,6 +212,83 @@ export const ht: Messages = {
     cta: 'Mwen se yon pwofesè',
     ctaSub: 'Louvri yon klas pou elèv mwen yo',
   },
+
+  classes: {
+    title: 'Klas mwen yo',
+    joinTitle: 'Antre nan yon klas',
+    joinSub:
+      'Pwofesè ou ba ou yon kòd 6 karaktè. Apre sa li valide antre ou : pèsonn pa antre nan yon klas san akò li.',
+    codePlaceholder: 'Egz. TVT36F',
+    codeLength: 'Kòd la gen 6 karaktè',
+    join: 'Antre',
+    joined: 'Demann voye bay {teacher} pou « {name} ». Li dwe valide l toujou.',
+    create: 'Louvri yon klas',
+    mine: 'KLAS MWEN YO',
+    empty: 'Ou pa nan okenn klas pou kounye a. Mande pwofesè ou kòd li.',
+    waiting: 'N ap tann',
+    membersN: '{n} elèv',
+    pendingN: '{n} k ap tann',
+    privacy:
+      'Nan yon klas, lòt moun wè non jwèt ou, pa non ou. Se sèlman pwofesè ou ki wè vre prenon ou.',
+
+    err_code_invalide: 'Kòd sa a pa koresponn ak okenn klas ki louvri. Verifye l ak pwofesè ou.',
+    err_trop_de_tentatives: 'Twòp eseye. Eseye ankò nan yon èdtan.',
+    err_deja_membre: 'Ou deja nan klas sa a.',
+    err_deja_en_attente: 'Demann ou deja pati. Pwofesè ou dwe valide l.',
+    err_tu_es_le_professeur: 'Se pwòp klas ou.',
+    err_classe_complete: 'Klas sa a konplè.',
+    err_echec: 'Sa pa mache. Eseye ankò.',
+  },
+
+  classroom: {
+    title: 'Klas',
+    newTitle: 'Louvri yon klas',
+    nameLabel: 'Non klas la',
+    namePlaceholder: 'Egz. NS3 A — Matematik',
+    nameNeeded: 'Bay klas ou a yon non',
+    subjectLabel: 'Matyè a',
+    subjectNeeded: 'Chwazi yon matyè',
+    levelLabel: 'Nivo a',
+    levelNeeded: 'Chwazi yon nivo',
+    schoolNeeded: 'Chwazi lekòl ou anvan',
+    schoolMissing: 'Pwofil ou poko di ki lekòl ou. Yon klas dwe mare ak yon etablisman.',
+    chooseSchool: 'Chwazi lekòl mwen',
+    create: 'Louvri klas la',
+    failed: 'Nou pa t ka kreye klas la.',
+    created: 'Klas louvri',
+    codeLabel: 'KÒD ENVITASYON',
+    codeHint: 'Bay elèv ou yo kòd sa a. Chak moun ap toujou bezwen ou valide l. Ou ka chanje l nenpòt kilè si l twò gaye.',
+    backToClasses: 'Wè klas mwen yo',
+
+    youTeach: 'Se ou ki pwofesè klas sa a.',
+    taughtBy: 'Pwofesè : {name}',
+    pendingYou: 'Demann ou pati. Pwofesè ou dwe valide l anvan ou wè klas la.',
+
+    focusTitle: 'CHAPIT K AP FÈT',
+    focusLabel: 'Sou kisa klas la ap travay',
+    focusPlaceholder: 'Egz. Fonksyon afin yo',
+    noFocus: 'Pwofesè ou poko di ki chapit k ap fèt.',
+    noteLabel: 'Presizyon pou M. Thomas',
+    notePlaceholder: 'Egz. Nou sèvi ak notasyon f(x) = ax + b, pa y = mx + p',
+    noteWhy:
+      'De chan sa yo sèvi M. Thomas : l ap kadre esplikasyon l sou kou ou olye sou yon konvansyon etranje. Elèv ou yo wè chapit la sèlman, pa presizyon an.',
+
+    codeSection: 'KÒD ENVITASYON',
+    rotate: 'Chanje kòd la',
+
+    pendingSection: '{n} DEMANN K AP TANN',
+    approve: 'Aksepte',
+    refuse: 'Refize',
+
+    membersSection: '{n} ELÈV',
+    noMembers: 'Pèsonn poko antre.',
+    removeTitle: 'Retire elèv sa a ?',
+    removeBody: '{name} p ap wè klas la ankò e li p ap ka retounen ak kòd la.',
+    remove: 'Retire',
+    privacy:
+      'Elèv yo wè youn lòt sou non jwèt yo. Se ou menm sèl, kòm pwofesè, ki wè vre prenon yo.',
+  },
+
 
 
 
