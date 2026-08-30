@@ -85,6 +85,9 @@ function Navigator() {
         <Stack.Screen name="classes" />
         <Stack.Screen name="classroom/new" />
         <Stack.Screen name="classroom/[id]" />
+        <Stack.Screen name="assignment/new" />
+        <Stack.Screen name="assignment/[id]" />
+        <Stack.Screen name="dashboard/[id]" />
         <Stack.Screen name="(tabs)" />
       </Stack>
 

@@ -50,7 +50,7 @@ type Phase =
     };
 
 export default function QuizScreen() {
-  const params = useLocalSearchParams<{ subject?: string }>();
+  const params = useLocalSearchParams<{ subject?: string; assignment?: string }>();
   const { t, profile, progress, applyQuizResults } = useApp();
   const { colors } = useTheme();
   const lang = profile.lang;
@@ -79,10 +79,12 @@ export default function QuizScreen() {
   }, [phase.name]);
 
   const startQuiz = useCallback(
-    async (subjectId: string, level: Difficulty) => {
+    async (subjectId: string, level: Difficulty, assignmentId?: string | null) => {
       setPhase({ name: 'loading', subjectId });
       const ctx = studentContextOf(profile, progress, subjectId);
-      const quiz = await generateQuiz(ctx, subjectId, level);
+      // Devoir de type quiz : c'est le serveur qui impose la
+      // difficulté et les notions, et qui refuse un second essai.
+      const quiz = await generateQuiz(ctx, subjectId, level, assignmentId);
       if (!quiz) {
         setPhase({ name: 'error', subjectId });
         return;
@@ -103,7 +105,7 @@ export default function QuizScreen() {
   useEffect(() => {
     if (params.subject && startedFor.current !== params.subject) {
       startedFor.current = params.subject;
-      startQuiz(params.subject, difficulty);
+      startQuiz(params.subject, difficulty, params.assignment ?? null);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.subject, startQuiz]);

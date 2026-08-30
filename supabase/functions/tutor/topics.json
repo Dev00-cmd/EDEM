@@ -1,0 +1,558 @@
+{
+ "math:primaire": [
+  {
+   "id": "nombres",
+   "fr": "Les grands nombres"
+  },
+  {
+   "id": "calcul",
+   "fr": "Addition, soustraction, multiplication"
+  },
+  {
+   "id": "fractions",
+   "fr": "Les fractions"
+  },
+  {
+   "id": "geometrie",
+   "fr": "Les figures géométriques"
+  },
+  {
+   "id": "mesures",
+   "fr": "Les mesures (mètres, litres, gourdes)"
+  }
+ ],
+ "math:college": [
+  {
+   "id": "fractions",
+   "fr": "Opérations sur les fractions"
+  },
+  {
+   "id": "pourcentage",
+   "fr": "Les pourcentages"
+  },
+  {
+   "id": "equations",
+   "fr": "Les équations du premier degré"
+  },
+  {
+   "id": "pythagore",
+   "fr": "Le théorème de Pythagore"
+  },
+  {
+   "id": "aires",
+   "fr": "Aires et périmètres"
+  },
+  {
+   "id": "puissances",
+   "fr": "Les puissances"
+  }
+ ],
+ "math:lycee": [
+  {
+   "id": "second-degre",
+   "fr": "Les équations du second degré"
+  },
+  {
+   "id": "fonctions",
+   "fr": "Les fonctions"
+  },
+  {
+   "id": "suites",
+   "fr": "Les suites numériques"
+  },
+  {
+   "id": "trigonometrie",
+   "fr": "La trigonométrie"
+  },
+  {
+   "id": "probabilites",
+   "fr": "Les probabilités"
+  },
+  {
+   "id": "derivees",
+   "fr": "Les dérivées"
+  }
+ ],
+ "histoire:primaire": [
+  {
+   "id": "arawak",
+   "fr": "Les premiers habitants d’Ayiti"
+  },
+  {
+   "id": "1492",
+   "fr": "L’arrivée des Européens (1492)"
+  },
+  {
+   "id": "independance",
+   "fr": "L’indépendance d’Haïti (1804)"
+  },
+  {
+   "id": "heros",
+   "fr": "Les héros de l’indépendance"
+  },
+  {
+   "id": "drapeau",
+   "fr": "Le drapeau haïtien (18 mai 1803)"
+  }
+ ],
+ "histoire:college": [
+  {
+   "id": "esclavage",
+   "fr": "La colonie de Saint-Domingue et l’esclavage"
+  },
+  {
+   "id": "revolution",
+   "fr": "La Révolution haïtienne (1791–1804)"
+  },
+  {
+   "id": "vertieres",
+   "fr": "La bataille de Vertières"
+  },
+  {
+   "id": "empire-royaume",
+   "fr": "Empire du Nord, Royaume, République"
+  },
+  {
+   "id": "occupation",
+   "fr": "L’occupation américaine (1915–1934)"
+  },
+  {
+   "id": "monde",
+   "fr": "Les deux guerres mondiales"
+  }
+ ],
+ "histoire:lycee": [
+  {
+   "id": "duvalier",
+   "fr": "L’ère Duvalier (1957–1986)"
+  },
+  {
+   "id": "apres86",
+   "fr": "Haïti après 1986"
+  },
+  {
+   "id": "relations",
+   "fr": "Haïti et le monde"
+  },
+  {
+   "id": "revolutions",
+   "fr": "Révolutions comparées (France, USA, Haïti)"
+  },
+  {
+   "id": "economie-hist",
+   "fr": "Histoire économique d’Haïti"
+  }
+ ],
+ "svt:primaire": [
+  {
+   "id": "corps",
+   "fr": "Le corps humain"
+  },
+  {
+   "id": "plantes",
+   "fr": "Les plantes"
+  },
+  {
+   "id": "animaux",
+   "fr": "Les animaux"
+  },
+  {
+   "id": "hygiene",
+   "fr": "L’hygiène et la santé"
+  },
+  {
+   "id": "alimentation",
+   "fr": "L’alimentation"
+  }
+ ],
+ "svt:college": [
+  {
+   "id": "cellule",
+   "fr": "La cellule"
+  },
+  {
+   "id": "photosynthese",
+   "fr": "La photosynthèse"
+  },
+  {
+   "id": "respiration",
+   "fr": "La respiration"
+  },
+  {
+   "id": "digestion",
+   "fr": "La digestion"
+  },
+  {
+   "id": "reproduction",
+   "fr": "La reproduction"
+  },
+  {
+   "id": "ecosystemes",
+   "fr": "Les écosystèmes"
+  }
+ ],
+ "svt:lycee": [
+  {
+   "id": "adn",
+   "fr": "L’ADN et la génétique"
+  },
+  {
+   "id": "immunite",
+   "fr": "Le système immunitaire"
+  },
+  {
+   "id": "evolution",
+   "fr": "L’évolution des espèces"
+  },
+  {
+   "id": "geologie",
+   "fr": "La géologie"
+  }
+ ],
+ "francais:primaire": [
+  {
+   "id": "lecture",
+   "fr": "La lecture courante"
+  },
+  {
+   "id": "phrase",
+   "fr": "La phrase (sujet et verbe)"
+  },
+  {
+   "id": "present",
+   "fr": "Le présent de l’indicatif"
+  },
+  {
+   "id": "pluriel",
+   "fr": "Le pluriel des noms"
+  }
+ ],
+ "francais:college": [
+  {
+   "id": "types-phrases",
+   "fr": "Les types de phrases"
+  },
+  {
+   "id": "temps",
+   "fr": "Les temps de l’indicatif"
+  },
+  {
+   "id": "cod-coi",
+   "fr": "COD et COI"
+  },
+  {
+   "id": "accords",
+   "fr": "Les accords (sujet-verbe, participe)"
+  },
+  {
+   "id": "expression",
+   "fr": "L’expression écrite"
+  }
+ ],
+ "francais:lycee": [
+  {
+   "id": "dissertation",
+   "fr": "La dissertation"
+  },
+  {
+   "id": "argumentation",
+   "fr": "L’argumentation"
+  },
+  {
+   "id": "figures",
+   "fr": "Les figures de style"
+  },
+  {
+   "id": "analyse",
+   "fr": "L’analyse de texte"
+  }
+ ],
+ "anglais:primaire": [
+  {
+   "id": "greetings",
+   "fr": "Greetings & introductions"
+  },
+  {
+   "id": "numbers",
+   "fr": "Numbers & colors"
+  },
+  {
+   "id": "family",
+   "fr": "Family & school words"
+  }
+ ],
+ "anglais:college": [
+  {
+   "id": "be-have",
+   "fr": "To be & to have"
+  },
+  {
+   "id": "present-simple",
+   "fr": "The present simple"
+  },
+  {
+   "id": "questions",
+   "fr": "Asking questions"
+  },
+  {
+   "id": "past-simple",
+   "fr": "The past simple"
+  },
+  {
+   "id": "vocabulary",
+   "fr": "Everyday vocabulary"
+  }
+ ],
+ "anglais:lycee": [
+  {
+   "id": "present-perfect",
+   "fr": "Present perfect"
+  },
+  {
+   "id": "conditionals",
+   "fr": "Conditionals"
+  },
+  {
+   "id": "passive",
+   "fr": "The passive voice"
+  },
+  {
+   "id": "essay",
+   "fr": "Writing an essay"
+  }
+ ],
+ "creole:primaire": [
+  {
+   "id": "alfabe",
+   "fr": "L’alphabet créole"
+  },
+  {
+   "id": "salitasyon",
+   "fr": "Les salutations"
+  },
+  {
+   "id": "vokabile",
+   "fr": "Le vocabulaire de la famille"
+  }
+ ],
+ "creole:college": [
+  {
+   "id": "otograf",
+   "fr": "L’orthographe officielle"
+  },
+  {
+   "id": "fraz",
+   "fr": "Construire des phrases correctes"
+  },
+  {
+   "id": "pwonverb",
+   "fr": "Les proverbes haïtiens"
+  },
+  {
+   "id": "ekspresyon",
+   "fr": "L’expression écrite en créole"
+  }
+ ],
+ "creole:lycee": [
+  {
+   "id": "literati",
+   "fr": "La littérature créole"
+  },
+  {
+   "id": "redaksyon",
+   "fr": "La rédaction en créole"
+  },
+  {
+   "id": "tradiksyon",
+   "fr": "Traduire français ↔ créole"
+  }
+ ],
+ "geo:primaire": [
+  {
+   "id": "haiti-carte",
+   "fr": "La carte d’Haïti"
+  },
+  {
+   "id": "departements",
+   "fr": "Les 10 départements"
+  },
+  {
+   "id": "klima",
+   "fr": "Le climat en Haïti"
+  }
+ ],
+ "geo:college": [
+  {
+   "id": "relief",
+   "fr": "Le relief d’Haïti"
+  },
+  {
+   "id": "plaques",
+   "fr": "Les plaques tectoniques et les séismes"
+  },
+  {
+   "id": "caraibes",
+   "fr": "Les Caraïbes"
+  },
+  {
+   "id": "ressources",
+   "fr": "Les ressources naturelles"
+  }
+ ],
+ "geo:lycee": [
+  {
+   "id": "mondialisation",
+   "fr": "La mondialisation"
+  },
+  {
+   "id": "climat",
+   "fr": "Le changement climatique"
+  },
+  {
+   "id": "population",
+   "fr": "La population haïtienne"
+  },
+  {
+   "id": "risques",
+   "fr": "Les risques naturels"
+  }
+ ],
+ "physique:primaire": [
+  {
+   "id": "etats",
+   "fr": "Les états de la matière"
+  },
+  {
+   "id": "lumiere-intro",
+   "fr": "La lumière et les ombres"
+  }
+ ],
+ "physique:college": [
+  {
+   "id": "forces",
+   "fr": "Les forces"
+  },
+  {
+   "id": "energie",
+   "fr": "Les formes d’énergie"
+  },
+  {
+   "id": "electricite",
+   "fr": "L’électricité simple"
+  },
+  {
+   "id": "son",
+   "fr": "Le son"
+  },
+  {
+   "id": "lumiere",
+   "fr": "La lumière"
+  }
+ ],
+ "physique:lycee": [
+  {
+   "id": "mecanique",
+   "fr": "La mécanique (mouvement)"
+  },
+  {
+   "id": "circuits",
+   "fr": "Les circuits électriques"
+  },
+  {
+   "id": "ondes",
+   "fr": "Les ondes"
+  },
+  {
+   "id": "optique",
+   "fr": "L’optique"
+  }
+ ],
+ "chimie:primaire": [
+  {
+   "id": "eau",
+   "fr": "L’eau autour de nous"
+  },
+  {
+   "id": "melanges-intro",
+   "fr": "Les mélanges de la cuisine"
+  }
+ ],
+ "chimie:college": [
+  {
+   "id": "atome",
+   "fr": "L’atome"
+  },
+  {
+   "id": "melanges",
+   "fr": "Mélanges et corps purs"
+  },
+  {
+   "id": "acides",
+   "fr": "Acides et bases"
+  },
+  {
+   "id": "molecules",
+   "fr": "Les molécules (H₂O, CO₂)"
+  }
+ ],
+ "chimie:lycee": [
+  {
+   "id": "tableau",
+   "fr": "Le tableau périodique"
+  },
+  {
+   "id": "liaisons",
+   "fr": "Les liaisons chimiques"
+  },
+  {
+   "id": "oxydo",
+   "fr": "L’oxydoréduction"
+  },
+  {
+   "id": "orga",
+   "fr": "La chimie organique"
+  }
+ ],
+ "info:primaire": [
+  {
+   "id": "decouverte",
+   "fr": "Découvrir l’ordinateur"
+  },
+  {
+   "id": "internet-securite",
+   "fr": "Internet en sécurité"
+  }
+ ],
+ "info:college": [
+  {
+   "id": "fichiers",
+   "fr": "Fichiers et dossiers"
+  },
+  {
+   "id": "recherche",
+   "fr": "Chercher sur Internet"
+  },
+  {
+   "id": "texte-tableur",
+   "fr": "Traitement de texte et tableur"
+  },
+  {
+   "id": "code-intro",
+   "fr": "Premiers pas dans le code"
+  }
+ ],
+ "info:lycee": [
+  {
+   "id": "algorithmique",
+   "fr": "L’algorithmique"
+  },
+  {
+   "id": "web",
+   "fr": "Comment fonctionne le Web"
+  },
+  {
+   "id": "bases-programmation",
+   "fr": "Les bases de la programmation"
+  }
+ ]
+}

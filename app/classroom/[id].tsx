@@ -32,6 +32,10 @@ import {
   rotateJoinCode, setClassroomFocus,
   type Classroom, type RosterEntry,
 } from '@/lib/classrooms';
+import {
+  fetchClassAssignments, fetchMyAssignments,
+  type ClassAssignment, type MyAssignment,
+} from '@/lib/assignments';
 
 export default function UneClasse() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -47,6 +51,7 @@ export default function UneClasse() {
   const [note, setNote] = useState('');
   const [enCours, setEnCours] = useState(false);
   const [aRetirer, setARetirer] = useState<RosterEntry | null>(null);
+  const [devoirs, setDevoirs] = useState<(ClassAssignment | MyAssignment)[]>([]);
 
   const recharger = useCallback(async () => {
     const [classes, membres] = await Promise.all([fetchClassrooms(), fetchRoster(id)]);
@@ -56,6 +61,13 @@ export default function UneClasse() {
     if (c) {
       setFocus(c.current_focus ?? '');
       setNote(c.focus_note ?? '');
+      // Le professeur voit l'avancement de sa classe ; l'élève voit
+      // ce qu'il a à rendre. Deux fonctions, une seule liste.
+      setDevoirs(
+        c.is_teacher
+          ? await fetchClassAssignments(id)
+          : (await fetchMyAssignments()).filter((a) => a.classroom_id === id),
+      );
     }
   }, [id]);
 
@@ -219,6 +231,83 @@ export default function UneClasse() {
           </>
         )}
 
+        {/* ── Le tableau de bord, professeur seulement ───────── */}
+        {prof && (
+          <Card style={{ marginTop: 24 }} onPress={() => router.push(`/dashboard/${classe.id}`)}>
+            <View style={styles.row}>
+              <Icon name="chart" size={18} color={colors.accent} />
+              <View style={{ flex: 1 }}>
+                <Text style={[type.cardTitle, { color: colors.text }]}>
+                  {t('dashboard.title')}
+                </Text>
+                <Text style={[type.caption, { color: colors.textFaint, marginTop: 2 }]}>
+                  {t('dashboard.entry')}
+                </Text>
+              </View>
+              <Icon name="chevron-right" size={16} color={colors.textFaint} />
+            </View>
+          </Card>
+        )}
+
+        {/* ── Les devoirs ────────────────────────────────────── */}
+        <View style={styles.entete}>
+          <Text style={[type.eyebrow, { color: colors.textFaint, flex: 1 }]}>
+            {t('assignment.section')}
+          </Text>
+          {prof && (
+            <Button
+              label={t('assignment.add')}
+              size="sm"
+              variant="ghost"
+              icon="plus"
+              onPress={() => router.push(`/assignment/new?classroom=${classe.id}`)}
+            />
+          )}
+        </View>
+
+        {devoirs.length === 0 ? (
+          <Card>
+            <Text style={[type.caption, { color: colors.textSoft }]}>
+              {prof ? t('assignment.emptyTeacher') : t('assignment.emptyStudent')}
+            </Text>
+          </Card>
+        ) : (
+          devoirs.map((d) => {
+            const duProf = 'published' in d;
+            const rendu = !duProf && (d as MyAssignment).submitted_at !== null;
+            return (
+              <Card
+                key={d.id}
+                style={{ marginBottom: 8 }}
+                onPress={() => router.push(`/assignment/${d.id}?classroom=${classe.id}`)}
+              >
+                <View style={styles.row}>
+                  <Icon
+                    name={d.kind === 'quiz' ? 'quiz' : 'file'}
+                    size={16}
+                    color={rendu ? colors.success : colors.textSoft}
+                  />
+                  <View style={{ flex: 1 }}>
+                    <Text style={[type.bodyMedium, { color: colors.text }]}>{d.title}</Text>
+                    <Text style={[type.caption, { color: colors.textFaint, marginTop: 2 }]}>
+                      {duProf
+                        ? ((d as ClassAssignment).published
+                            ? t('assignment.handedIn', {
+                                n: String((d as ClassAssignment).rendus),
+                              })
+                            : t('assignment.draft'))
+                        : rendu
+                          ? t('assignment.done')
+                          : t('assignment.todo')}
+                    </Text>
+                  </View>
+                  <Icon name="chevron-right" size={16} color={colors.textFaint} />
+                </View>
+              </Card>
+            );
+          })
+        )}
+
         {/* ── Le trombinoscope ───────────────────────────────── */}
         <Text style={[type.eyebrow, styles.section, { color: colors.textFaint }]}>
           {t('classroom.membersSection', { n: String(actifs.length) })}
@@ -297,5 +386,6 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   section: { marginTop: 26, marginBottom: 10 },
+  entete: { flexDirection: 'row', alignItems: 'center', marginTop: 26, marginBottom: 10 },
   code: { fontSize: 34, letterSpacing: 7, fontWeight: '800' },
 });

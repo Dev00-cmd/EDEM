@@ -23,8 +23,18 @@ if (!token || token.startsWith('COLLE')) {
   process.exit(1);
 }
 
+// Tout le dossier part, pas seulement index.ts : la fonction
+// importe désormais topics.json, et un fichier oublié se voit à
+// l'exécution — c'est-à-dire chez l'élève.
+const DOSSIER = 'supabase/functions/tutor';
+const fichiers = fs
+  .readdirSync(DOSSIER)
+  .filter((f) => /\.(ts|js|json)$/.test(f))
+  .sort((a, b) => (a === 'index.ts' ? -1 : b === 'index.ts' ? 1 : a.localeCompare(b)));
+
 const source = fs.readFileSync(ENTRY, 'utf8');
 console.log(`${ENTRY} — ${source.split('\n').length} lignes`);
+for (const f of fichiers) if (f !== 'index.ts') console.log(`  + ${f}`);
 
 const metadata = {
   entrypoint_path: 'index.ts',
@@ -38,11 +48,16 @@ form.append(
   'metadata',
   new Blob([JSON.stringify(metadata)], { type: 'application/json' }),
 );
-form.append(
-  'file',
-  new Blob([source], { type: 'application/typescript' }),
-  'index.ts',
-);
+for (const nom of fichiers) {
+  const contenu = fs.readFileSync(`${DOSSIER}/${nom}`, 'utf8');
+  form.append(
+    'file',
+    new Blob([contenu], {
+      type: nom.endsWith('.json') ? 'application/json' : 'application/typescript',
+    }),
+    nom,
+  );
+}
 
 const res = await fetch(
   `https://api.supabase.com/v1/projects/${REF}/functions/deploy?slug=${SLUG}`,

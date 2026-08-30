@@ -171,6 +171,16 @@ export async function uploadAttachment(
   file: PickedFile,
   userId: string,
   lang: Lang,
+  /**
+   * Sous-dossier facultatif, à l'intérieur du dossier de l'élève.
+   *
+   * Sert aux remises de devoir : `classroom/{classe}/{devoir}`.
+   * L'identifiant de l'élève reste le PREMIER segment — c'est sur
+   * lui que reposent les policies Storage existantes. Le professeur
+   * de la classe obtient un droit de lecture séparé, accordé par
+   * `is_teacher_of_attachment`.
+   */
+  folder?: string,
 ): Promise<UploadedFile | string> {
   try {
     // On lit le fichier en mémoire : Supabase Storage attend des
@@ -179,7 +189,8 @@ export async function uploadAttachment(
 
     if (buffer.byteLength > MAX_BYTES) return attachmentError('tooBig', lang);
 
-    const path = `${userId}/${Date.now()}-${safeName(file.name)}`;
+    const dossier = folder ? `${userId}/${folder}` : userId;
+    const path = `${dossier}/${Date.now()}-${safeName(file.name)}`;
 
     const { error } = await supabase.storage
       .from('attachments')

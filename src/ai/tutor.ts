@@ -63,6 +63,7 @@ export async function generateQuiz(
   ctx: StudentContext,
   subjectId: string,
   difficulty: Difficulty = 'moyen',
+  assignmentId?: string | null,
 ): Promise<GeneratedQuiz | null> {
   if (!isBackendConfigured()) return null;
   return remoteQuiz(
@@ -70,5 +71,6 @@ export async function generateQuiz(
     subjectId,
     subjectLabelFor({ ...ctx, subject: subjectId }),
     difficulty,
+    assignmentId,
   );
 }

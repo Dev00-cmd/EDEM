@@ -289,6 +289,99 @@ export const ht: Messages = {
       'Elèv yo wè youn lòt sou non jwèt yo. Se ou menm sèl, kòm pwofesè, ki wè vre prenon yo.',
   },
 
+  assignment: {
+    section: 'DEVWA',
+    add: 'Bay',
+    title: 'Devwa',
+    newTitle: 'Bay yon devwa',
+    emptyTeacher: 'Pa gen devwa pou kounye a.',
+    emptyStudent: 'Anyen pou remèt kounye a.',
+    draft: 'Bouyon — klas la poko wè l',
+    handedIn: '{n} remiz',
+    todo: 'Pou remèt',
+    done: 'Remèt',
+
+    kind_devoir: 'Devwa',
+    kind_devoir_sub: 'Yon tèks oswa yon foto kaye a',
+    kind_quiz: 'Quiz',
+    kind_quiz_sub: 'Chak elèv resevwa pa l',
+
+    titleLabel: 'Tit',
+    titlePlaceholder_devoir: 'Egz. Egzèsis 12 a 18, paj 47',
+    titlePlaceholder_quiz: 'Egz. Kontwòl sou fonksyon yo',
+    titleNeeded: 'Bay devwa a yon tit',
+    instructionsLabel: 'Konsiy',
+    instructionsPlaceholder: 'Sa elèv la dwe fè, ak kijan pou l remèt li.',
+
+    topicsDevoir: 'Nosyon yo travay',
+    topicsQuiz: 'Nosyon quiz la',
+    topicsWhy:
+      'Se nosyon pwogram nan, pou matyè ak nivo klas ou. Se ak yo tablo bò a ap di ou kote chak moun ye.',
+    topicsNeeded: 'Chwazi omwen yon nosyon',
+    difficultyLabel: 'Difikilte',
+    dueLabel: 'Pou remèt',
+    due_tomorrow: 'Demen',
+    due_threeDays: 'Nan 3 jou',
+    due_oneWeek: 'Nan yon semèn',
+    due_none: 'San dat limit',
+    dueOn: 'Pou remèt anvan {date}',
+
+    quizNote:
+      'Chak elèv ap resevwa quiz PA L, ki fèt sou nosyon sa yo : se pa menm kesyonè a yo kopye. XP yo swiv barèm nòmal la, san boni.',
+    saveAndPublish: 'Pibliye devwa a',
+    saveDraft: 'Kenbe kòm bouyon',
+    draftNote: 'Devwa sa a se yon bouyon toujou : elèv ou yo pa wè l.',
+    publish: 'Pibliye kounye a',
+    failed: 'Sa pa mache. Eseye ankò.',
+
+    yourAnswer: 'REPONS OU',
+    redo: 'CHANJE REMIZ OU',
+    answerPlaceholder: 'Ekri repons ou la…',
+    photo: 'Foto kaye a',
+    gallery: 'Nan imaj mwen yo',
+    submit: 'Remèt devwa a',
+    submitted: 'Devwa remèt. Pwofesè ou ap wè l.',
+    emptySubmission: 'Ekri yon bagay oswa ajoute yon foto',
+    alreadySubmitted: 'Ou remèt devwa sa a',
+    waitingGrade: 'Pwofesè ou poko korije l.',
+
+    quizIntro:
+      'Devwa sa a se yon quiz. Ou jwe l yon sèl fwa : premye eseye a konte.',
+    startQuiz: 'Kòmanse quiz la',
+    quizDone: 'Ou fè quiz sa a : {pct} %',
+    quizOnce: 'Yon devwa-quiz pa rejwe.',
+
+    submissions: '{n} REMIZ SOU {total}',
+    toGrade: 'Pou korije',
+    notSubmitted: 'Pa remèt',
+    seeAttachment: 'Wè foto a',
+    gradeLabel: 'Nòt sou 100',
+    feedbackLabel: 'Sa ou di elèv la',
+    feedbackPlaceholder: 'Sa ki byen, sa ki rete pou travay…',
+    saveGrade: 'Anrejistre nòt la',
+  },
+
+  dashboard: {
+    title: 'Tablo bò',
+    entry: 'Kote klas ou ye, nosyon pa nosyon',
+    members: 'elèv',
+    toGrade: 'pou korije',
+    pending: 'k ap tann',
+    inactive: 'inaktif 7 jou',
+    byTopic: 'PA NOSYON',
+    byTopicSub:
+      'Kalkile sou quiz elèv ou yo deja jwe. Ou pa antre anyen : se mezire, se pa deklare.',
+    measured: 'mezire sou {n} elèv',
+    struggling: 'Anba 40 % :',
+    empty:
+      'Poko gen ase quiz jwe nan matyè sa a. Bay klas ou yon quiz : tablo a ap plen pou kont li.',
+    notYet: 'POKO TRAVAY',
+    notYetSub: 'Okenn elèv poko evalye sou nosyon sa yo.',
+    privacy:
+      'Ou wè sèlman matyè klas sa a. Sa elèv ou yo travay lòt kote pa gade ou.',
+  },
+
+
 
 
 

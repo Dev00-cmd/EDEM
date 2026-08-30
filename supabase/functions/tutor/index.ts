@@ -827,6 +827,67 @@ Cette première ligne est retirée avant affichage : elle ne
 s'adresse pas à l'élève, ne la commente jamais.`;
 
 /** Sépare la notion de la réponse. Tolère l'absence de marqueur. */
+// ═══════════════════════════════════════════════════════════════
+//  LES NOTIONS DU PROGRAMME
+//
+//  Le modele etiquetait chaque question d'une notion QU'IL
+//  INVENTAIT : « conditionnel », « conditionnel-type-1 »,
+//  « conditionnel-zero » et « conjonctions-de-condition » comptees
+//  comme quatre notions distinctes. topic_mastery se remplissait
+//  donc de texte libre, et le tableau de bord du professeur — qui
+//  agrege la maitrise PAR NOTION — n'aurait affiche qu'une ligne
+//  par eleve et par quiz.
+//
+//  On ramene donc chaque etiquette a une notion du programme.
+//  Genere par scripts/dump_curriculum.mjs.
+import TOPICS from "./topics.json" with { type: "json" };
+
+type NotionRef = { id: string; fr: string };
+const CATALOGUE = TOPICS as Record<string, NotionRef[]>;
+
+const sansAccent = (s: string) =>
+  s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+
+/** Toutes les notions d'une matiere, tous cycles confondus. */
+function notionsDe(subject: string): NotionRef[] {
+  const out: NotionRef[] = [];
+  for (const [cle, liste] of Object.entries(CATALOGUE)) {
+    if (cle.startsWith(subject + ":")) {
+      for (const n of liste) if (!out.some((x) => x.id === n.id)) out.push(n);
+    }
+  }
+  return out;
+}
+
+/**
+ * Ramene l'etiquette du modele a une notion du programme.
+ *
+ * Exact d'abord, puis par recouvrement de mots : « equations-du-
+ * second-degre » retrouve « second-degre ». Sans correspondance on
+ * rend « general » plutot que d'inventer : une notion fausse dans
+ * le tableau de bord vaut moins que pas de notion du tout.
+ */
+function normaliserNotion(brut: string | undefined, subject: string): string {
+  const notions = notionsDe(subject);
+  if (notions.length === 0) return "general";
+  const cible = sansAccent(String(brut ?? ""));
+  if (!cible) return "general";
+
+  for (const n of notions) if (n.id === cible) return n.id;
+
+  const mots = new Set(cible.split("-").filter((m) => m.length > 3));
+  let meilleur = "general";
+  let score = 0;
+  for (const n of notions) {
+    const sien = new Set(sansAccent(n.id + "-" + n.fr).split("-").filter((m) => m.length > 3));
+    let commun = 0;
+    for (const m of mots) if (sien.has(m)) commun++;
+    if (commun > score) { score = commun; meilleur = n.id; }
+  }
+  return score > 0 ? meilleur : "general";
+}
+
 function splitTopic(raw: string): { reply: string; topic: string | null } {
   const match = raw.match(/^\s*#\s*NOTION\s*:\s*([^\n]*)\n?/i);
   if (!match) return { reply: raw.trim(), topic: null };
@@ -882,7 +943,7 @@ const QUIZ_SCHEMA = {
           topic: {
             type: "string",
             description:
-              "La notion évaluée, en minuscules avec des tirets (ex: les-fractions).",
+              "La notion évaluée. DOIT être exactement l'un des identifiants de notion fournis dans la consigne, jamais un autre.",
           },
         },
         required: ["question", "choices", "answer", "explanation", "topic"],
@@ -1246,10 +1307,11 @@ Deno.serve(async (req: Request) => {
 
     // ── Génération d'un quiz ──────────────────────────────────
     if (action === "quiz") {
-      const { prompt, subjectId, difficulty } = body as {
+      const { prompt, subjectId, difficulty, assignmentId } = body as {
         prompt?: string;
         subjectId?: string;
         difficulty?: string;
+        assignmentId?: string;
       };
       if (typeof prompt !== "string" || prompt.length === 0) {
         return json({ error: "prompt manquant" }, 400);
@@ -1264,10 +1326,48 @@ Deno.serve(async (req: Request) => {
       const userId = await getUserId(req);
       if (!userId) return json({ error: "non authentifié" }, 401);
 
+      // ── Devoir de type quiz ────────────────────────────────
+      //
+      // C'est le SERVEUR qui décide si cet élève a le droit de
+      // jouer ce devoir, et avec quels paramètres. Le client
+      // n'envoie que l'identifiant : il pourrait mentir sur la
+      // difficulté ou sur la classe, pas sur ce que la base répond.
+      let devoirId: string | null = null;
+      let devoirDiff: string | undefined;
+      if (typeof assignmentId === "string" && assignmentId.length > 0) {
+        const { data: params } = await userClient(req).rpc(
+          "assignment_quiz_params",
+          { p_assignment_id: assignmentId },
+        );
+        if (!params) {
+          return json({ error: "devoir introuvable" }, 403);
+        }
+        if ((params as { already_done?: boolean }).already_done) {
+          return json({ error: "tu as déjà rendu ce devoir" }, 409);
+        }
+        const p = params as { assignment_id: string; difficulty?: string };
+        devoirId = p.assignment_id;
+        devoirDiff = p.difficulty;
+      }
+
       const quota = await checkQuota(userId, "quiz");
       if (!quota.allowed) {
         return json({ error: quotaMessage(quota, "quiz") }, 429);
       }
+
+      // La liste des notions autorisees part AVEC le prompt. Le
+      // modele n'a plus a en inventer, et ce qu'il rend est de
+      // toute facon revalide ci-dessous.
+      const notions = notionsDe(subject);
+      const consigneNotions = notions.length === 0
+        ? ""
+        : [
+          "",
+          "",
+          "NOTIONS DU PROGRAMME — le champ « topic » de chaque question DOIT",
+          "valoir exactement l'un de ces identifiants, jamais un autre :",
+          ...notions.map((n) => `- ${n.id} (${n.fr})`),
+        ].join("\n");
 
       // Ce que cet élève a déjà vu, et ce qu'il a déjà réussi.
       let seen: string[] = [];
@@ -1299,7 +1399,7 @@ Deno.serve(async (req: Request) => {
         model: route.model,
         thinking: route.thinking,
         system: `Tu génères des quiz scolaires pour des élèves haïtiens, adaptés à leur classe et au programme du MENFP.\n\n${TEACHING_METHOD}\n\n${quizGuidance(seen, perf, chosen)}`,
-        contents: [{ role: "user", parts: [{ text: prompt }] }],
+        contents: [{ role: "user", parts: [{ text: prompt + consigneNotions }] }],
         schema: QUIZ_SCHEMA as unknown as Record<string, unknown>,
         // Dix questions, leurs options et leurs explications, plus
         // les jetons de réflexion : il faut de la marge.
@@ -1330,6 +1430,11 @@ Deno.serve(async (req: Request) => {
           question: decodeEntities(String(q.question ?? "")),
           choices: (q.choices ?? []).map((c) => decodeEntities(String(c))),
           explanation: decodeEntities(String(q.explanation ?? "")),
+          // Meme si la consigne est claire, le modele derive : on
+          // ramene l'etiquette a une notion du programme. Sans ca,
+          // topic_mastery se remplit de texte libre et le tableau
+          // de bord du professeur n'agrege plus rien.
+          topic: normaliserNotion(q.topic, subject),
         }))
         .filter(isSound)
         .map(shuffleChoices);
@@ -1380,7 +1485,10 @@ Deno.serve(async (req: Request) => {
         .insert({
           user_id: userId,
           subject_id: subject,
-          difficulty: chosen ?? "moyen",
+          difficulty: devoirDiff ?? chosen ?? "moyen",
+          // Renseigne uniquement pour un devoir : c'est ce lien qui
+          // fera enregistrer la remise quand grade_quiz corrigera.
+          assignment_id: devoirId,
           // Le strict nécessaire à la correction : léger à lire.
           answers: questions.map((q) => ({
             topic: q.topic ?? "general",

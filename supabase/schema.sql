@@ -13,6 +13,22 @@
 
 -- ── Tables ───────────────────────────────────────────────────
 
+create table if not exists public.assignments (
+  id uuid default gen_random_uuid() not null,
+  classroom_id uuid not null,
+  kind text not null,
+  title text not null,
+  instructions text,
+  subject_id text not null,
+  topic_ids text[] default '{}'::text[] not null,
+  difficulty text,
+  due_at timestamp with time zone,
+  published boolean default false not null,
+  created_by uuid not null,
+  created_at timestamp with time zone default now() not null,
+  updated_at timestamp with time zone default now() not null
+);
+
 create table if not exists public.chat_messages (
   id uuid default gen_random_uuid() not null,
   user_id uuid not null,
@@ -146,7 +162,8 @@ create table if not exists public.quiz_sessions (
   graded_at timestamp with time zone,
   questions jsonb,
   picked jsonb,
-  score_pct integer
+  score_pct integer,
+  assignment_id uuid
 );
 
 create table if not exists public.role_events (
@@ -191,6 +208,21 @@ create table if not exists public.schools (
   source text default 'user'::text not null
 );
 
+create table if not exists public.submissions (
+  id uuid default gen_random_uuid() not null,
+  assignment_id uuid not null,
+  user_id uuid not null,
+  text text,
+  attachment_path text,
+  quiz_session_id uuid,
+  score_pct integer,
+  submitted_at timestamp with time zone default now() not null,
+  grade integer,
+  feedback text,
+  graded_by uuid,
+  graded_at timestamp with time zone
+);
+
 create table if not exists public.teacher_requests (
   id uuid default gen_random_uuid() not null,
   user_id uuid not null,
@@ -216,6 +248,15 @@ create table if not exists public.topic_mastery (
   last_study_on date
 );
 
+create table if not exists public.topics (
+  subject_id text not null,
+  band text not null,
+  topic_id text not null,
+  label_fr text not null,
+  label_ht text not null,
+  rank integer not null
+);
+
 create table if not exists public.usage_counters (
   user_id uuid not null,
   day date default ((now() AT TIME ZONE 'utc'::text))::date not null,
@@ -225,6 +266,14 @@ create table if not exists public.usage_counters (
 
 -- ── Contraintes (clés primaires, étrangères, unicité) ────────
 
+alter table assignments add constraint assignments_classroom_id_fkey FOREIGN KEY (classroom_id) REFERENCES classrooms(id) ON DELETE CASCADE;
+alter table assignments add constraint assignments_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id) ON DELETE CASCADE;
+alter table assignments add constraint assignments_difficulty_check CHECK (((difficulty IS NULL) OR (difficulty = ANY (ARRAY['facile'::text, 'moyen'::text, 'difficile'::text]))));
+alter table assignments add constraint assignments_instructions_check CHECK (((instructions IS NULL) OR (char_length(instructions) <= 2000)));
+alter table assignments add constraint assignments_kind_check CHECK ((kind = ANY (ARRAY['devoir'::text, 'quiz'::text])));
+alter table assignments add constraint assignments_pkey PRIMARY KEY (id);
+alter table assignments add constraint assignments_title_check CHECK (((char_length(btrim(title)) >= 2) AND (char_length(btrim(title)) <= 120)));
+alter table assignments add constraint assignments_topic_ids_check CHECK ((cardinality(topic_ids) <= 8));
 alter table chat_messages add constraint chat_messages_conversation_id_fkey FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE;
 alter table chat_messages add constraint chat_messages_pkey PRIMARY KEY (id);
 alter table chat_messages add constraint chat_messages_role_check CHECK ((role = ANY (ARRAY['user'::text, 'tutor'::text])));
@@ -282,6 +331,7 @@ alter table quiz_results add constraint quiz_results_total_check CHECK ((total >
 alter table quiz_results add constraint quiz_results_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
 alter table quiz_seen_questions add constraint quiz_seen_questions_pkey PRIMARY KEY (id);
 alter table quiz_seen_questions add constraint quiz_seen_questions_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+alter table quiz_sessions add constraint quiz_sessions_assignment_id_fkey FOREIGN KEY (assignment_id) REFERENCES assignments(id) ON DELETE SET NULL;
 alter table quiz_sessions add constraint quiz_sessions_pkey PRIMARY KEY (id);
 alter table quiz_sessions add constraint quiz_sessions_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
 alter table role_events add constraint role_events_event_check CHECK ((event = ANY (ARRAY['approved'::text, 'rejected'::text, 'revoked'::text])));
@@ -297,6 +347,16 @@ alter table schools add constraint schools_pkey PRIMARY KEY (id);
 alter table schools add constraint schools_source_check CHECK ((source = ANY (ARRAY['ocha'::text, 'osm'::text, 'ocha+osm'::text, 'user'::text])));
 alter table schools add constraint schools_status_check CHECK ((status = ANY (ARRAY['approved'::text, 'pending'::text, 'rejected'::text])));
 alter table schools add constraint schools_type_check CHECK ((type = ANY (ARRAY['publique'::text, 'privee'::text, 'congreganiste'::text, 'autre'::text])));
+alter table submissions add constraint submissions_assignment_id_fkey FOREIGN KEY (assignment_id) REFERENCES assignments(id) ON DELETE CASCADE;
+alter table submissions add constraint submissions_assignment_id_user_id_key UNIQUE (assignment_id, user_id);
+alter table submissions add constraint submissions_feedback_check CHECK (((feedback IS NULL) OR (char_length(feedback) <= 2000)));
+alter table submissions add constraint submissions_grade_check CHECK (((grade IS NULL) OR ((grade >= 0) AND (grade <= 100))));
+alter table submissions add constraint submissions_graded_by_fkey FOREIGN KEY (graded_by) REFERENCES auth.users(id) ON DELETE SET NULL;
+alter table submissions add constraint submissions_pkey PRIMARY KEY (id);
+alter table submissions add constraint submissions_quiz_session_id_fkey FOREIGN KEY (quiz_session_id) REFERENCES quiz_sessions(id) ON DELETE SET NULL;
+alter table submissions add constraint submissions_score_pct_check CHECK (((score_pct IS NULL) OR ((score_pct >= 0) AND (score_pct <= 100))));
+alter table submissions add constraint submissions_text_check CHECK (((text IS NULL) OR (char_length(text) <= 5000)));
+alter table submissions add constraint submissions_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
 alter table teacher_requests add constraint teacher_requests_contact_check CHECK (((char_length(btrim(contact)) >= 5) AND (char_length(btrim(contact)) <= 200)));
 alter table teacher_requests add constraint teacher_requests_full_name_check CHECK (((char_length(btrim(full_name)) >= 3) AND (char_length(btrim(full_name)) <= 120)));
 alter table teacher_requests add constraint teacher_requests_message_check CHECK (((message IS NULL) OR (char_length(message) <= 1000)));
@@ -310,11 +370,14 @@ alter table teacher_requests add constraint teacher_requests_user_id_key UNIQUE 
 alter table topic_mastery add constraint topic_mastery_mastery_check CHECK (((mastery >= 0) AND (mastery <= 100)));
 alter table topic_mastery add constraint topic_mastery_pkey PRIMARY KEY (user_id, subject_id, topic_id);
 alter table topic_mastery add constraint topic_mastery_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+alter table topics add constraint topics_band_check CHECK ((band = ANY (ARRAY['primaire'::text, 'college'::text, 'lycee'::text])));
+alter table topics add constraint topics_pkey PRIMARY KEY (subject_id, band, topic_id);
 alter table usage_counters add constraint usage_counters_pkey PRIMARY KEY (user_id, day, kind);
 alter table usage_counters add constraint usage_counters_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
 
 -- ── Index ────────────────────────────────────────────────────
 
+CREATE INDEX assignments_classroom_idx ON public.assignments USING btree (classroom_id, published, due_at);
 CREATE INDEX chat_messages_conversation_idx ON public.chat_messages USING btree (conversation_id, created_at);
 CREATE INDEX chat_messages_user_thread_idx ON public.chat_messages USING btree (user_id, thread, created_at);
 CREATE INDEX classroom_members_actifs_idx ON public.classroom_members USING btree (classroom_id) WHERE (status = 'active'::text);
@@ -331,15 +394,19 @@ CREATE INDEX progress_xp_rank_idx ON public.progress USING btree (xp DESC, updat
 CREATE INDEX quiz_results_user_created_idx ON public.quiz_results USING btree (user_id, created_at DESC);
 CREATE UNIQUE INDEX quiz_seen_unique_idx ON public.quiz_seen_questions USING btree (user_id, subject_id, qhash);
 CREATE INDEX quiz_seen_user_subject_idx ON public.quiz_seen_questions USING btree (user_id, subject_id, created_at DESC);
+CREATE INDEX quiz_sessions_assignment_idx ON public.quiz_sessions USING btree (assignment_id) WHERE (assignment_id IS NOT NULL);
 CREATE INDEX quiz_sessions_history_idx ON public.quiz_sessions USING btree (user_id, graded_at DESC) WHERE (graded_at IS NOT NULL);
 CREATE INDEX quiz_sessions_user_created_idx ON public.quiz_sessions USING btree (user_id, created_at DESC);
 CREATE INDEX role_events_user_idx ON public.role_events USING btree (user_id, created_at DESC);
 CREATE INDEX schools_created_by_idx ON public.schools USING btree (created_by) WHERE (created_by IS NOT NULL);
 CREATE INDEX schools_name_trgm ON public.schools USING gin (norm_text(name) gin_trgm_ops);
 CREATE UNIQUE INDEX schools_unique_in_commune ON public.schools USING btree (commune_id, norm_text(name));
+CREATE INDEX submissions_assignment_idx ON public.submissions USING btree (assignment_id);
+CREATE INDEX submissions_user_idx ON public.submissions USING btree (user_id);
 CREATE INDEX teacher_requests_school_idx ON public.teacher_requests USING btree (school_id) WHERE (school_id IS NOT NULL);
 CREATE INDEX teacher_requests_status_idx ON public.teacher_requests USING btree (status, created_at);
 CREATE INDEX topic_mastery_user_subject_idx ON public.topic_mastery USING btree (user_id, subject_id);
+CREATE INDEX topics_subject_idx ON public.topics USING btree (subject_id, band, rank);
 
 -- ── Fonctions ────────────────────────────────────────────────
 --
@@ -540,6 +607,71 @@ end;
 $function$
 ;
 
+CREATE OR REPLACE FUNCTION public.assignment_classroom(p_assignment_id uuid)
+ RETURNS uuid
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+  select a.classroom_id from public.assignments a where a.id = p_assignment_id;
+$function$
+;
+
+CREATE OR REPLACE FUNCTION public.assignment_quiz_params(p_assignment_id uuid)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare
+  uid uuid := (select auth.uid());
+  a   public.assignments;
+begin
+  if uid is null then return null; end if;
+
+  select * into a from public.assignments where id = p_assignment_id;
+  if not found or not a.published or a.kind <> 'quiz' then return null; end if;
+  if not public.is_classroom_member(a.classroom_id) then return null; end if;
+
+  -- Déjà rendu : on ne rejoue pas.
+  if exists (select 1 from public.submissions s
+              where s.assignment_id = p_assignment_id and s.user_id = uid) then
+    return jsonb_build_object('already_done', true);
+  end if;
+
+  return jsonb_build_object(
+    'assignment_id', a.id,
+    'subject_id',    a.subject_id,
+    'topic_ids',     a.topic_ids,
+    'difficulty',    coalesce(a.difficulty, 'moyen'),
+    'title',         a.title
+  );
+end;
+$function$
+;
+
+CREATE OR REPLACE FUNCTION public.assignment_submissions(p_assignment_id uuid)
+ RETURNS TABLE(user_id uuid, affiche text, vrai_nom text, submission_id uuid, submitted_at timestamp with time zone, text text, attachment_path text, score_pct integer, grade integer, feedback text)
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+  select
+    m.user_id,
+    coalesce(nullif(btrim(p.board_alias), ''), nullif(btrim(p.name), ''), 'Élève'),
+    nullif(btrim(p.name), ''),
+    s.id, s.submitted_at, s.text, s.attachment_path, s.score_pct, s.grade, s.feedback
+  from public.classroom_members m
+  join public.profiles p on p.id = m.user_id
+  left join public.submissions s
+    on s.assignment_id = p_assignment_id and s.user_id = m.user_id
+  where m.classroom_id = public.assignment_classroom(p_assignment_id)
+    and m.status = 'active'
+    and public.is_classroom_teacher(public.assignment_classroom(p_assignment_id))
+  order by (s.submitted_at is null), 2;
+$function$
+;
+
 CREATE OR REPLACE FUNCTION public.auto_confirm_email()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -579,6 +711,74 @@ end;
 $function$
 ;
 
+CREATE OR REPLACE FUNCTION public.classroom_assignments(p_classroom_id uuid)
+ RETURNS TABLE(id uuid, kind text, title text, topic_ids text[], difficulty text, due_at timestamp with time zone, published boolean, rendus integer, a_corriger integer, moyenne integer)
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+  select
+    a.id, a.kind, a.title, a.topic_ids, a.difficulty, a.due_at, a.published,
+    (select count(*)::integer from public.submissions s where s.assignment_id = a.id),
+    (select count(*)::integer from public.submissions s
+      where s.assignment_id = a.id and s.graded_at is null and a.kind = 'devoir'),
+    (select round(avg(coalesce(s.grade, s.score_pct)))::integer from public.submissions s
+      where s.assignment_id = a.id and coalesce(s.grade, s.score_pct) is not null)
+  from public.assignments a
+  where a.classroom_id = p_classroom_id
+    and public.is_classroom_teacher(p_classroom_id)
+  order by a.created_at desc;
+$function$
+;
+
+CREATE OR REPLACE FUNCTION public.classroom_dashboard(p_classroom_id uuid)
+ RETURNS TABLE(topic_id text, label_fr text, label_ht text, eleves_mesures integer, maitrise integer, en_difficulte integer, noms text[])
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+  with garde as (
+    select public.is_classroom_teacher(p_classroom_id) as ok
+  ),
+  classe as (
+    select c.subject_id,
+           case
+             when c.grade_level like 'NS%' or c.grade_level = 'Philo' then 'lycee'
+             when c.grade_level in ('7e AF', '8e AF', '9e AF')        then 'college'
+             else 'primaire'
+           end as band
+    from public.classrooms c
+    where c.id = p_classroom_id and (select ok from garde)
+  ),
+  membres as (
+    select m.user_id,
+           coalesce(nullif(btrim(p.board_alias), ''), nullif(btrim(p.name), ''), 'Élève') as affiche
+    from public.classroom_members m
+    join public.profiles p on p.id = m.user_id
+    where m.classroom_id = p_classroom_id and m.status = 'active'
+  )
+  select
+    t.topic_id, t.label_fr, t.label_ht,
+    count(tm.user_id)::integer,
+    coalesce(round(avg(tm.mastery))::integer, 0),
+    count(*) filter (where tm.mastery < 40)::integer,
+    -- Les élèves sous 40 %, nommés : c'est la liste sur laquelle le
+    -- professeur agit lundi matin.
+    coalesce(array_agg(mb.affiche order by tm.mastery)
+               filter (where tm.mastery < 40), '{}')
+  from classe cl
+  join public.topics t
+    on t.subject_id = cl.subject_id and t.band = cl.band
+  left join membres mb on true
+  left join public.topic_mastery tm
+    on tm.user_id = mb.user_id
+   and tm.subject_id = cl.subject_id
+   and tm.topic_id = t.topic_id
+  group by t.topic_id, t.label_fr, t.label_ht, t.rank
+  order by count(tm.user_id) = 0, coalesce(avg(tm.mastery), 999), t.rank;
+$function$
+;
+
 CREATE OR REPLACE FUNCTION public.classroom_roster(p_classroom_id uuid)
  RETURNS TABLE(user_id uuid, affiche text, vrai_nom text, status text, is_teacher boolean, joined_at timestamp with time zone)
  LANGUAGE sql
@@ -604,6 +804,35 @@ AS $function$
     and (m.status = 'active' or (select prof from moi))
     and m.status <> 'removed'
   order by m.status, 2;
+$function$
+;
+
+CREATE OR REPLACE FUNCTION public.classroom_summary(p_classroom_id uuid)
+ RETURNS jsonb
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+  select case when not public.is_classroom_teacher(p_classroom_id) then null else
+    jsonb_build_object(
+      'membres', (select count(*) from public.classroom_members
+                   where classroom_id = p_classroom_id and status = 'active'),
+      'en_attente', (select count(*) from public.classroom_members
+                      where classroom_id = p_classroom_id and status = 'pending'),
+      'devoirs', (select count(*) from public.assignments
+                   where classroom_id = p_classroom_id and published),
+      'a_corriger', (select count(*) from public.submissions s
+                      join public.assignments a on a.id = s.assignment_id
+                     where a.classroom_id = p_classroom_id
+                       and a.kind = 'devoir' and s.graded_at is null),
+      -- Un élève qui n'a rien fait depuis une semaine, c'est le
+      -- signal le plus utile du tableau de bord.
+      'inactifs_7j', (select count(*) from public.classroom_members m
+                       left join public.progress pr on pr.user_id = m.user_id
+                      where m.classroom_id = p_classroom_id and m.status = 'active'
+                        and (pr.last_active is null or pr.last_active < current_date - 7))
+    )
+  end;
 $function$
 ;
 
@@ -679,6 +908,27 @@ end;
 $function$
 ;
 
+CREATE OR REPLACE FUNCTION public.delete_assignment(p_assignment_id uuid)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+begin
+  if not public.is_classroom_teacher(public.assignment_classroom(p_assignment_id)) then
+    raise exception 'reserve au professeur de la classe';
+  end if;
+  -- Un devoir déjà rendu ne se supprime pas : le travail d'un élève
+  -- ne disparaît pas parce que le professeur change d'avis.
+  if exists (select 1 from public.submissions where assignment_id = p_assignment_id) then
+    raise exception 'des eleves ont deja rendu';
+  end if;
+  delete from public.assignments where id = p_assignment_id;
+  return jsonb_build_object('deleted', true);
+end;
+$function$
+;
+
 CREATE OR REPLACE FUNCTION public.generate_join_code()
  RETURNS text
  LANGUAGE plpgsql
@@ -723,6 +973,7 @@ declare
   v_correct integer := 0;
   v_total   integer;
   v_outcome jsonb;
+  v_pct     integer;
   i         integer;
 begin
   if uid is null then
@@ -767,12 +1018,14 @@ begin
     );
   end loop;
 
+  v_pct := case when v_total > 0
+                then round((v_correct::numeric / v_total) * 100)
+                else 0 end;
+
   update public.quiz_sessions
      set graded_at = now(),
          picked    = p_picked,
-         score_pct = case when v_total > 0
-                          then round((v_correct::numeric / v_total) * 100)
-                          else 0 end
+         score_pct = v_pct
    where id = p_session_id;
 
   -- Le barème reste dans apply_quiz_results : un seul endroit où
@@ -783,9 +1036,50 @@ begin
     v_session.difficulty
   );
 
+  -- ── AJOUT : la remise, si la session appartient à un devoir ──
+  --
+  -- `do nothing` en cas de conflit : la PREMIÈRE session terminée
+  -- fait foi. Sans ça, un élève rejouerait le devoir jusqu'à
+  -- tomber sur un bon score, et la note ne voudrait plus rien dire.
+  if v_session.assignment_id is not null then
+    insert into public.submissions
+      (assignment_id, user_id, quiz_session_id, score_pct, submitted_at)
+    values
+      (v_session.assignment_id, uid, p_session_id, v_pct, now())
+    on conflict (assignment_id, user_id) do nothing;
+  end if;
+
   -- L'app a besoin de l'identifiant pour ouvrir la correction
   -- directement depuis l'écran de résultats.
   return v_outcome || jsonb_build_object('session_id', p_session_id);
+end;
+$function$
+;
+
+CREATE OR REPLACE FUNCTION public.grade_submission(p_submission_id uuid, p_grade integer, p_feedback text DEFAULT NULL::text)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare v_assignment uuid;
+begin
+  select assignment_id into v_assignment from public.submissions where id = p_submission_id;
+  if v_assignment is null then raise exception 'remise introuvable'; end if;
+  if not public.is_classroom_teacher(public.assignment_classroom(v_assignment)) then
+    raise exception 'reserve au professeur de la classe';
+  end if;
+  if p_grade is not null and (p_grade < 0 or p_grade > 100) then
+    raise exception 'note hors bornes';
+  end if;
+
+  update public.submissions
+     set grade = p_grade,
+         feedback = nullif(btrim(coalesce(p_feedback, '')), ''),
+         graded_by = (select auth.uid()), graded_at = now()
+   where id = p_submission_id;
+
+  return jsonb_build_object('id', p_submission_id, 'grade', p_grade);
 end;
 $function$
 ;
@@ -856,6 +1150,29 @@ AS $function$
      where c.id = p_classroom_id
        and c.teacher_id = (select auth.uid())
   );
+$function$
+;
+
+CREATE OR REPLACE FUNCTION public.is_teacher_of_attachment(p_name text)
+ RETURNS boolean
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare
+  v_parts text[] := string_to_array(p_name, '/');
+  v_classe uuid;
+begin
+  -- {eleve}/classroom/{classe}/{devoir}/{fichier}
+  if array_length(v_parts, 1) < 4 then return false; end if;
+  if v_parts[2] <> 'classroom' then return false; end if;
+  begin
+    v_classe := v_parts[3]::uuid;
+  exception when others then
+    return false;   -- un chemin bricolé ne donne aucun droit
+  end;
+  return public.is_classroom_teacher(v_classe);
+end;
 $function$
 ;
 
@@ -989,6 +1306,30 @@ AS $function$
   where board_visible or id = (select auth.uid())
   order by rang
   limit least(greatest(p_limit, 1), 100);
+$function$
+;
+
+CREATE OR REPLACE FUNCTION public.my_assignments()
+ RETURNS TABLE(id uuid, classroom_id uuid, classroom text, kind text, title text, instructions text, subject_id text, topic_ids text[], difficulty text, due_at timestamp with time zone, submitted_at timestamp with time zone, score_pct integer, grade integer, feedback text)
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+  select
+    a.id, a.classroom_id, c.name, a.kind, a.title, a.instructions,
+    a.subject_id, a.topic_ids, a.difficulty, a.due_at,
+    s.submitted_at, s.score_pct, s.grade, s.feedback
+  from public.assignments a
+  join public.classrooms c on c.id = a.classroom_id
+  join public.classroom_members m
+    on m.classroom_id = a.classroom_id
+   and m.user_id = (select auth.uid())
+   and m.status = 'active'
+  left join public.submissions s
+    on s.assignment_id = a.id and s.user_id = (select auth.uid())
+  where a.published and c.archived_at is null
+  order by (s.submitted_at is not null), a.due_at nulls last, a.created_at desc
+  limit 50;
 $function$
 ;
 
@@ -1220,6 +1561,24 @@ begin
     join public.departements d on d.id = c.departement_id
    where s.id = v_id
   );
+end;
+$function$
+;
+
+CREATE OR REPLACE FUNCTION public.publish_assignment(p_assignment_id uuid, p_published boolean DEFAULT true)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+begin
+  if not public.is_classroom_teacher(public.assignment_classroom(p_assignment_id)) then
+    raise exception 'reserve au professeur de la classe';
+  end if;
+  update public.assignments
+     set published = coalesce(p_published, true), updated_at = now()
+   where id = p_assignment_id;
+  return jsonb_build_object('id', p_assignment_id, 'published', p_published);
 end;
 $function$
 ;
@@ -1490,6 +1849,56 @@ end;
 $function$
 ;
 
+CREATE OR REPLACE FUNCTION public.save_assignment(p_classroom_id uuid, p_kind text, p_title text, p_instructions text DEFAULT NULL::text, p_topic_ids text[] DEFAULT '{}'::text[], p_difficulty text DEFAULT NULL::text, p_due_at timestamp with time zone DEFAULT NULL::timestamp with time zone, p_id uuid DEFAULT NULL::uuid)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare
+  uid     uuid := (select auth.uid());
+  v_sujet text;
+  v_id    uuid;
+begin
+  if not public.is_classroom_teacher(p_classroom_id) then
+    raise exception 'reserve au professeur de la classe';
+  end if;
+  if p_kind not in ('devoir', 'quiz') then
+    raise exception 'type de devoir inconnu';
+  end if;
+  if char_length(btrim(coalesce(p_title, ''))) < 2 then
+    raise exception 'titre trop court';
+  end if;
+
+  -- La matière vient de la classe, jamais du formulaire : un devoir
+  -- de physique dans la classe de maths fausserait le tableau de
+  -- bord, qui agrège par matière.
+  select subject_id into v_sujet from public.classrooms where id = p_classroom_id;
+
+  if p_id is null then
+    insert into public.assignments
+      (classroom_id, kind, title, instructions, subject_id, topic_ids, difficulty, due_at, created_by)
+    values
+      (p_classroom_id, p_kind, btrim(p_title),
+       nullif(btrim(coalesce(p_instructions, '')), ''), v_sujet,
+       coalesce(p_topic_ids, '{}'), p_difficulty, p_due_at, uid)
+    returning assignments.id into v_id;
+  else
+    update public.assignments
+       set kind = p_kind, title = btrim(p_title),
+           instructions = nullif(btrim(coalesce(p_instructions, '')), ''),
+           topic_ids = coalesce(p_topic_ids, '{}'),
+           difficulty = p_difficulty, due_at = p_due_at, updated_at = now()
+     where id = p_id and classroom_id = p_classroom_id
+    returning assignments.id into v_id;
+    if v_id is null then raise exception 'devoir introuvable'; end if;
+  end if;
+
+  return jsonb_build_object('id', v_id);
+end;
+$function$
+;
+
 CREATE OR REPLACE FUNCTION public.search_schools(p_query text DEFAULT NULL::text, p_commune_id text DEFAULT NULL::text)
  RETURNS TABLE(id uuid, name text, type text, status text, commune_id text, commune text, departement text)
  LANGUAGE sql
@@ -1673,6 +2082,49 @@ end;
 $function$
 ;
 
+CREATE OR REPLACE FUNCTION public.submit_assignment(p_assignment_id uuid, p_text text DEFAULT NULL::text, p_attachment_path text DEFAULT NULL::text)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare
+  uid      uuid := (select auth.uid());
+  v_classe uuid := public.assignment_classroom(p_assignment_id);
+  v_kind   text;
+  v_publie boolean;
+  v_id     uuid;
+begin
+  if uid is null then raise exception 'not authenticated'; end if;
+  if v_classe is null or not public.is_classroom_member(v_classe) then
+    raise exception 'tu n''es pas dans cette classe';
+  end if;
+
+  select kind, published into v_kind, v_publie
+    from public.assignments where id = p_assignment_id;
+  if not v_publie then raise exception 'devoir introuvable'; end if;
+  if v_kind = 'quiz' then
+    raise exception 'ce devoir se rend en jouant le quiz';
+  end if;
+  if coalesce(btrim(p_text), '') = '' and coalesce(p_attachment_path, '') = '' then
+    raise exception 'remise vide';
+  end if;
+
+  -- Une remise en retard reste acceptée : l'échéance sert au
+  -- professeur, elle ne ferme pas la porte à l'élève.
+  insert into public.submissions (assignment_id, user_id, text, attachment_path)
+  values (p_assignment_id, uid, nullif(btrim(coalesce(p_text, '')), ''), p_attachment_path)
+  on conflict (assignment_id, user_id) do update
+    set text = excluded.text,
+        attachment_path = coalesce(excluded.attachment_path, public.submissions.attachment_path),
+        submitted_at = now()
+  returning submissions.id into v_id;
+
+  return jsonb_build_object('id', v_id, 'submitted', true);
+end;
+$function$
+;
+
 CREATE OR REPLACE FUNCTION public.teacher_requests_to_review(p_status text DEFAULT 'pending'::text)
  RETURNS TABLE(user_id uuid, demande_le timestamp with time zone, nom_declare text, contact text, matieres text[], ecole text, commune text, message text, compte_cree timestamp with time zone, quiz_faits integer, xp integer, statut text)
  LANGUAGE sql
@@ -1742,6 +2194,7 @@ $function$
 
 -- ── Row Level Security ───────────────────────────────────────
 
+alter table public.assignments enable row level security;
 alter table public.chat_messages enable row level security;
 alter table public.classroom_members enable row level security;
 alter table public.classrooms enable row level security;
@@ -1759,9 +2212,17 @@ alter table public.schema_migrations enable row level security;
 alter table public.school_levels enable row level security;
 alter table public.school_sections enable row level security;
 alter table public.schools enable row level security;
+alter table public.submissions enable row level security;
 alter table public.teacher_requests enable row level security;
 alter table public.topic_mastery enable row level security;
+alter table public.topics enable row level security;
 alter table public.usage_counters enable row level security;
+
+create policy "assignments_select" on public.assignments
+  as permissive
+  for select
+  to authenticated
+  using ((is_classroom_teacher(classroom_id) OR (published AND is_classroom_member(classroom_id))));
 
 create policy "chat_messages_delete_own" on public.chat_messages
   as permissive
@@ -1915,6 +2376,12 @@ create policy "schools_select" on public.schools
   to authenticated
   using (((status = 'approved'::text) OR (created_by = ( SELECT auth.uid() AS uid))));
 
+create policy "submissions_select" on public.submissions
+  as permissive
+  for select
+  to authenticated
+  using (((user_id = ( SELECT auth.uid() AS uid)) OR is_classroom_teacher(assignment_classroom(assignment_id))));
+
 create policy "teacher_requests_select_own" on public.teacher_requests
   as permissive
   for select
@@ -1926,6 +2393,12 @@ create policy "topic_mastery_select_own" on public.topic_mastery
   for select
   to authenticated
   using ((( SELECT auth.uid() AS uid) = user_id));
+
+create policy "topics_select" on public.topics
+  as permissive
+  for select
+  to authenticated
+  using (true);
 
 create policy "usage_counters_select_own" on public.usage_counters
   as permissive
@@ -1958,6 +2431,10 @@ create policy "attachments_insert_own_folder" on storage.objects
 create policy "attachments_select_own_folder" on storage.objects
   for select
   using (((bucket_id = 'attachments'::text) AND ((storage.foldername(name))[1] = (( SELECT auth.uid() AS uid))::text)));
+
+create policy "attachments_teacher_reads_submissions" on storage.objects
+  for select
+  using (((bucket_id = 'attachments'::text) AND is_teacher_of_attachment(name)));
 
 create policy "attachments_update_own_folder" on storage.objects
   for update

@@ -289,6 +289,99 @@ export const fr = {
       'Les élèves se voient entre eux sous leur pseudonyme. Toi seul, comme professeur, vois leur vrai prénom.',
   },
 
+  assignment: {
+    section: 'DEVOIRS',
+    add: 'Donner',
+    title: 'Devoir',
+    newTitle: 'Donner un devoir',
+    emptyTeacher: "Aucun devoir pour l'instant.",
+    emptyStudent: 'Rien à rendre pour le moment.',
+    draft: 'Brouillon — la classe ne le voit pas encore',
+    handedIn: '{n} remise(s)',
+    todo: 'À rendre',
+    done: 'Rendu',
+
+    kind_devoir: 'Devoir',
+    kind_devoir_sub: 'Un texte ou une photo du cahier',
+    kind_quiz: 'Quiz',
+    kind_quiz_sub: 'Chaque élève reçoit le sien',
+
+    titleLabel: 'Titre',
+    titlePlaceholder_devoir: 'Ex. Exercices 12 à 18, page 47',
+    titlePlaceholder_quiz: 'Ex. Contrôle sur les fonctions',
+    titleNeeded: 'Donne un titre au devoir',
+    instructionsLabel: 'Consignes',
+    instructionsPlaceholder: "Ce que l'élève doit faire, et comment le rendre.",
+
+    topicsDevoir: 'Les notions travaillées',
+    topicsQuiz: 'Les notions du quiz',
+    topicsWhy:
+      "Ce sont les notions du programme, pour la matière et le niveau de ta classe. C'est par elles que le tableau de bord te dira où en est chacun.",
+    topicsNeeded: 'Choisis au moins une notion',
+    difficultyLabel: 'Difficulté',
+    dueLabel: 'À rendre pour',
+    due_tomorrow: 'Demain',
+    due_threeDays: 'Dans 3 jours',
+    due_oneWeek: 'Dans une semaine',
+    due_none: "Pas d'échéance",
+    dueOn: 'À rendre pour le {date}',
+
+    quizNote:
+      "Chaque élève recevra SON quiz, généré sur ces notions : ce n'est pas le même questionnaire recopié. Les XP suivent le barème habituel, sans bonus.",
+    saveAndPublish: 'Publier le devoir',
+    saveDraft: 'Garder en brouillon',
+    draftNote: "Ce devoir est encore un brouillon : tes élèves ne le voient pas.",
+    publish: 'Publier maintenant',
+    failed: "Ça n'a pas marché. Réessaie.",
+
+    yourAnswer: 'TA RÉPONSE',
+    redo: 'MODIFIER TA REMISE',
+    answerPlaceholder: 'Écris ta réponse ici…',
+    photo: 'Photo du cahier',
+    gallery: 'Depuis mes images',
+    submit: 'Rendre le devoir',
+    submitted: 'Devoir rendu. Ton professeur le verra.',
+    emptySubmission: 'Écris quelque chose ou ajoute une photo',
+    alreadySubmitted: 'Tu as rendu ce devoir',
+    waitingGrade: "Ton professeur ne l'a pas encore corrigé.",
+
+    quizIntro:
+      "Ce devoir est un quiz. Tu ne le joues qu'une fois : la première tentative compte.",
+    startQuiz: 'Commencer le quiz',
+    quizDone: 'Tu as fait ce quiz : {pct} %',
+    quizOnce: 'Un devoir-quiz ne se rejoue pas.',
+
+    submissions: '{n} REMISE(S) SUR {total}',
+    toGrade: 'À corriger',
+    notSubmitted: 'Pas rendu',
+    seeAttachment: 'Voir la photo',
+    gradeLabel: 'Note sur 100',
+    feedbackLabel: 'Ton retour à l\'élève',
+    feedbackPlaceholder: 'Ce qui est réussi, ce qui reste à travailler…',
+    saveGrade: 'Enregistrer la note',
+  },
+
+  dashboard: {
+    title: 'Tableau de bord',
+    entry: 'Où en est ta classe, notion par notion',
+    members: 'élèves',
+    toGrade: 'à corriger',
+    pending: 'en attente',
+    inactive: 'inactifs 7 jours',
+    byTopic: 'PAR NOTION',
+    byTopicSub:
+      "Calculé sur les quiz déjà joués par tes élèves. Aucune saisie de ta part : c'est mesuré, pas déclaré.",
+    measured: 'mesuré sur {n} élève(s)',
+    struggling: 'Sous 40 % :',
+    empty:
+      "Pas encore assez de quiz joués dans cette matière. Donne un quiz à ta classe : le tableau se remplira tout seul.",
+    notYet: 'PAS ENCORE TRAVAILLÉ',
+    notYetSub: "Aucun élève n'a encore été évalué sur ces notions.",
+    privacy:
+      "Tu ne vois que la matière de cette classe. Ce que tes élèves travaillent ailleurs ne te regarde pas.",
+  },
+
+
 
 
 

@@ -14,6 +14,62 @@ export type Database = {
   }
   public: {
     Tables: {
+      assignments: {
+        Row: {
+          classroom_id: string
+          created_at: string
+          created_by: string
+          difficulty: string | null
+          due_at: string | null
+          id: string
+          instructions: string | null
+          kind: string
+          published: boolean
+          subject_id: string
+          title: string
+          topic_ids: string[]
+          updated_at: string
+        }
+        Insert: {
+          classroom_id: string
+          created_at?: string
+          created_by: string
+          difficulty?: string | null
+          due_at?: string | null
+          id?: string
+          instructions?: string | null
+          kind: string
+          published?: boolean
+          subject_id: string
+          title: string
+          topic_ids?: string[]
+          updated_at?: string
+        }
+        Update: {
+          classroom_id?: string
+          created_at?: string
+          created_by?: string
+          difficulty?: string | null
+          due_at?: string | null
+          id?: string
+          instructions?: string | null
+          kind?: string
+          published?: boolean
+          subject_id?: string
+          title?: string
+          topic_ids?: string[]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assignments_classroom_id_fkey"
+            columns: ["classroom_id"]
+            isOneToOne: false
+            referencedRelation: "classrooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       chat_messages: {
         Row: {
           attachment_name: string | null
@@ -447,6 +503,7 @@ export type Database = {
       quiz_sessions: {
         Row: {
           answers: Json
+          assignment_id: string | null
           created_at: string
           difficulty: string
           graded_at: string | null
@@ -459,6 +516,7 @@ export type Database = {
         }
         Insert: {
           answers: Json
+          assignment_id?: string | null
           created_at?: string
           difficulty?: string
           graded_at?: string | null
@@ -471,6 +529,7 @@ export type Database = {
         }
         Update: {
           answers?: Json
+          assignment_id?: string | null
           created_at?: string
           difficulty?: string
           graded_at?: string | null
@@ -481,7 +540,15 @@ export type Database = {
           subject_id?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "quiz_sessions_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "assignments"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       role_events: {
         Row: {
@@ -617,6 +684,66 @@ export type Database = {
           },
         ]
       }
+      submissions: {
+        Row: {
+          assignment_id: string
+          attachment_path: string | null
+          feedback: string | null
+          grade: number | null
+          graded_at: string | null
+          graded_by: string | null
+          id: string
+          quiz_session_id: string | null
+          score_pct: number | null
+          submitted_at: string
+          text: string | null
+          user_id: string
+        }
+        Insert: {
+          assignment_id: string
+          attachment_path?: string | null
+          feedback?: string | null
+          grade?: number | null
+          graded_at?: string | null
+          graded_by?: string | null
+          id?: string
+          quiz_session_id?: string | null
+          score_pct?: number | null
+          submitted_at?: string
+          text?: string | null
+          user_id: string
+        }
+        Update: {
+          assignment_id?: string
+          attachment_path?: string | null
+          feedback?: string | null
+          grade?: number | null
+          graded_at?: string | null
+          graded_by?: string | null
+          id?: string
+          quiz_session_id?: string | null
+          score_pct?: number | null
+          submitted_at?: string
+          text?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "submissions_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "submissions_quiz_session_id_fkey"
+            columns: ["quiz_session_id"]
+            isOneToOne: false
+            referencedRelation: "quiz_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       teacher_requests: {
         Row: {
           contact: string
@@ -700,6 +827,33 @@ export type Database = {
         }
         Relationships: []
       }
+      topics: {
+        Row: {
+          band: string
+          label_fr: string
+          label_ht: string
+          rank: number
+          subject_id: string
+          topic_id: string
+        }
+        Insert: {
+          band: string
+          label_fr: string
+          label_ht: string
+          rank: number
+          subject_id: string
+          topic_id: string
+        }
+        Update: {
+          band?: string
+          label_fr?: string
+          label_ht?: string
+          rank?: number
+          subject_id?: string
+          topic_id?: string
+        }
+        Relationships: []
+      }
       usage_counters: {
         Row: {
           count: number
@@ -739,9 +893,59 @@ export type Database = {
         Returns: Json
       }
       archive_classroom: { Args: { p_classroom_id: string }; Returns: Json }
+      assignment_classroom: {
+        Args: { p_assignment_id: string }
+        Returns: string
+      }
+      assignment_quiz_params: {
+        Args: { p_assignment_id: string }
+        Returns: Json
+      }
+      assignment_submissions: {
+        Args: { p_assignment_id: string }
+        Returns: {
+          affiche: string
+          attachment_path: string
+          feedback: string
+          grade: number
+          score_pct: number
+          submission_id: string
+          submitted_at: string
+          text: string
+          user_id: string
+          vrai_nom: string
+        }[]
+      }
       bump_usage: {
         Args: { p_kind: string; p_limit: number; p_user_id: string }
         Returns: Json
+      }
+      classroom_assignments: {
+        Args: { p_classroom_id: string }
+        Returns: {
+          a_corriger: number
+          difficulty: string
+          due_at: string
+          id: string
+          kind: string
+          moyenne: number
+          published: boolean
+          rendus: number
+          title: string
+          topic_ids: string[]
+        }[]
+      }
+      classroom_dashboard: {
+        Args: { p_classroom_id: string }
+        Returns: {
+          eleves_mesures: number
+          en_difficulte: number
+          label_fr: string
+          label_ht: string
+          maitrise: number
+          noms: string[]
+          topic_id: string
+        }[]
       }
       classroom_roster: {
         Args: { p_classroom_id: string }
@@ -754,6 +958,7 @@ export type Database = {
           vrai_nom: string
         }[]
       }
+      classroom_summary: { Args: { p_classroom_id: string }; Returns: Json }
       conversation_list: {
         Args: { p_limit?: number }
         Returns: {
@@ -774,9 +979,14 @@ export type Database = {
         }
         Returns: Json
       }
+      delete_assignment: { Args: { p_assignment_id: string }; Returns: Json }
       generate_join_code: { Args: never; Returns: string }
       grade_quiz: {
         Args: { p_picked: Json; p_session_id: string }
+        Returns: Json
+      }
+      grade_submission: {
+        Args: { p_feedback?: string; p_grade: number; p_submission_id: string }
         Returns: Json
       }
       is_classroom_member: {
@@ -787,6 +997,7 @@ export type Database = {
         Args: { p_classroom_id: string }
         Returns: boolean
       }
+      is_teacher_of_attachment: { Args: { p_name: string }; Returns: boolean }
       join_classroom: { Args: { p_code: string }; Returns: Json }
       leaderboard: {
         Args: { p_limit?: number }
@@ -796,6 +1007,25 @@ export type Database = {
           name: string
           rank: number
           xp: number
+        }[]
+      }
+      my_assignments: {
+        Args: never
+        Returns: {
+          classroom: string
+          classroom_id: string
+          difficulty: string
+          due_at: string
+          feedback: string
+          grade: number
+          id: string
+          instructions: string
+          kind: string
+          score_pct: number
+          subject_id: string
+          submitted_at: string
+          title: string
+          topic_ids: string[]
         }[]
       }
       my_classrooms: {
@@ -829,6 +1059,10 @@ export type Database = {
       profile_completion: { Args: never; Returns: Json }
       propose_school: {
         Args: { p_commune_id: string; p_name: string; p_type?: string }
+        Returns: Json
+      }
+      publish_assignment: {
+        Args: { p_assignment_id: string; p_published?: boolean }
         Returns: Json
       }
       purge_seen_questions: { Args: { p_keep?: number }; Returns: number }
@@ -873,6 +1107,19 @@ export type Database = {
         Returns: Json
       }
       rotate_join_code: { Args: { p_classroom_id: string }; Returns: Json }
+      save_assignment: {
+        Args: {
+          p_classroom_id: string
+          p_difficulty?: string
+          p_due_at?: string
+          p_id?: string
+          p_instructions?: string
+          p_kind: string
+          p_title: string
+          p_topic_ids?: string[]
+        }
+        Returns: Json
+      }
       search_schools: {
         Args: { p_commune_id?: string; p_query?: string }
         Returns: {
@@ -919,6 +1166,14 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      submit_assignment: {
+        Args: {
+          p_assignment_id: string
+          p_attachment_path?: string
+          p_text?: string
+        }
+        Returns: Json
       }
       teacher_requests_to_review: {
         Args: { p_status?: string }

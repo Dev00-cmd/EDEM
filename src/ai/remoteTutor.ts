@@ -89,6 +89,12 @@ export async function remoteQuiz(
   subjectId: string,
   subjectLabel: string,
   difficulty: Difficulty,
+  /**
+   * Devoir de type quiz. Le serveur vérifie que l'élève a le droit
+   * de le jouer et impose SES paramètres : le client ne fait que
+   * transmettre l'identifiant.
+   */
+  assignmentId?: string | null,
 ): Promise<GeneratedQuiz | null> {
   const prompt = buildQuizPrompt(ctx, subjectLabel, difficulty);
 
@@ -100,6 +106,7 @@ export async function remoteQuiz(
       prompt,
       subjectId,
       difficulty,
+      assignmentId: assignmentId ?? null,
     });
     const raw = data.questions;
     if (!Array.isArray(raw) || raw.length === 0) return null;
