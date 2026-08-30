@@ -80,6 +80,7 @@ function Navigator() {
       >
         <Stack.Screen name="login" />
         <Stack.Screen name="onboarding" />
+        <Stack.Screen name="tune-profile" />
         <Stack.Screen name="(tabs)" />
       </Stack>
 

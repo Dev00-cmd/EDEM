@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Image, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Screen } from '@/components/Screen';
@@ -34,6 +34,7 @@ export default function HomeScreen() {
     offline,
     syncing,
     refresh,
+    shouldTune,
   } = useApp();
   const { colors } = useTheme();
   const { width, isSmall } = useResponsive();
@@ -47,6 +48,16 @@ export default function HomeScreen() {
   const hour = new Date().getHours();
   const greetKey =
     hour < 12 ? 'home.morning' : hour < 18 ? 'home.afternoon' : 'home.evening';
+
+  // « Personnalise ton tuteur » — le moment 2 de l'onboarding.
+  //
+  // Il s'ouvre depuis l'accueil, et de nulle part ailleurs : c'est
+  // l'écran où l'élève revient une fois son travail terminé. Le
+  // déclencher depuis un quiz ou une conversation lui couperait la
+  // main en plein milieu.
+  useEffect(() => {
+    if (shouldTune) router.replace('/tune-profile');
+  }, [shouldTune, router]);
 
   const plan = useMemo(() => dailyPlan(profile, progress), [profile, progress]);
   const tip = tipOfToday(dayOfYear());

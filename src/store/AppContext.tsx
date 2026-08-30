@@ -35,7 +35,7 @@ export interface Profile {
   name: string;
   lang: Lang;
   level: string; // classe, ex. "9e AF"
-  goal: string; // 'exams' | 'grades' | 'learn' | 'english' | ''
+  goal: string; // 'exams' | 'grades' | 'learn' | 'english' | 'catchup' | ''
   favorites: string[]; // ids de matières choisies
   theme: ThemeMode;
   onboarded: boolean;
@@ -48,6 +48,29 @@ export interface Profile {
   boardAlias: string;
   /** Apparaître ou non dans la liste publique du classement. */
   boardVisible: boolean;
+
+  // ── Profil scolaire (moment 2 de l'onboarding) ──────────────
+  //
+  // Tout est facultatif : rien ici ne bloque l'élève. Chaque champ
+  // doit pouvoir être justifié à l'élève en une phrase, affichée
+  // sous la question.
+
+  /** Série du Nouveau Secondaire — choisie dès l'entrée en NS3. */
+  section: string | null;
+  /** École, choisie dans le référentiel ou proposée par l'élève. */
+  schoolId: string | null;
+  /** Commune. Le département s'en déduit, on ne le demande pas. */
+  communeId: string | null;
+  /** Matières les plus difficiles, 5 au plus. M. Thomas insiste dessus. */
+  weakSubjects: string[];
+  /** Année de l'examen visé, si l'objectif est « examens d'État ». */
+  examYear: number | null;
+  /** Minutes d'étude par jour : 15, 30, 60 ou 120. Taille le plan. */
+  studyMinutes: number | null;
+  /** Rôle. Accordé par le serveur, jamais modifiable ici. */
+  role: 'eleve' | 'prof';
+  /** Date du bonus de profil complet. Non nul = déjà versé. */
+  profileCompletedAt: string | null;
 }
 
 export interface Progress {
@@ -101,6 +124,34 @@ export interface ActivityPoint {
   xp: number;
 }
 
+/**
+ * Où en est le profil de l'élève.
+ *
+ * Calculé par le serveur, jamais ici : il accorde des XP, et
+ * depuis le verrouillage des écritures, toute XP passe par une
+ * fonction SECURITY DEFINER. Un pourcentage calculé sur le
+ * téléphone serait un pourcentage négociable.
+ */
+export interface Completion {
+  pct: number;
+  done: number;
+  total: number;
+  /** Clés des champs encore vides, dans l'ordre où les demander. */
+  missing: string[];
+  /** XP versés à l'instant. 0 la plupart du temps. */
+  bonus: number;
+  completed: boolean;
+}
+
+const DEFAULT_COMPLETION: Completion = {
+  pct: 0,
+  done: 0,
+  total: 0,
+  missing: [],
+  bonus: 0,
+  completed: false,
+};
+
 const DEFAULT_PROFILE: Profile = {
   name: '',
   lang: 'fr',
@@ -114,6 +165,15 @@ const DEFAULT_PROFILE: Profile = {
   // les ferait disparaître d'un classement où ils figurent déjà,
   // sans explication.
   boardVisible: true,
+
+  section: null,
+  schoolId: null,
+  communeId: null,
+  weakSubjects: [],
+  examYear: null,
+  studyMinutes: null,
+  role: 'eleve',
+  profileCompletedAt: null,
 };
 
 const DEFAULT_PROGRESS: Progress = {
@@ -169,6 +229,19 @@ interface AppState {
   touchActivity: () => void;
   resetAll: () => Promise<void>;
   refresh: () => Promise<void>;
+
+  // ── Complétion du profil (moment 2 de l'onboarding) ─────────
+  /** Dernier état connu. Recalculé par le serveur, jamais ici. */
+  completion: Completion;
+  /** Redemande le pourcentage au serveur. Verse le bonus si 100 %. */
+  refreshCompletion: () => Promise<Completion>;
+  /**
+   * L'élève a-t-il déjà fait quelque chose de réel, sans avoir vu
+   * l'écran « Personnalise ton tuteur » ni l'avoir écarté ?
+   */
+  shouldTune: boolean;
+  /** « Plus tard ». On ne le repropose pas sur cet appareil. */
+  dismissTune: () => void;
 }
 
 const AppContext = createContext<AppState | null>(null);
@@ -229,6 +302,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // a ouvert un fil neuf mais n'a pas encore parlé.
   const pendingSubject = useRef<string>('general');
   const [activity, setActivity] = useState<ActivityPoint[]>([]);
+  const [completion, setCompletion] = useState<Completion>(DEFAULT_COMPLETION);
+  /** « Plus tard » sur l'écran de personnalisation, par appareil. */
+  const [tuneDismissed, setTuneDismissed] = useState(false);
 
   // Évite d'écrire le cache pendant le tout premier chargement.
   const hydrated = useRef(false);
@@ -267,6 +343,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
             onboarded: p.onboarded,
             boardAlias: p.board_alias ?? '',
             boardVisible: p.board_visible ?? true,
+            section: p.section ?? null,
+            schoolId: p.school_id ?? null,
+            communeId: p.commune_id ?? null,
+            weakSubjects: p.weak_subjects ?? [],
+            examYear: p.exam_year ?? null,
+            studyMinutes: p.study_minutes ?? null,
+            role: p.role === 'prof' ? 'prof' : 'eleve',
+            profileCompletedAt: p.profile_completed_at ?? null,
           }
         : DEFAULT_PROFILE;
 
@@ -356,15 +440,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
     let alive = true;
     (async () => {
       // 1) cache d'abord — l'app s'ouvre sans attendre le réseau
-      const [cp, cpr, ct] = await Promise.all([
+      const [cp, cpr, ct, skipped] = await Promise.all([
         readCache(cacheKey(STORAGE_KEYS.PROFILE, userId), DEFAULT_PROFILE),
         readCache(cacheKey(STORAGE_KEYS.PROGRESS, userId), DEFAULT_PROGRESS),
         readCache(cacheKey(STORAGE_KEYS.CHAT, userId), [] as Conversation[]),
+        readCache(cacheKey(STORAGE_KEYS.TUNE_SKIPPED, userId), false),
       ]);
       if (!alive) return;
       setProfile(cp);
       setProgress(cpr);
       setConversations(Array.isArray(ct) ? ct : []);
+      setTuneDismissed(skipped === true);
       setReady(true);
       hydrated.current = true;
 
@@ -414,7 +500,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
               // on envoie null plutôt qu'une chaîne vide.
               board_alias: next.boardAlias.trim() || null,
               board_visible: next.boardVisible,
+              section: next.section,
+              school_id: next.schoolId,
+              commune_id: next.communeId,
+              weak_subjects: next.weakSubjects,
+              exam_year: next.examYear,
+              study_minutes: next.studyMinutes,
               updated_at: new Date().toISOString(),
+              // NE JAMAIS ajouter `role` ni `profile_completed_at`
+              // ici : l'application n'a pas le droit d'écrire ces
+              // colonnes, et Postgres refuserait TOUT l'upsert —
+              // le profil ne s'enregistrerait plus du tout.
             })
             .then(({ error }) => setOffline(!!error));
         }
@@ -706,6 +802,55 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return Math.min(1, Math.max(0, (progress.xp - cur) / (next - cur)));
   }, [progress.xp, level]);
 
+  // ── Complétion du profil ────────────────────────────────────
+  //
+  // Le serveur est seul juge : c'est lui qui sait quels champs
+  // s'appliquent à ce niveau (un élève de 5e AF n'a pas de série)
+  // et lui seul qui peut verser le bonus.
+  const refreshCompletion = useCallback(async (): Promise<Completion> => {
+    if (!userId) return DEFAULT_COMPLETION;
+    const { data, error } = await supabase.rpc('profile_completion');
+    if (error || !data) return completion;
+
+    const next = data as unknown as Completion;
+    setCompletion(next);
+
+    // Le bonus vient d'être versé : la progression a changé en
+    // base, on la recharge plutôt que de la recalculer à la main.
+    if (next.bonus > 0) loadFromServer(userId);
+    return next;
+  }, [userId, completion, loadFromServer]);
+
+  // Recalcul à l'ouverture et à chaque modification du profil.
+  useEffect(() => {
+    if (!userId || !ready) return;
+    refreshCompletion();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId, ready, profile.level, profile.section, profile.schoolId,
+      profile.communeId, profile.goal, profile.examYear, profile.studyMinutes,
+      profile.name, profile.favorites.length, profile.weakSubjects.length]);
+
+  const dismissTune = useCallback(() => {
+    setTuneDismissed(true);
+    if (userId) writeCache(cacheKey(STORAGE_KEYS.TUNE_SKIPPED, userId), true);
+  }, [userId]);
+
+  /**
+   * L'écran « Personnalise ton tuteur » n'apparaît qu'APRÈS une
+   * vraie utilisation : une question posée ou un quiz passé. Le
+   * demander avant, c'est un formulaire de plus entre l'élève et
+   * sa première réponse — et la moitié s'arrête là.
+   */
+  const aDejaTravaille = progress.quizzesDone > 0 || conversations.length > 0;
+  const shouldTune =
+    ready &&
+    !!userId &&
+    profile.onboarded &&
+    aDejaTravaille &&
+    !tuneDismissed &&
+    !completion.completed &&
+    completion.total > 0;
+
   const value: AppState = {
     ready: ready && authReady,
     syncing,
@@ -731,6 +876,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     touchActivity,
     resetAll,
     refresh,
+    completion,
+    refreshCompletion,
+    shouldTune,
+    dismissTune,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useRouter } from 'expo-router';
 import * as Updates from 'expo-updates';
 import { Screen } from '@/components/Screen';
 import { Card } from '@/components/Card';
@@ -41,8 +42,10 @@ function Section({ label, children }: { label: string; children: React.ReactNode
 }
 
 export default function ProfileScreen() {
-  const { t, profile, progress, level, levelProgress, updateProfile, resetAll } = useApp();
+  const { t, profile, progress, level, levelProgress, updateProfile, resetAll, completion } =
+    useApp();
   const { user, signOut } = useAuth();
+  const router = useRouter();
   const { colors } = useTheme();
   const lang = profile.lang;
 
@@ -251,6 +254,43 @@ export default function ProfileScreen() {
           />
         </View>
       </Section>
+
+      {/* ── Complétion du profil ────────────────────────────── */}
+      {/* L'écran « Personnalise ton tuteur » est sautable. Sans
+          ce point d'entrée, « Plus tard » voudrait dire « jamais » :
+          l'élève n'aurait aucun moyen d'y revenir. */}
+      {completion.total > 0 && (
+        <Section label={t('profile.tuning')}>
+          <Card onPress={completion.completed ? undefined : () => router.push('/tune-profile')}>
+            {completion.completed ? (
+              <View style={styles.settingLeft}>
+                <Icon name="check-circle" size={18} color={colors.accent} />
+                <Text style={[type.bodyMedium, { color: colors.text, flex: 1 }]}>
+                  {t('tune.cardDone')}
+                </Text>
+              </View>
+            ) : (
+              <>
+                <Text style={[type.cardTitle, { color: colors.text }]}>
+                  {t('tune.cardTitle', { pct: String(completion.pct) })}
+                </Text>
+                <Text style={[type.caption, { color: colors.textFaint, marginTop: 6 }]}>
+                  {t('tune.cardSub')}
+                </Text>
+                <View style={{ marginTop: 12 }}>
+                  <ProgressBar value={completion.pct / 100} />
+                </View>
+                <View style={[styles.settingLeft, { marginTop: 12 }]}>
+                  <Icon name="arrow-right" size={14} color={colors.accent} />
+                  <Text style={[type.captionMedium, { color: colors.accent }]}>
+                    {t('tune.cardOpen')}
+                  </Text>
+                </View>
+              </>
+            )}
+          </Card>
+        </Section>
+      )}
 
       {/* ── Réglages ────────────────────────────────────────── */}
       <Section label={t('profile.settings')}>

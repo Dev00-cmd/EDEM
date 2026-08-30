@@ -162,6 +162,7 @@ export type Database = {
           board_visible: boolean
           commune_id: string | null
           created_at: string
+          exam_year: number | null
           favorites: string[]
           goal: string
           id: string
@@ -173,14 +174,17 @@ export type Database = {
           role: string
           school_id: string | null
           section: string | null
+          study_minutes: number | null
           theme: string
           updated_at: string
+          weak_subjects: string[]
         }
         Insert: {
           board_alias?: string | null
           board_visible?: boolean
           commune_id?: string | null
           created_at?: string
+          exam_year?: number | null
           favorites?: string[]
           goal?: string
           id: string
@@ -192,14 +196,17 @@ export type Database = {
           role?: string
           school_id?: string | null
           section?: string | null
+          study_minutes?: number | null
           theme?: string
           updated_at?: string
+          weak_subjects?: string[]
         }
         Update: {
           board_alias?: string | null
           board_visible?: boolean
           commune_id?: string | null
           created_at?: string
+          exam_year?: number | null
           favorites?: string[]
           goal?: string
           id?: string
@@ -211,8 +218,10 @@ export type Database = {
           role?: string
           school_id?: string | null
           section?: string | null
+          study_minutes?: number | null
           theme?: string
           updated_at?: string
+          weak_subjects?: string[]
         }
         Relationships: [
           {
@@ -575,6 +584,7 @@ export type Database = {
         }[]
       }
       norm_text: { Args: { p_text: string }; Returns: string }
+      profile_completion: { Args: never; Returns: Json }
       propose_school: {
         Args: { p_commune_id: string; p_name: string; p_type?: string }
         Returns: Json

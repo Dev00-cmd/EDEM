@@ -20,6 +20,7 @@ export const ht: Messages = {
     yes: 'Wi',
     no: 'Non',
     retry: 'Eseye ankò',
+    change: 'Chanje',
   },
 
   tabs: {
@@ -92,7 +93,78 @@ export const ht: Messages = {
     ready: 'Tout bagay pare, {name} !',
     readySub:
       'Chemen pèsonèl ou a pare. Chak jou, M. Thomas ap di w kisa pou w etidye — epi li swiv pwogrè w pa etap.',
+    stepOf: 'ETAP {n}/{total}',
+    whatsSection: 'Ki seri ou ?',
+    whatsSectionSub:
+      "Ou te chwazi l lè ou t ap antre nan NS3. Se li ki deside sa M. Thomas revize ak ou.",
+    goal_catchup: 'Ratrape reta mwen',
   },
+
+  tune: {
+    eyebrow: 'PÈSONALIZASYON',
+    title: 'Pèsonalize pwofesè ou',
+    subtitle:
+      'De minit, epi M. Thomas ap travay sou sa OU bezwen. Anyen pa obligatwa — ou ka sote tout.',
+
+    privacyTitle: 'SA LÒT MOUN WÈ',
+    privacyVisible:
+      'Nan klasman an, lòt elèv yo wè ti non ou ak XP ou. Anyen ankò.',
+    privacyHidden:
+      'Lekòl ou, komin ou, nòt kwiz ou ak diskisyon ou ak M. Thomas, pèsonn pa wè yo.',
+    privacyAlias:
+      'Si ou pa chwazi yon ti non, se prenon ou ki parèt. Ou ka chwazi youn nan pwofil ou.',
+
+    communeTitle: 'Nan ki komin ou ye ?',
+    communeWhy:
+      'Li sèvi pou jwenn lekòl ou, epi pita klas ou. Li pa janm voye bay M. Thomas.',
+    departementLabel: 'DABÒ DEPATMAN AN',
+    communeFirst: 'Chwazi komin ou dabò',
+
+    schoolTitle: 'Ki lekòl ou ?',
+    schoolWhy:
+      'Li sèvi pou mete ou nan klas la lè pwofesè ou louvri youn. Li pa janm voye bay M. Thomas.',
+    schoolSearchPlaceholder: 'Ekri non lekòl ou…',
+    schoolNoResult: 'Nou pa jwenn okenn lekòl. Ou ka ajoute l anba a.',
+    schoolMissing: 'Lekòl mwen pa nan lis la',
+    schoolNameLabel: 'Non lekòl la',
+    schoolNamePlaceholder: 'Egzanp : Lycée Alexandre Pétion',
+    schoolAdd: 'Ajoute',
+    schoolTooShort: 'Ekri non konplè lekòl ou',
+    schoolFailed: 'Nou pa ka ajoute lekòl la. Eseye pita.',
+
+    subjectsTitle: 'Ki matyè ou vle travay ?',
+    subjectsWhy: 'Se sou yo nou bati chemen ou ak plan jounen an.',
+
+    weakTitle: 'Kilès ki pi difisil pou ou ?',
+    weakWhy:
+      'M. Thomas ap tounen sou yo pi souvan epi ba ou plis kwiz. 5 omaksimòm.',
+
+    goalTitle: 'Ki objektif ou ?',
+    goalWhy: 'Li chanje jan M. Thomas pale ak lòd chemen ou.',
+
+    examYearTitle: 'Ki egzamen w ap vize ?',
+    examYearWhy:
+      'Li sèvi pou konnen si sa prese : revize pou jen k ap vini an pa menm ak revize pou nan de zan.',
+
+    minutesTitle: 'Konbyen tan chak jou ?',
+    minutesWhy:
+      'Li bay plan jounen an gwosè li. Twa nosyon lè ou gen dis minit, sa dekouraje.',
+    minutes_15: '15 minit',
+    minutes_30: '30 minit',
+    minutes_60: '1 èdtan',
+    minutes_120: '2 èdtan ou plis',
+
+    finish: 'Anrejistre',
+    later: 'Pita',
+    doneTitle: 'Pwofil konplè !',
+    doneSub: 'M. Thomas konnen ou kounye a. +{xp} XP pou sa.',
+
+    cardTitle: 'Pwofil konplete a {pct} %',
+    cardSub: 'Konplete l pou M. Thomas travay sou sa ou bezwen.',
+    cardDone: 'Pwofil konplè. M. Thomas konnen ou.',
+    cardOpen: 'Kontinye',
+  },
+
 
   home: {
     morning: 'Bonjou',
@@ -235,6 +307,7 @@ export const ht: Messages = {
   },
 
   profile: {
+    tuning: 'Pèsonalizasyon',
     title: 'Pwofil',
     stats: 'Estatistik ou yo',
     xpTotal: 'Total pwen',

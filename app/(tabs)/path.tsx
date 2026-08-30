@@ -11,7 +11,7 @@ import { useTheme } from '@/theme/ThemeContext';
 import { RADIUS } from '@/theme/colors';
 import { useResponsive, MAX_CONTENT_WIDTH } from '@/theme/responsive';
 import { FONTS, type } from '@/theme/typography';
-import { buildPlan, coachNote, isItemDone, masteryOf } from '@/ai/plan';
+import { buildPlan, coachNote, isItemDone, masteryOf, planSubjects } from '@/ai/plan';
 import { getSubject } from '@/data/subjects';
 import { BAND_LABEL, bandOfLevel } from '@/data/curriculum';
 
@@ -30,7 +30,12 @@ export default function PathScreen() {
   const lang = profile.lang;
 
   const plan = useMemo(() => buildPlan(profile), [profile]);
-  const ready = profile.level !== '' && profile.favorites.length > 0;
+  // Les matières ne sont plus demandées à l'inscription : le
+  // parcours part sur des matières de repli tant que l'élève
+  // n'a pas choisi les siennes. Le bloquer ici lui montrerait un
+  // écran vide sans qu'il sache quoi faire.
+  const ready = profile.level !== '';
+  const subjects = planSubjects(profile);
 
   const doneCount = plan.filter((i) => isItemDone(progress, i)).length;
   const overall = plan.length > 0 ? doneCount / plan.length : 0;
@@ -164,7 +169,7 @@ export default function PathScreen() {
             style={styles.section}
           />
 
-          {profile.favorites.map((subjectId) => {
+          {subjects.map((subjectId) => {
             const subject = getSubject(subjectId);
             const items = plan.filter((i) => i.subjectId === subjectId);
             const mastery = masteryOf(progress, subjectId, profile.level);

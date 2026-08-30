@@ -20,6 +20,7 @@ export const fr = {
     yes: 'Oui',
     no: 'Non',
     retry: 'Réessayer',
+    change: 'Changer',
   },
 
   tabs: {
@@ -92,7 +93,78 @@ export const fr = {
     ready: 'Tout est prêt, {name} !',
     readySub:
       'Ton parcours personnalisé est généré. Chaque jour, M. Thomas te dira quoi étudier — et suivra ta progression pas à pas.',
+    stepOf: 'ÉTAPE {n}/{total}',
+    whatsSection: 'Quelle est ta série ?',
+    whatsSectionSub:
+      "Tu l'as choisie en entrant en NS3. Elle décide de ce que M. Thomas révise avec toi.",
+    goal_catchup: 'Rattraper mon retard',
   },
+
+  tune: {
+    eyebrow: 'PERSONNALISATION',
+    title: 'Personnalise ton tuteur',
+    subtitle:
+      "Deux minutes, et M. Thomas travaillera sur ce dont TU as besoin. Rien n'est obligatoire — tu peux tout sauter.",
+
+    privacyTitle: 'CE QUE LES AUTRES VOIENT',
+    privacyVisible:
+      'Au classement, les autres élèves voient ton pseudonyme et tes XP. Rien d\'autre.',
+    privacyHidden:
+      'Ton école, ta commune, tes scores de quiz et tes discussions avec M. Thomas ne sont vus par personne.',
+    privacyAlias:
+      "Sans pseudonyme, c'est ton prénom qui s'affiche. Tu peux en choisir un dans ton profil.",
+
+    communeTitle: 'Tu es dans quelle commune ?',
+    communeWhy:
+      'Sert à retrouver ton école, et plus tard ta classe. Jamais envoyé à M. Thomas.',
+    departementLabel: "D'ABORD LE DÉPARTEMENT",
+    communeFirst: "Choisis d'abord ta commune",
+
+    schoolTitle: 'Quelle est ton école ?',
+    schoolWhy:
+      'Sert à te rattacher à ta classe quand ton professeur en ouvrira une. Jamais envoyé à M. Thomas.',
+    schoolSearchPlaceholder: 'Écris le nom de ton école…',
+    schoolNoResult: 'Aucune école trouvée. Tu peux l\'ajouter ci-dessous.',
+    schoolMissing: "Mon école n'est pas dans la liste",
+    schoolNameLabel: "Nom de l'école",
+    schoolNamePlaceholder: 'Ex. Lycée Alexandre Pétion',
+    schoolAdd: 'Ajouter',
+    schoolTooShort: 'Écris le nom complet de ton école',
+    schoolFailed: "Impossible d'ajouter l'école. Réessaie plus tard.",
+
+    subjectsTitle: 'Quelles matières veux-tu travailler ?',
+    subjectsWhy: 'Ton parcours et ton plan du jour sont construits dessus.',
+
+    weakTitle: 'Lesquelles sont les plus difficiles ?',
+    weakWhy:
+      "M. Thomas y revient plus souvent et t'y propose plus de quiz. 5 au maximum.",
+
+    goalTitle: 'Quel est ton objectif ?',
+    goalWhy: "Change le ton de M. Thomas et l'ordre de ton parcours.",
+
+    examYearTitle: 'Quel examen vises-tu ?',
+    examYearWhy:
+      "Sert à doser l'urgence : réviser pour juin prochain n'est pas réviser pour dans deux ans.",
+
+    minutesTitle: 'Combien de temps par jour ?',
+    minutesWhy:
+      'Taille ton plan du jour. Trois notions quand tu as dix minutes, ça décourage.',
+    minutes_15: '15 minutes',
+    minutes_30: '30 minutes',
+    minutes_60: '1 heure',
+    minutes_120: '2 heures ou plus',
+
+    finish: 'Enregistrer',
+    later: 'Plus tard',
+    doneTitle: 'Profil complet !',
+    doneSub: 'M. Thomas te connaît maintenant. +{xp} XP pour la peine.',
+
+    cardTitle: 'Profil complété à {pct} %',
+    cardSub: 'Complète-le pour que M. Thomas travaille sur ce qu\'il te faut.',
+    cardDone: 'Profil complet. M. Thomas te connaît.',
+    cardOpen: 'Continuer',
+  },
+
 
   home: {
     morning: 'Bonjour',
@@ -235,6 +307,7 @@ export const fr = {
   },
 
   profile: {
+    tuning: 'Personnalisation',
     title: 'Profil',
     stats: 'Tes statistiques',
     xpTotal: 'XP totaux',

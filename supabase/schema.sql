@@ -72,7 +72,10 @@ create table if not exists public.profiles (
   section text,
   commune_id text,
   role text default 'eleve'::text not null,
-  profile_completed_at timestamp with time zone
+  profile_completed_at timestamp with time zone,
+  weak_subjects text[] default '{}'::text[] not null,
+  exam_year integer,
+  study_minutes integer
 );
 
 create table if not exists public.progress (
@@ -187,13 +190,17 @@ alter table daily_activity add constraint daily_activity_xp_gained_check CHECK (
 alter table departements add constraint departements_pkey PRIMARY KEY (id);
 alter table profiles add constraint profiles_board_alias_len CHECK (((board_alias IS NULL) OR ((char_length(btrim(board_alias)) >= 2) AND (char_length(btrim(board_alias)) <= 24))));
 alter table profiles add constraint profiles_commune_id_fkey FOREIGN KEY (commune_id) REFERENCES communes(id);
+alter table profiles add constraint profiles_exam_year_ck CHECK (((exam_year IS NULL) OR ((exam_year >= 2026) AND (exam_year <= 2040))));
+alter table profiles add constraint profiles_goal_ck CHECK ((goal = ANY (ARRAY[''::text, 'exams'::text, 'grades'::text, 'learn'::text, 'english'::text, 'catchup'::text])));
 alter table profiles add constraint profiles_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id) ON DELETE CASCADE;
 alter table profiles add constraint profiles_lang_check CHECK ((lang = ANY (ARRAY['fr'::text, 'ht'::text])));
 alter table profiles add constraint profiles_pkey PRIMARY KEY (id);
 alter table profiles add constraint profiles_role_check CHECK ((role = ANY (ARRAY['eleve'::text, 'prof'::text])));
 alter table profiles add constraint profiles_school_id_fkey FOREIGN KEY (school_id) REFERENCES schools(id) ON DELETE SET NULL;
 alter table profiles add constraint profiles_section_fkey FOREIGN KEY (section) REFERENCES school_sections(id);
+alter table profiles add constraint profiles_study_minutes_ck CHECK (((study_minutes IS NULL) OR (study_minutes = ANY (ARRAY[15, 30, 60, 120]))));
 alter table profiles add constraint profiles_theme_check CHECK ((theme = ANY (ARRAY['system'::text, 'light'::text, 'dark'::text])));
+alter table profiles add constraint profiles_weak_subjects_ck CHECK ((cardinality(weak_subjects) <= 5));
 alter table progress add constraint progress_answered_check CHECK ((answered >= 0));
 alter table progress add constraint progress_correct_check CHECK ((correct >= 0));
 alter table progress add constraint progress_pkey PRIMARY KEY (user_id);
@@ -242,7 +249,7 @@ CREATE UNIQUE INDEX quiz_seen_unique_idx ON public.quiz_seen_questions USING btr
 CREATE INDEX quiz_seen_user_subject_idx ON public.quiz_seen_questions USING btree (user_id, subject_id, created_at DESC);
 CREATE INDEX quiz_sessions_history_idx ON public.quiz_sessions USING btree (user_id, graded_at DESC) WHERE (graded_at IS NOT NULL);
 CREATE INDEX quiz_sessions_user_created_idx ON public.quiz_sessions USING btree (user_id, created_at DESC);
-CREATE INDEX schools_commune_idx ON public.schools USING btree (commune_id, status);
+CREATE INDEX schools_created_by_idx ON public.schools USING btree (created_by) WHERE (created_by IS NOT NULL);
 CREATE INDEX schools_name_trgm ON public.schools USING gin (norm_text(name) gin_trgm_ops);
 CREATE UNIQUE INDEX schools_unique_in_commune ON public.schools USING btree (commune_id, norm_text(name));
 CREATE INDEX topic_mastery_user_subject_idx ON public.topic_mastery USING btree (user_id, subject_id);
@@ -618,6 +625,100 @@ AS $function$
   select lower(
     extensions.unaccent('extensions.unaccent'::regdictionary, coalesce(p_text, ''))
   )
+$function$
+;
+
+CREATE OR REPLACE FUNCTION public.profile_completion()
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare
+  uid        uuid := (select auth.uid());
+  c_bonus    constant integer := 50;  -- une lecture de notion vaut 8
+  v_p        public.profiles;
+  v_besoin   boolean;      -- ce niveau demande-t-il une série ?
+  v_champs   jsonb := '[]'::jsonb;
+  v_manque   jsonb := '[]'::jsonb;
+  v_total    integer := 0;
+  v_faits    integer := 0;
+  v_pct      integer;
+  v_bonus    integer := 0;
+
+  procedure_champ record;
+begin
+  if uid is null then
+    raise exception 'not authenticated';
+  end if;
+
+  select * into v_p from public.profiles where id = uid;
+  if not found then
+    raise exception 'profil introuvable';
+  end if;
+
+  select coalesce(l.needs_section, false) into v_besoin
+    from public.school_levels l where l.id = v_p.level;
+  v_besoin := coalesce(v_besoin, false);
+
+  -- Chaque ligne : (clé, applicable, rempli). Un champ qui ne
+  -- s'applique pas ne compte ni au numérateur ni au dénominateur —
+  -- sinon un élève de 5e AF plafonnerait à 80 % pour n'avoir pas
+  -- choisi une série qui n'existe pas à son niveau.
+  for procedure_champ in
+    select * from (values
+      ('name',          true,                       btrim(coalesce(v_p.name, '')) <> ''),
+      ('level',         true,                       btrim(coalesce(v_p.level, '')) <> ''),
+      ('section',       v_besoin,                   v_p.section is not null),
+      ('favorites',     true,                       cardinality(v_p.favorites) > 0),
+      ('weak_subjects', true,                       cardinality(v_p.weak_subjects) > 0),
+      ('goal',          true,                       btrim(coalesce(v_p.goal, '')) <> ''),
+      ('exam_year',     v_p.goal = 'exams',         v_p.exam_year is not null),
+      ('study_minutes', true,                       v_p.study_minutes is not null),
+      ('school_id',     true,                       v_p.school_id is not null),
+      ('commune_id',    true,                       v_p.commune_id is not null)
+    ) as f(cle, applicable, rempli)
+  loop
+    if procedure_champ.applicable then
+      v_total := v_total + 1;
+      if procedure_champ.rempli then
+        v_faits  := v_faits + 1;
+        v_champs := v_champs || to_jsonb(procedure_champ.cle);
+      else
+        v_manque := v_manque || to_jsonb(procedure_champ.cle);
+      end if;
+    end if;
+  end loop;
+
+  v_pct := case when v_total = 0 then 0
+                else round((v_faits::numeric / v_total) * 100) end;
+
+  -- Le bonus, une seule fois dans la vie du compte.
+  if v_pct = 100 and v_p.profile_completed_at is null then
+    update public.profiles set profile_completed_at = now() where id = uid;
+
+    update public.progress
+       set xp = xp + c_bonus, updated_at = now()
+     where user_id = uid;
+
+    insert into public.daily_activity (user_id, day, xp_gained)
+    values (uid, current_date, c_bonus)
+    on conflict (user_id, day) do update
+      set xp_gained = public.daily_activity.xp_gained + c_bonus;
+
+    v_bonus := c_bonus;
+  end if;
+
+  return jsonb_build_object(
+    'pct',       v_pct,
+    'done',      v_faits,
+    'total',     v_total,
+    'filled',    v_champs,
+    'missing',   v_manque,
+    'bonus',     v_bonus,
+    'completed', v_p.profile_completed_at is not null or v_pct = 100
+  );
+end;
 $function$
 ;
 

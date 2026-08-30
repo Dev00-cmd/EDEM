@@ -1,3 +1,21 @@
+// ═══════════════════════════════════════════════════════════════
+//  MOMENT 1 DE L'ONBOARDING — trente secondes, pas plus
+//
+//  Quatre champs en tout : le prénom (déjà saisi à l'inscription),
+//  la langue, la classe, et la série pour ceux qui en ont une.
+//
+//  L'objectif et les matières ont quitté cet écran. Ils sont
+//  utiles, mais les demander ICI, c'est trois écrans de formulaire
+//  entre un élève curieux et sa première réponse — et la moitié
+//  s'arrête en route. Ils reviennent au moment 2, après que
+//  l'élève a vu ce que M. Thomas sait faire, quand il a une raison
+//  de vouloir l'améliorer.
+//
+//  Le parcours ne reste pas vide pour autant : il travaille sur
+//  des matières de repli (voir planSubjects) jusqu'à ce que
+//  l'élève choisisse les siennes.
+// ═══════════════════════════════════════════════════════════════
+
 import React, { useMemo, useState } from 'react';
 import {
   Image,
@@ -10,26 +28,17 @@ import {
 import { Screen } from '@/components/Screen';
 import { Button } from '@/components/Button';
 import { Chip } from '@/components/Chip';
-import { Icon, type IconName } from '@/components/Icon';
+import { Icon } from '@/components/Icon';
 import { useApp } from '@/store/AppContext';
 import { useTheme } from '@/theme/ThemeContext';
 import { useKeyboard } from '@/theme/useKeyboard';
 import { RADIUS } from '@/theme/colors';
 import { FONTS, type } from '@/theme/typography';
 import { LEVELS } from '@/data/levels';
-import { SUBJECTS } from '@/data/subjects';
+import { SCHOOL_SECTIONS, levelNeedsSection } from '@/data/haiti';
 import type { Lang } from '@/i18n';
 
-// Le prénom et la langue sont déjà connus depuis l'inscription :
-// il ne reste que ce qui construit vraiment le parcours.
-const STEPS = 3;
-
-const GOALS: { id: string; icon: IconName }[] = [
-  { id: 'exams', icon: 'award' },
-  { id: 'grades', icon: 'chart' },
-  { id: 'learn', icon: 'bulb' },
-  { id: 'english', icon: 'language' },
-];
+const STEPS = 2;
 
 export default function Onboarding() {
   const { t, profile, updateProfile } = useApp();
@@ -41,21 +50,19 @@ export default function Onboarding() {
 
   const lang = profile.lang;
 
+  // La série se choisit à l'entrée en NS3, pas au NS4 : un élève
+  // de NS3 a déjà la sienne. Ne pas la lui demander, ce serait se
+  // priver pendant deux ans de ce qui oriente le mieux le tuteur.
+  const needsSection = levelNeedsSection(profile.level);
+
   const canNext = useMemo(() => {
     if (step === 1) return profile.level !== '';
-    if (step === 2) return profile.favorites.length > 0 && profile.goal !== '';
     return true;
-  }, [step, profile]);
-
-  const errorMsg = (s: number): string => {
-    if (s === 1) return t('onboarding.levelNeeded');
-    if (s === 2) return t('onboarding.subjectsNeeded');
-    return '';
-  };
+  }, [step, profile.level]);
 
   const next = () => {
     if (!canNext) {
-      setError(errorMsg(step));
+      setError(t('onboarding.levelNeeded'));
       return;
     }
     setError('');
@@ -65,13 +72,6 @@ export default function Onboarding() {
     }
     // L'aiguillage du layout racine bascule vers les onglets.
     updateProfile({ onboarded: true });
-  };
-
-  const toggleFavorite = (id: string) => {
-    const favorites = profile.favorites.includes(id)
-      ? profile.favorites.filter((f) => f !== id)
-      : [...profile.favorites, id];
-    updateProfile({ favorites });
   };
 
   return (
@@ -102,7 +102,7 @@ export default function Onboarding() {
             ))}
           </View>
 
-          {/* ══ Étape 0 : bienvenue ═══════════════════════════ */}
+          {/* ══ Étape 0 : bienvenue et langue ═════════════════ */}
           {step === 0 && (
             <View>
               <View style={[styles.heroWrap, { borderColor: colors.border }]}>
@@ -204,11 +204,11 @@ export default function Onboarding() {
             </View>
           )}
 
-          {/* ══ Étape 1 : classe ══════════════════════════════ */}
+          {/* ══ Étape 1 : classe, et série s'il y a lieu ══════ */}
           {step === 1 && (
             <View>
               <Text style={[type.eyebrow, { color: colors.accent, marginTop: 20 }]}>
-                {lang === 'ht' ? 'ETAP 2/3' : 'ÉTAPE 2/3'}
+                {t('onboarding.stepOf', { n: '2', total: String(STEPS) })}
               </Text>
               <Text style={[type.display, { color: colors.text, marginTop: 6 }]}>
                 {t('onboarding.whatsLevel')}
@@ -223,77 +223,44 @@ export default function Onboarding() {
                     key={lv}
                     label={lv}
                     selected={profile.level === lv}
-                    onPress={() => updateProfile({ level: lv })}
+                    onPress={() =>
+                      updateProfile({
+                        level: lv,
+                        // Changer de classe invalide la série : un
+                        // élève passé de NS III à 8e AF ne peut pas
+                        // garder « Sciences mathématiques ».
+                        section: levelNeedsSection(lv) ? profile.section : null,
+                      })
+                    }
                   />
                 ))}
               </View>
-            </View>
-          )}
 
-          {/* ══ Étape 2 : objectif + matières ═════════════════ */}
-          {step === 2 && (
-            <View>
-              <Text style={[type.eyebrow, { color: colors.accent, marginTop: 20 }]}>
-                {lang === 'ht' ? 'ETAP 3/3' : 'ÉTAPE 3/3'}
-              </Text>
-              <Text style={[type.display, { color: colors.text, marginTop: 6 }]}>
-                {t('onboarding.whatsGoal')}
-              </Text>
+              {needsSection && (
+                <View style={styles.sectionBlock}>
+                  <Text style={[type.title, { color: colors.text }]}>
+                    {t('onboarding.whatsSection')}
+                  </Text>
+                  <Text style={[type.caption, { color: colors.textFaint, marginTop: 6 }]}>
+                    {t('onboarding.whatsSectionSub')}
+                  </Text>
 
-              <View style={styles.goalGrid}>
-                {GOALS.map((g) => {
-                  const selected = profile.goal === g.id;
-                  return (
-                    <Pressable
-                      key={g.id}
-                      onPress={() => updateProfile({ goal: g.id })}
-                      accessibilityRole="button"
-                      accessibilityState={{ selected }}
-                      style={[
-                        styles.goalCard,
-                        {
-                          backgroundColor: selected ? colors.accent : colors.surface,
-                          borderColor: selected ? colors.accent : colors.border,
-                        },
-                      ]}
-                    >
-                      <Icon
-                        name={g.icon}
-                        size={20}
-                        color={selected ? '#FFFFFF' : colors.textSoft}
+                  <View style={styles.chipsWrap}>
+                    {SCHOOL_SECTIONS.map((s) => (
+                      <Chip
+                        key={s.id}
+                        label={lang === 'ht' ? s.labelHt : s.labelFr}
+                        selected={profile.section === s.id}
+                        onPress={() =>
+                          updateProfile({
+                            section: profile.section === s.id ? null : s.id,
+                          })
+                        }
                       />
-                      <Text
-                        style={[
-                          type.captionMedium,
-                          { color: selected ? '#FFFFFF' : colors.text },
-                        ]}
-                      >
-                        {t(`onboarding.goal_${g.id}`)}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-
-              <Text style={[type.eyebrow, styles.sectionLabel, { color: colors.textFaint }]}>
-                {t('onboarding.whatsSubjects')}
-              </Text>
-              <Text style={[type.caption, { color: colors.textFaint }]}>
-                {t('onboarding.whatsSubjectsSub')}
-              </Text>
-
-              <View style={styles.chipsWrap}>
-                {SUBJECTS.map((s) => (
-                  <Chip
-                    key={s.id}
-                    label={s.name[lang]}
-                    icon={s.icon}
-                    tint={s.color}
-                    selected={profile.favorites.includes(s.id)}
-                    onPress={() => toggleFavorite(s.id)}
-                  />
-                ))}
-              </View>
+                    ))}
+                  </View>
+                </View>
+              )}
             </View>
           )}
 
@@ -365,6 +332,7 @@ const styles = StyleSheet.create({
   },
 
   sectionLabel: { marginTop: 26, marginBottom: 12 },
+  sectionBlock: { marginTop: 30 },
 
   langRow: { flexDirection: 'row', gap: 12 },
   langCard: {
@@ -378,15 +346,6 @@ const styles = StyleSheet.create({
   langCheckRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
 
   chipsWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 16 },
-
-  goalGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 16 },
-  goalCard: {
-    width: '47.5%',
-    borderRadius: RADIUS.lg,
-    borderWidth: 1.5,
-    padding: 14,
-    gap: 8,
-  },
 
   errorRow: {
     flexDirection: 'row',

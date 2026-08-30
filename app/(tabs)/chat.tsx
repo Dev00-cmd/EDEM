@@ -34,7 +34,7 @@ import { useKeyboard, useKeyboardShift } from '@/theme/useKeyboard';
 import { RADIUS } from '@/theme/colors';
 import { FONTS, type } from '@/theme/typography';
 import { askTutor } from '@/ai/tutor';
-import { studentContextOf, dailyPlan } from '@/ai/plan';
+import { studentContextOf, dailyPlan, planSubjects } from '@/ai/plan';
 import { isBackendConfigured } from '@/config/app';
 import { SUBJECTS, getSubject } from '@/data/subjects';
 
@@ -213,7 +213,7 @@ export default function ChatScreen() {
         const reply = await askTutor(
           history,
           ctx,
-          { profile, subjectIds: profile.favorites },
+          { profile, subjectIds: planSubjects(profile) },
           uploaded ? { path: uploaded.path, type: uploaded.type } : null,
         );
 

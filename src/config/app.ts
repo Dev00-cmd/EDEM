@@ -50,6 +50,10 @@ export const STORAGE_KEYS = {
   PROFILE: '@tipwof/profile',
   PROGRESS: '@tipwof/progress',
   CHAT: '@tipwof/chat',
+  // « Plus tard » sur l'écran de personnalisation. Volontairement
+  // local à l'appareil : c'est une préférence d'affichage, pas une
+  // donnée de l'élève, et elle n'a rien à faire en base.
+  TUNE_SKIPPED: '@tipwof/tune-skipped',
 };
 
 // ═══════════════════════════════════════════════════════════════

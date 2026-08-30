@@ -30,9 +30,23 @@ export interface PlanItem {
 
 export const topicKey = (subjectId: string, topicId: string) => `${subjectId}:${topicId}`;
 
+/**
+ * Matières de repli, quand l'élève n'en a pas encore choisi.
+ *
+ * Le choix des matières a quitté l'inscription : on veut que
+ * l'élève pose sa première question en trente secondes, pas qu'il
+ * remplisse un formulaire. Il ne doit donc plus jamais tomber sur
+ * un parcours vide en attendant de les choisir.
+ */
+export const DEFAULT_SUBJECTS = ['math', 'histoire', 'svt'];
+
+/** Les matières sur lesquelles le parcours travaille réellement. */
+export const planSubjects = (profile: Profile): string[] =>
+  profile.favorites.length > 0 ? profile.favorites : DEFAULT_SUBJECTS;
+
 /** Liste complète du parcours (ordre pédagogique). */
 export function buildPlan(profile: Profile): PlanItem[] {
-  const subjects = profile.favorites.length > 0 ? profile.favorites : ['math', 'histoire', 'svt'];
+  const subjects = planSubjects(profile);
   const band = bandOfLevel(profile.level);
   const items: PlanItem[] = [];
 
@@ -140,7 +154,7 @@ export function weakTopicsOf(
   onlySubject?: string,
 ): string[] {
   const out: string[] = [];
-  const subjects = onlySubject ? [onlySubject] : profile.favorites;
+  const subjects = onlySubject ? [onlySubject] : planSubjects(profile);
   for (const subjectId of subjects) {
     for (const t of topicsFor(subjectId, profile.level)) {
       const score = progress.topics[topicKey(subjectId, t.id)] ?? 0;
@@ -157,7 +171,7 @@ export function strongTopicsOf(
   onlySubject?: string,
 ): string[] {
   const out: string[] = [];
-  const subjects = onlySubject ? [onlySubject] : profile.favorites;
+  const subjects = onlySubject ? [onlySubject] : planSubjects(profile);
   for (const subjectId of subjects) {
     for (const t of topicsFor(subjectId, profile.level)) {
       const score = progress.topics[topicKey(subjectId, t.id)] ?? 0;
