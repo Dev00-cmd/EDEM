@@ -5,7 +5,7 @@
 --  relancer le script après toute modification de la base.
 --
 --  Projet   : qoyebljuvrxhcroxapys
---  Exporté  : 2026-08-29
+--  Exporté  : 2026-08-30
 --
 --  Ce fichier est la SEULE copie hors ligne du backend. Sans
 --  lui, un projet Supabase perdu serait irrécupérable.
@@ -114,7 +114,8 @@ create table if not exists public.topic_mastery (
   subject_id text not null,
   topic_id text not null,
   mastery integer default 0 not null,
-  updated_at timestamp with time zone default now() not null
+  updated_at timestamp with time zone default now() not null,
+  last_study_on date
 );
 
 create table if not exists public.usage_counters (
@@ -190,6 +191,7 @@ CREATE INDEX topic_mastery_user_subject_idx ON public.topic_mastery USING btree 
 CREATE OR REPLACE FUNCTION public.apply_quiz_results(p_subject_id text, p_results jsonb, p_difficulty text DEFAULT 'moyen'::text)
  RETURNS jsonb
  LANGUAGE plpgsql
+ SECURITY DEFINER
  SET search_path TO ''
 AS $function$
 declare
@@ -590,6 +592,7 @@ $function$
 CREATE OR REPLACE FUNCTION public.reset_progress()
  RETURNS void
  LANGUAGE plpgsql
+ SECURITY DEFINER
  SET search_path TO ''
 AS $function$
 declare
@@ -632,6 +635,7 @@ $function$
 CREATE OR REPLACE FUNCTION public.skip_duplicate_seen_question()
  RETURNS trigger
  LANGUAGE plpgsql
+ SET search_path TO ''
 AS $function$
 begin
   if exists (
@@ -648,28 +652,78 @@ end;
 $function$
 ;
 
-CREATE OR REPLACE FUNCTION public.study_topic(p_subject_id text, p_topic_id text, p_xp integer DEFAULT 8)
+CREATE OR REPLACE FUNCTION public.study_topic(p_subject_id text, p_topic_id text)
  RETURNS progress
  LANGUAGE plpgsql
+ SECURITY DEFINER
  SET search_path TO ''
 AS $function$
 declare
-  uid uuid := (select auth.uid());
-  row public.progress;
+  uid          uuid := (select auth.uid());
+  c_xp         constant integer := 8;   -- barème figé, plus envoyé par le client
+  c_max_jour   constant integer := 5;   -- 5 notions payantes → 40 XP d'étude / jour
+  c_maitrise   constant integer := 15;  -- ce que vaut une lecture
+  c_plafond    constant integer := 60;  -- l'étude seule ne certifie pas une notion
+  v_deja       boolean;
+  v_faites     integer;
+  v_gain       integer := 0;
+  row          public.progress;
 begin
   if uid is null then
     raise exception 'not authenticated';
   end if;
 
-  insert into public.topic_mastery (user_id, subject_id, topic_id, mastery, updated_at)
-  values (uid, p_subject_id, p_topic_id, 34, now())
-  on conflict (user_id, subject_id, topic_id) do update
-    set mastery    = least(100, public.topic_mastery.mastery + 34),
-        updated_at = now();
+  -- Une notion déjà travaillée aujourd'hui ne rapporte plus rien :
+  -- sinon le même bouton, cliqué vingt fois, vaut vingt fois 8 XP.
+  select exists (
+    select 1
+      from public.topic_mastery m
+     where m.user_id       = uid
+       and m.subject_id    = p_subject_id
+       and m.topic_id      = p_topic_id
+       and m.last_study_on = current_date
+  ) into v_deja;
 
+  select d.topics_studied into v_faites
+    from public.daily_activity d
+   where d.user_id = uid and d.day = current_date;
+  v_faites := coalesce(v_faites, 0);
+
+  if not v_deja then
+    -- Au-delà du plafond quotidien la notion compte quand même
+    -- comme travaillée : c'est l'XP qui s'arrête, pas le suivi.
+    if v_faites < c_max_jour then
+      v_gain := c_xp;
+    end if;
+
+    -- La maîtrise issue de l'étude est DÉCLARÉE, pas mesurée : elle
+    -- monte doucement et ne dépasse jamais 60 %. Les 40 % restants
+    -- ne s'obtiennent qu'en répondant à des questions. C'est cette
+    -- table qui nourrira le tableau de bord du prof : elle doit
+    -- dire la vérité.
+    insert into public.topic_mastery
+      (user_id, subject_id, topic_id, mastery, last_study_on, updated_at)
+    values
+      (uid, p_subject_id, p_topic_id, c_maitrise, current_date, now())
+    on conflict (user_id, subject_id, topic_id) do update
+      set mastery = greatest(
+                      public.topic_mastery.mastery,
+                      least(c_plafond, public.topic_mastery.mastery + c_maitrise)
+                    ),
+          last_study_on = current_date,
+          updated_at    = now();
+
+    insert into public.daily_activity (user_id, day, xp_gained, topics_studied)
+    values (uid, current_date, v_gain, 1)
+    on conflict (user_id, day) do update
+      set xp_gained      = public.daily_activity.xp_gained + v_gain,
+          topics_studied = public.daily_activity.topics_studied + 1;
+  end if;
+
+  -- La série se met à jour même sans XP : l'élève était bien là.
   update public.progress p
-     set xp            = p.xp + p_xp,
-         studied_count = p.studied_count + 1,
+     set xp            = p.xp + v_gain,
+         studied_count = p.studied_count + (case when v_deja then 0 else 1 end),
          streak        = case
                            when p.last_active = current_date then p.streak
                            when p.last_active = current_date - 1 then p.streak + 1
@@ -680,12 +734,6 @@ begin
    where p.user_id = uid
   returning * into row;
 
-  insert into public.daily_activity (user_id, day, xp_gained, topics_studied)
-  values (uid, current_date, p_xp, 1)
-  on conflict (user_id, day) do update
-    set xp_gained      = public.daily_activity.xp_gained + p_xp,
-        topics_studied = public.daily_activity.topics_studied + 1;
-
   return row;
 end;
 $function$
@@ -694,6 +742,7 @@ $function$
 CREATE OR REPLACE FUNCTION public.touch_activity()
  RETURNS progress
  LANGUAGE plpgsql
+ SECURITY DEFINER
  SET search_path TO ''
 AS $function$
 declare
@@ -794,30 +843,11 @@ create policy "conversations_update_own" on public.conversations
   using ((user_id = ( SELECT auth.uid() AS uid)))
   with check ((user_id = ( SELECT auth.uid() AS uid)));
 
-create policy "daily_activity_delete_own" on public.daily_activity
-  as permissive
-  for delete
-  to authenticated
-  using ((( SELECT auth.uid() AS uid) = user_id));
-
-create policy "daily_activity_insert_own" on public.daily_activity
-  as permissive
-  for insert
-  to authenticated
-  with check ((( SELECT auth.uid() AS uid) = user_id));
-
 create policy "daily_activity_select_own" on public.daily_activity
   as permissive
   for select
   to authenticated
   using ((( SELECT auth.uid() AS uid) = user_id));
-
-create policy "daily_activity_update_own" on public.daily_activity
-  as permissive
-  for update
-  to authenticated
-  using ((( SELECT auth.uid() AS uid) = user_id))
-  with check ((( SELECT auth.uid() AS uid) = user_id));
 
 create policy "profiles_delete_own" on public.profiles
   as permissive
@@ -844,42 +874,11 @@ create policy "profiles_update_own" on public.profiles
   using ((( SELECT auth.uid() AS uid) = id))
   with check ((( SELECT auth.uid() AS uid) = id));
 
-create policy "progress_delete_own" on public.progress
-  as permissive
-  for delete
-  to authenticated
-  using ((( SELECT auth.uid() AS uid) = user_id));
-
-create policy "progress_insert_own" on public.progress
-  as permissive
-  for insert
-  to authenticated
-  with check ((( SELECT auth.uid() AS uid) = user_id));
-
 create policy "progress_select_own" on public.progress
   as permissive
   for select
   to authenticated
   using ((( SELECT auth.uid() AS uid) = user_id));
-
-create policy "progress_update_own" on public.progress
-  as permissive
-  for update
-  to authenticated
-  using ((( SELECT auth.uid() AS uid) = user_id))
-  with check ((( SELECT auth.uid() AS uid) = user_id));
-
-create policy "quiz_results_delete_own" on public.quiz_results
-  as permissive
-  for delete
-  to authenticated
-  using ((( SELECT auth.uid() AS uid) = user_id));
-
-create policy "quiz_results_insert_own" on public.quiz_results
-  as permissive
-  for insert
-  to authenticated
-  with check ((( SELECT auth.uid() AS uid) = user_id));
 
 create policy "quiz_results_select_own" on public.quiz_results
   as permissive
@@ -911,30 +910,11 @@ create policy "quiz_sessions_select_graded_own" on public.quiz_sessions
   to authenticated
   using (((user_id = ( SELECT auth.uid() AS uid)) AND (graded_at IS NOT NULL)));
 
-create policy "topic_mastery_delete_own" on public.topic_mastery
-  as permissive
-  for delete
-  to authenticated
-  using ((( SELECT auth.uid() AS uid) = user_id));
-
-create policy "topic_mastery_insert_own" on public.topic_mastery
-  as permissive
-  for insert
-  to authenticated
-  with check ((( SELECT auth.uid() AS uid) = user_id));
-
 create policy "topic_mastery_select_own" on public.topic_mastery
   as permissive
   for select
   to authenticated
   using ((( SELECT auth.uid() AS uid) = user_id));
-
-create policy "topic_mastery_update_own" on public.topic_mastery
-  as permissive
-  for update
-  to authenticated
-  using ((( SELECT auth.uid() AS uid) = user_id))
-  with check ((( SELECT auth.uid() AS uid) = user_id));
 
 create policy "usage_counters_select_own" on public.usage_counters
   as permissive

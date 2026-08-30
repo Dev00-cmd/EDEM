@@ -1366,11 +1366,15 @@ Deno.serve(async (req: Request) => {
       // pourrait réclamer dix bonnes réponses sans avoir passé de
       // quiz du tout.
       //
-      // L'écriture est attendue, et un échec n'est pas fatal : le
-      // quiz reste jouable, il retombe simplement sur l'ancienne
-      // remise. Mieux vaut un quiz sans session qu'un élève
-      // bloqué devant un écran d'erreur.
-      let sessionId: string | null = null;
+      // L'écriture est attendue, et un échec EST fatal désormais.
+      //
+      // Avant, un quiz sans session restait jouable : la remise
+      // retombait sur `apply_quiz_results`, qui accordait les XP
+      // sur la parole de l'application. Cette voie est fermée —
+      // elle permettait à n'importe qui de s'attribuer des XP avec
+      // la seule clé anon. Sans session, la base ne peut pas
+      // corriger, donc le quiz ne rapporterait rien : autant le
+      // dire tout de suite plutôt qu'après dix minutes de travail.
       const { data: session, error: sessionError } = await adminClient()
         .from("quiz_sessions")
         .insert({
@@ -1397,8 +1401,14 @@ Deno.serve(async (req: Request) => {
         .select("id")
         .single();
 
-      if (sessionError) console.error("session quiz:", sessionError.message);
-      else sessionId = session?.id ?? null;
+      const sessionId: string | null = session?.id ?? null;
+      if (sessionError || !sessionId) {
+        console.error("session quiz:", sessionError?.message ?? "id absent");
+        return json(
+          { error: "Le quiz n'a pas pu être ouvert. Réessaie." },
+          503,
+        );
+      }
 
       return json({ questions, sessionId });
     }

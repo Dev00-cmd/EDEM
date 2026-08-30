@@ -37,9 +37,9 @@ export interface GeneratedQuiz {
    * Identifiant de la session ouverte par le serveur.
    *
    * C'est lui qui permet à la base de CORRIGER le quiz au lieu de
-   * croire l'app sur parole. Absent si le serveur n'a pas pu
-   * l'enregistrer : la remise retombe alors sur l'ancienne voie
-   * plutôt que de priver l'élève de ses XP.
+   * croire l'app sur parole. Il n'est plus facultatif : un quiz
+   * dont le serveur n'a pas pu enregistrer la session n'est pas
+   * proposé à l'élève, faute de pouvoir être noté.
    */
-  sessionId?: string | null;
+  sessionId: string;
 }

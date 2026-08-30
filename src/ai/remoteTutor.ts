@@ -134,9 +134,13 @@ export async function remoteQuiz(
       expl: { fr: String(x.explanation ?? ''), ht: String(x.explanation ?? '') },
     }));
 
-    return questions.length > 0
-      ? { subjectId, source: 'ai', questions, sessionId: data.sessionId ?? null }
-      : null;
+    // Sans session, la base n'a pas les bonnes réponses en main :
+    // elle ne peut pas corriger, et le quiz ne rapporterait rien.
+    // On préfère un « réessaie » franc à dix minutes de travail
+    // qui n'accordent aucun XP à l'élève.
+    if (questions.length === 0 || !data.sessionId) return null;
+
+    return { subjectId, source: 'ai', questions, sessionId: data.sessionId };
   } catch {
     return null;
   }

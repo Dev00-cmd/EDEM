@@ -467,6 +467,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // serveur qui corrige, à partir des bonnes réponses qu'il a
   // gardées en ouvrant la session. Auparavant l'app annonçait
   // elle-même « 10 bonnes réponses », et la base la croyait.
+  //
+  // Il n'y a plus de voie de secours, et c'est voulu. Le repli
+  // sur `apply_quiz_results` accordait des XP sur la seule parole
+  // de l'application : un POST sur /rest/v1/rpc, avec la clé anon
+  // qui est dans l'app, suffisait à s'en attribuer autant qu'on
+  // voulait. La fonction n'est plus appelable depuis le client.
+  //
+  // Un quiz sans session ne peut donc plus être noté — c'est pour
+  // ça qu'il n'est plus lancé du tout (voir remoteTutor).
   const applyQuizResults = useCallback(
     async (
       subjectId: string,
@@ -476,23 +485,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       picked?: (number | null)[],
     ) => {
       if (!userId || results.length === 0) return 0;
+      if (!sessionId || !picked) return 0;
 
-      // Sans session — quiz local, ou enregistrement qui a échoué
-      // côté serveur — on retombe sur l'ancienne voie plutôt que
-      // de priver l'élève des XP qu'il a mérités.
-      const call =
-        sessionId && picked
-          ? supabase.rpc('grade_quiz', {
-              p_session_id: sessionId,
-              p_picked: picked,
-            })
-          : supabase.rpc('apply_quiz_results', {
-              p_subject_id: subjectId,
-              p_results: results,
-              p_difficulty: difficulty,
-            });
-
-      const { data, error } = await call;
+      const { data, error } = await supabase.rpc('grade_quiz', {
+        p_session_id: sessionId,
+        p_picked: picked,
+      });
 
       if (error || !data) {
         setOffline(true);

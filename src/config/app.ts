@@ -13,8 +13,14 @@ export const APP_TAGLINE_FR = 'Ton prof IA dans ta poche';
 export const APP_TAGLINE_HT = 'Pwof AI ou nan poch ou';
 
 // ── Points d'expérience (XP) ──────────────────────────────────
-// Doivent rester alignés avec les fonctions SQL côté Supabase
-// (study_topic / apply_quiz_results).
+// Valeurs INDICATIVES, pour l'affichage seulement. Le barème réel
+// vit dans study_topic côté Supabase, et lui seul fait foi : le
+// montant n'est plus envoyé par l'application.
+//
+// Ce que la base applique en plus, et que l'app ne devine pas :
+// une notion ne rapporte qu'UNE fois par jour, et l'étude est
+// plafonnée à 5 notions payantes par jour (40 XP). Au-delà, la
+// notion compte comme travaillée mais ne rapporte plus rien.
 export const XP = {
   STUDY_TOPIC: 8, // notion étudiée avec le tuteur
 };
