@@ -88,6 +88,7 @@ function Navigator() {
         <Stack.Screen name="assignment/new" />
         <Stack.Screen name="assignment/[id]" />
         <Stack.Screen name="dashboard/[id]" />
+        <Stack.Screen name="fil/[id]" />
         <Stack.Screen name="(tabs)" />
       </Stack>
 

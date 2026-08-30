@@ -231,6 +231,22 @@ export default function UneClasse() {
           </>
         )}
 
+        {/* ── Le fil de la classe ────────────────────────────── */}
+        {classe.my_status !== 'pending' && (
+          <Card style={{ marginTop: 24 }} onPress={() => router.push(`/fil/${classe.id}`)}>
+            <View style={styles.row}>
+              <Icon name="tutor" size={18} color={colors.sky} />
+              <View style={{ flex: 1 }}>
+                <Text style={[type.cardTitle, { color: colors.text }]}>{t('fil.entry')}</Text>
+                <Text style={[type.caption, { color: colors.textFaint, marginTop: 2 }]}>
+                  {t('fil.entrySub')}
+                </Text>
+              </View>
+              <Icon name="chevron-right" size={16} color={colors.textFaint} />
+            </View>
+          </Card>
+        )}
+
         {/* ── Le tableau de bord, professeur seulement ───────── */}
         {prof && (
           <Card style={{ marginTop: 24 }} onPress={() => router.push(`/dashboard/${classe.id}`)}>

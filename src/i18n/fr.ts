@@ -381,6 +381,30 @@ export const fr = {
       "Tu ne vois que la matière de cette classe. Ce que tes élèves travaillent ailleurs ne te regarde pas.",
   },
 
+  fil: {
+    title: 'Fil de la classe',
+    subtitle: 'Tout le monde voit ce que tu écris ici',
+    entry: 'Fil de la classe',
+    entrySub: 'Poser une question, répondre aux camarades',
+    empty: "Personne n'a encore écrit. Lance la conversation.",
+    placeholder: 'Écris ton message…',
+    seeImage: "Voir l'image",
+    teacherBadge: 'PROF',
+
+    deleteTitle: 'Supprimer ce message ?',
+    deleteMine: 'Il disparaîtra pour toute la classe.',
+    deleteOther: 'Il disparaîtra pour toute la classe. La suppression est enregistrée.',
+    delete: 'Supprimer',
+
+    err_pas_membre: "Tu n'es pas dans cette classe.",
+    err_message_vide: 'Écris quelque chose.',
+    err_message_trop_long: 'Message trop long (2000 caractères maximum).',
+    err_classe_fermee: 'Cette classe est fermée.',
+    err_trop_de_messages: 'Tu écris trop vite. Attends un peu.',
+    err_echec: "Le message n'est pas parti. Réessaie.",
+  },
+
+
 
 
 

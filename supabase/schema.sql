@@ -50,6 +50,18 @@ create table if not exists public.classroom_members (
   created_at timestamp with time zone default now() not null
 );
 
+create table if not exists public.classroom_messages (
+  id uuid default gen_random_uuid() not null,
+  classroom_id uuid not null,
+  user_id uuid not null,
+  text text not null,
+  attachment_path text,
+  created_at timestamp with time zone default now() not null,
+  deleted_at timestamp with time zone,
+  deleted_by uuid,
+  flagged boolean default false not null
+);
+
 create table if not exists public.classrooms (
   id uuid default gen_random_uuid() not null,
   school_id uuid not null,
@@ -282,6 +294,11 @@ alter table classroom_members add constraint classroom_members_classroom_id_fkey
 alter table classroom_members add constraint classroom_members_pkey PRIMARY KEY (classroom_id, user_id);
 alter table classroom_members add constraint classroom_members_status_check CHECK ((status = ANY (ARRAY['pending'::text, 'active'::text, 'removed'::text])));
 alter table classroom_members add constraint classroom_members_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+alter table classroom_messages add constraint classroom_messages_classroom_id_fkey FOREIGN KEY (classroom_id) REFERENCES classrooms(id) ON DELETE CASCADE;
+alter table classroom_messages add constraint classroom_messages_deleted_by_fkey FOREIGN KEY (deleted_by) REFERENCES auth.users(id) ON DELETE SET NULL;
+alter table classroom_messages add constraint classroom_messages_pkey PRIMARY KEY (id);
+alter table classroom_messages add constraint classroom_messages_text_check CHECK (((char_length(text) >= 1) AND (char_length(text) <= 2000)));
+alter table classroom_messages add constraint classroom_messages_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
 alter table classrooms add constraint classrooms_current_focus_check CHECK (((current_focus IS NULL) OR (char_length(current_focus) <= 200)));
 alter table classrooms add constraint classrooms_focus_note_check CHECK (((focus_note IS NULL) OR (char_length(focus_note) <= 500)));
 alter table classrooms add constraint classrooms_grade_level_fkey FOREIGN KEY (grade_level) REFERENCES school_levels(id);
@@ -382,6 +399,7 @@ CREATE INDEX chat_messages_conversation_idx ON public.chat_messages USING btree 
 CREATE INDEX chat_messages_user_thread_idx ON public.chat_messages USING btree (user_id, thread, created_at);
 CREATE INDEX classroom_members_actifs_idx ON public.classroom_members USING btree (classroom_id) WHERE (status = 'active'::text);
 CREATE INDEX classroom_members_user_idx ON public.classroom_members USING btree (user_id, status);
+CREATE INDEX classroom_messages_fil_idx ON public.classroom_messages USING btree (classroom_id, created_at DESC);
 CREATE INDEX classrooms_school_idx ON public.classrooms USING btree (school_id);
 CREATE INDEX classrooms_teacher_idx ON public.classrooms USING btree (teacher_id) WHERE (archived_at IS NULL);
 CREATE INDEX communes_departement_idx ON public.communes USING btree (departement_id, name);
@@ -779,6 +797,41 @@ AS $function$
 $function$
 ;
 
+CREATE OR REPLACE FUNCTION public.classroom_messages(p_classroom_id uuid, p_before timestamp with time zone DEFAULT NULL::timestamp with time zone, p_limit integer DEFAULT 20)
+ RETURNS TABLE(id uuid, user_id uuid, affiche text, vrai_nom text, is_teacher boolean, text text, attachment_path text, created_at timestamp with time zone, flagged boolean, mine boolean)
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+  with moi as (
+    select public.is_classroom_teacher(p_classroom_id) as prof,
+           public.is_classroom_member(p_classroom_id)  as membre
+  )
+  select
+    m.id,
+    m.user_id,
+    coalesce(nullif(btrim(p.board_alias), ''), nullif(btrim(p.name), ''), 'Élève'),
+    -- Le vrai nom ne part qu'au professeur de cette classe.
+    case when (select prof from moi) then nullif(btrim(p.name), '') else null end,
+    m.user_id = c.teacher_id,
+    m.text,
+    m.attachment_path,
+    m.created_at,
+    m.flagged,
+    m.user_id = (select auth.uid())
+  from public.classroom_messages m
+  join public.classrooms c on c.id = m.classroom_id
+  join public.profiles   p on p.id = m.user_id
+  where m.classroom_id = p_classroom_id
+    and (select prof or membre from moi)
+    and m.deleted_at is null
+    and (not m.flagged or (select prof from moi))
+    and (p_before is null or m.created_at < p_before)
+  order by m.created_at desc
+  limit least(greatest(coalesce(p_limit, 20), 1), 50);
+$function$
+;
+
 CREATE OR REPLACE FUNCTION public.classroom_roster(p_classroom_id uuid)
  RETURNS TABLE(user_id uuid, affiche text, vrai_nom text, status text, is_teacher boolean, joined_at timestamp with time zone)
  LANGUAGE sql
@@ -925,6 +978,34 @@ begin
   end if;
   delete from public.assignments where id = p_assignment_id;
   return jsonb_build_object('deleted', true);
+end;
+$function$
+;
+
+CREATE OR REPLACE FUNCTION public.delete_classroom_message(p_message_id uuid)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare
+  uid uuid := (select auth.uid());
+  m   public.classroom_messages;
+begin
+  select * into m from public.classroom_messages where id = p_message_id;
+  if not found or m.deleted_at is not null then
+    return jsonb_build_object('ok', false, 'error', 'introuvable');
+  end if;
+
+  if m.user_id <> uid and not public.is_classroom_teacher(m.classroom_id) then
+    return jsonb_build_object('ok', false, 'error', 'pas_le_droit');
+  end if;
+
+  update public.classroom_messages
+     set deleted_at = now(), deleted_by = uid
+   where id = p_message_id;
+
+  return jsonb_build_object('ok', true);
 end;
 $function$
 ;
@@ -1160,10 +1241,9 @@ CREATE OR REPLACE FUNCTION public.is_teacher_of_attachment(p_name text)
  SET search_path TO ''
 AS $function$
 declare
-  v_parts text[] := string_to_array(p_name, '/');
+  v_parts  text[] := string_to_array(p_name, '/');
   v_classe uuid;
 begin
-  -- {eleve}/classroom/{classe}/{devoir}/{fichier}
   if array_length(v_parts, 1) < 4 then return false; end if;
   if v_parts[2] <> 'classroom' then return false; end if;
   begin
@@ -1171,6 +1251,14 @@ begin
   exception when others then
     return false;   -- un chemin bricolé ne donne aucun droit
   end;
+
+  -- Le fil de discussion : lisible par tous les membres actifs.
+  if v_parts[4] = 'chat' then
+    return public.is_classroom_member(v_classe)
+        or public.is_classroom_teacher(v_classe);
+  end if;
+
+  -- Une remise de devoir : le professeur seul.
   return public.is_classroom_teacher(v_classe);
 end;
 $function$
@@ -1396,6 +1484,61 @@ AS $function$
   select lower(
     extensions.unaccent('extensions.unaccent'::regdictionary, coalesce(p_text, ''))
   )
+$function$
+;
+
+CREATE OR REPLACE FUNCTION public.post_classroom_message(p_classroom_id uuid, p_text text, p_attachment_path text DEFAULT NULL::text)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare
+  uid     uuid := (select auth.uid());
+  v_texte text := btrim(coalesce(p_text, ''));
+  v_quota jsonb;
+  v_id    uuid;
+begin
+  if uid is null then
+    raise exception 'not authenticated';
+  end if;
+
+  if not public.is_classroom_member(p_classroom_id)
+     and not public.is_classroom_teacher(p_classroom_id) then
+    return jsonb_build_object('ok', false, 'error', 'pas_membre');
+  end if;
+
+  if char_length(v_texte) = 0 then
+    return jsonb_build_object('ok', false, 'error', 'message_vide');
+  end if;
+  if char_length(v_texte) > 2000 then
+    return jsonb_build_object('ok', false, 'error', 'message_trop_long');
+  end if;
+
+  if exists (select 1 from public.classrooms
+              where id = p_classroom_id and archived_at is not null) then
+    return jsonb_build_object('ok', false, 'error', 'classe_fermee');
+  end if;
+
+  -- Trente messages par heure. Assez pour une vraie conversation,
+  -- pas assez pour noyer un fil. Le compteur horaire loge dans
+  -- usage_counters, qui est journalier : on met l'heure dans le
+  -- libellé plutôt que d'inventer une table.
+  v_quota := public.bump_usage(
+    uid,
+    'msg_' || to_char((now() at time zone 'utc'), 'YYYYMMDDHH24'),
+    30
+  );
+  if not (v_quota ->> 'allowed')::boolean then
+    return jsonb_build_object('ok', false, 'error', 'trop_de_messages');
+  end if;
+
+  insert into public.classroom_messages (classroom_id, user_id, text, attachment_path)
+  values (p_classroom_id, uid, v_texte, p_attachment_path)
+  returning classroom_messages.id into v_id;
+
+  return jsonb_build_object('ok', true, 'id', v_id);
+end;
 $function$
 ;
 
@@ -2197,6 +2340,7 @@ $function$
 alter table public.assignments enable row level security;
 alter table public.chat_messages enable row level security;
 alter table public.classroom_members enable row level security;
+alter table public.classroom_messages enable row level security;
 alter table public.classrooms enable row level security;
 alter table public.communes enable row level security;
 alter table public.conversations enable row level security;
@@ -2247,6 +2391,12 @@ create policy "classroom_members_select" on public.classroom_members
   for select
   to authenticated
   using (((user_id = ( SELECT auth.uid() AS uid)) OR is_classroom_teacher(classroom_id) OR ((status = 'active'::text) AND is_classroom_member(classroom_id))));
+
+create policy "classroom_messages_select" on public.classroom_messages
+  as permissive
+  for select
+  to authenticated
+  using (((deleted_at IS NULL) AND is_classroom_member(classroom_id) AND ((NOT flagged) OR is_classroom_teacher(classroom_id))));
 
 create policy "classrooms_select" on public.classrooms
   as permissive

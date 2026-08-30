@@ -381,6 +381,30 @@ export const ht: Messages = {
       'Ou wè sèlman matyè klas sa a. Sa elèv ou yo travay lòt kote pa gade ou.',
   },
 
+  fil: {
+    title: 'Fil klas la',
+    subtitle: 'Tout moun wè sa ou ekri la a',
+    entry: 'Fil klas la',
+    entrySub: 'Poze yon kesyon, reponn kamarad yo',
+    empty: 'Pèsonn poko ekri. Kòmanse konvèsasyon an.',
+    placeholder: 'Ekri mesaj ou…',
+    seeImage: 'Wè imaj la',
+    teacherBadge: 'PWOF',
+
+    deleteTitle: 'Efase mesaj sa a ?',
+    deleteMine: 'L ap disparèt pou tout klas la.',
+    deleteOther: 'L ap disparèt pou tout klas la. Efasman an anrejistre.',
+    delete: 'Efase',
+
+    err_pas_membre: 'Ou pa nan klas sa a.',
+    err_message_vide: 'Ekri yon bagay.',
+    err_message_trop_long: 'Mesaj twò long (2000 karaktè maksimòm).',
+    err_classe_fermee: 'Klas sa a fèmen.',
+    err_trop_de_messages: 'Ou ap ekri twò vit. Tann yon ti kras.',
+    err_echec: 'Mesaj la pa pati. Eseye ankò.',
+  },
+
+
 
 
 

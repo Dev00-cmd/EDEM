@@ -52,14 +52,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let alive = true;
 
+    /**
+     * Le jeton doit aussi être donné à la socket temps réel.
+     *
+     * Sans ça, le chat de classe échoue EN SILENCE : l'abonnement
+     * annonce « SUBSCRIBED », aucune erreur n'est levée, et aucun
+     * message n'arrive jamais — la socket est restée anonyme, et la
+     * RLS l'écarte poliment. Attrapé au banc d'essai, pas en classe.
+     *
+     * supabase-js le fait de lui-même au changement de session,
+     * mais on ne s'y fie pas : c'est une ligne, et le symptôme est
+     * indétectable.
+     */
+    const armerTempsReel = (s: Session | null) => {
+      supabase.realtime.setAuth(s?.access_token ?? null).catch(() => {});
+    };
+
     supabase.auth.getSession().then(({ data }) => {
       if (!alive) return;
       setSession(data.session);
+      armerTempsReel(data.session);
       setReady(true);
     });
 
     const { data: sub } = supabase.auth.onAuthStateChange((_event, next) => {
       setSession(next);
+      armerTempsReel(next);
     });
 
     return () => {

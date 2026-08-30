@@ -149,6 +149,50 @@ export type Database = {
           },
         ]
       }
+      classroom_messages: {
+        Row: {
+          attachment_path: string | null
+          classroom_id: string
+          created_at: string
+          deleted_at: string | null
+          deleted_by: string | null
+          flagged: boolean
+          id: string
+          text: string
+          user_id: string
+        }
+        Insert: {
+          attachment_path?: string | null
+          classroom_id: string
+          created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
+          flagged?: boolean
+          id?: string
+          text: string
+          user_id: string
+        }
+        Update: {
+          attachment_path?: string | null
+          classroom_id?: string
+          created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
+          flagged?: boolean
+          id?: string
+          text?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "classroom_messages_classroom_id_fkey"
+            columns: ["classroom_id"]
+            isOneToOne: false
+            referencedRelation: "classrooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       classrooms: {
         Row: {
           archived_at: string | null
@@ -947,6 +991,21 @@ export type Database = {
           topic_id: string
         }[]
       }
+      classroom_messages: {
+        Args: { p_before?: string; p_classroom_id: string; p_limit?: number }
+        Returns: {
+          affiche: string
+          attachment_path: string
+          created_at: string
+          flagged: boolean
+          id: string
+          is_teacher: boolean
+          mine: boolean
+          text: string
+          user_id: string
+          vrai_nom: string
+        }[]
+      }
       classroom_roster: {
         Args: { p_classroom_id: string }
         Returns: {
@@ -980,6 +1039,10 @@ export type Database = {
         Returns: Json
       }
       delete_assignment: { Args: { p_assignment_id: string }; Returns: Json }
+      delete_classroom_message: {
+        Args: { p_message_id: string }
+        Returns: Json
+      }
       generate_join_code: { Args: never; Returns: string }
       grade_quiz: {
         Args: { p_picked: Json; p_session_id: string }
@@ -1056,6 +1119,14 @@ export type Database = {
         }[]
       }
       norm_text: { Args: { p_text: string }; Returns: string }
+      post_classroom_message: {
+        Args: {
+          p_attachment_path?: string
+          p_classroom_id: string
+          p_text: string
+        }
+        Returns: Json
+      }
       profile_completion: { Args: never; Returns: Json }
       propose_school: {
         Args: { p_commune_id: string; p_name: string; p_type?: string }
