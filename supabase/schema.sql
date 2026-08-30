@@ -29,7 +29,9 @@ create table if not exists public.chat_messages (
 create table if not exists public.communes (
   id text not null,
   departement_id text not null,
-  name text not null
+  name text not null,
+  pcode text not null,
+  official boolean default true not null
 );
 
 create table if not exists public.conversations (
@@ -162,7 +164,8 @@ create table if not exists public.schools (
   type text default 'autre'::text not null,
   status text default 'pending'::text not null,
   created_by uuid,
-  created_at timestamp with time zone default now() not null
+  created_at timestamp with time zone default now() not null,
+  source text default 'user'::text not null
 );
 
 create table if not exists public.teacher_requests (
@@ -254,6 +257,7 @@ alter table schools add constraint schools_commune_id_fkey FOREIGN KEY (commune_
 alter table schools add constraint schools_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id) ON DELETE SET NULL;
 alter table schools add constraint schools_name_check CHECK (((char_length(btrim(name)) >= 3) AND (char_length(btrim(name)) <= 120)));
 alter table schools add constraint schools_pkey PRIMARY KEY (id);
+alter table schools add constraint schools_source_check CHECK ((source = ANY (ARRAY['ocha'::text, 'osm'::text, 'ocha+osm'::text, 'user'::text])));
 alter table schools add constraint schools_status_check CHECK ((status = ANY (ARRAY['approved'::text, 'pending'::text, 'rejected'::text])));
 alter table schools add constraint schools_type_check CHECK ((type = ANY (ARRAY['publique'::text, 'privee'::text, 'congreganiste'::text, 'autre'::text])));
 alter table teacher_requests add constraint teacher_requests_contact_check CHECK (((char_length(btrim(contact)) >= 5) AND (char_length(btrim(contact)) <= 200)));
@@ -277,6 +281,8 @@ alter table usage_counters add constraint usage_counters_user_id_fkey FOREIGN KE
 CREATE INDEX chat_messages_conversation_idx ON public.chat_messages USING btree (conversation_id, created_at);
 CREATE INDEX chat_messages_user_thread_idx ON public.chat_messages USING btree (user_id, thread, created_at);
 CREATE INDEX communes_departement_idx ON public.communes USING btree (departement_id, name);
+CREATE INDEX communes_pcode_idx ON public.communes USING btree (pcode);
+CREATE UNIQUE INDEX communes_pcode_officiel_idx ON public.communes USING btree (pcode) WHERE official;
 CREATE INDEX conversations_user_recent_idx ON public.conversations USING btree (user_id, updated_at DESC);
 CREATE INDEX daily_activity_user_day_idx ON public.daily_activity USING btree (user_id, day DESC);
 CREATE INDEX profiles_school_idx ON public.profiles USING btree (school_id) WHERE (school_id IS NOT NULL);

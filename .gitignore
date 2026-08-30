@@ -53,3 +53,6 @@ assets/concepts/
 
 # Fichiers temporaires de la CLI Supabase
 supabase/.temp/
+
+# Sources telechargees par scripts/dump_ecoles.mjs
+supabase/.sources/

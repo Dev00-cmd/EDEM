@@ -66,16 +66,22 @@ export type Database = {
           departement_id: string
           id: string
           name: string
+          official: boolean
+          pcode: string
         }
         Insert: {
           departement_id: string
           id: string
           name: string
+          official?: boolean
+          pcode: string
         }
         Update: {
           departement_id?: string
           id?: string
           name?: string
+          official?: boolean
+          pcode?: string
         }
         Relationships: [
           {
@@ -485,6 +491,7 @@ export type Database = {
           created_by: string | null
           id: string
           name: string
+          source: string
           status: string
           type: string
         }
@@ -494,6 +501,7 @@ export type Database = {
           created_by?: string | null
           id?: string
           name: string
+          source?: string
           status?: string
           type?: string
         }
@@ -503,6 +511,7 @@ export type Database = {
           created_by?: string | null
           id?: string
           name?: string
+          source?: string
           status?: string
           type?: string
         }
