@@ -141,6 +141,33 @@ try {
   ok(alias.b?.ok === true && alias.b?.role === 'prof',
      'request_teacher_role redirige vers la declaration', JSON.stringify(alias.b));
 
+  console.log('\nS INSCRIRE DIRECTEMENT COMME PROFESSEUR');
+  // Le parcours de l inscription : un compte tout neuf choisit
+  // « professeur », remplit trois champs, et se retrouve du bon
+  // cote sans passer par le formulaire de l eleve.
+  const neuf = await compte('neuf');
+  comptes.push(neuf.uid);
+  let st2 = await neuf.rpc('my_teacher_status');
+  ok(st2.b?.role === 'eleve', 'un compte neuf demarre eleve');
+
+  const insc = await neuf.rpc('declare_teacher_role', {
+    p_full_name: 'Marie Joseph', p_contact: 'marie@lycee.ht',
+    p_subjects: ['math', 'physique'],
+  });
+  ok(insc.b?.ok === true && insc.b?.role === 'prof',
+     'la declaration a l inscription accorde le role', JSON.stringify(insc.b));
+
+  // Sans ecole au profil : c est le cas d un prof qui vient de
+  // s inscrire. Il doit pouvoir exister, et se voir refuser la
+  // creation de salle pour la BONNE raison.
+  const sansEcole = await neuf.rpc('create_classroom', {
+    p_school_id: null, p_name: 'NS3 A', p_subject_id: 'math', p_grade_level: niveau,
+  });
+  ok(sansEcole.s >= 400, 'sans ecole, la salle est refusee', `HTTP ${sansEcole.s}`);
+  st2 = await neuf.rpc('my_teacher_status');
+  ok(st2.b?.role === 'prof' && st2.b?.declared === true,
+     'mais il reste professeur, avec sa declaration');
+
   console.log('\nL INTERFACE PROFESSEUR');
   const vue = await prof.rpc('teacher_overview');
   ok(Array.isArray(vue.b) && vue.b.length === 10,

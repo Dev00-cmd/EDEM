@@ -66,14 +66,14 @@ function Navigator() {
     // Un professeur qui a demandé à voir l'app « comme un élève »
     // reste du côté élève : c'est un point de vue, pas un rôle.
     const cotePro = profile.role === 'prof' && !vueEleve;
-    const racine = cotePro ? '/(prof)' : '/(tabs)';
+    const racine = cotePro ? '/(prof)/index' : '/(tabs)';
 
     if (inAuthScreen || inOnboarding) return router.replace(racine);
 
     // On ne déplace que si l'utilisateur est du mauvais côté : sans
     // ce garde, chaque navigation interne renverrait à la racine et
     // l'app se figerait sur le premier onglet.
-    if (cotePro && group === '(tabs)') router.replace('/(prof)');
+    if (cotePro && group === '(tabs)') router.replace('/(prof)/index');
     if (!cotePro && group === '(prof)') router.replace('/(tabs)');
   }, [ready, session, profile.onboarded, profile.role, vueEleve, segments, router]);
 

@@ -425,7 +425,7 @@ Techniquement, un trigger de base marque chaque nouveau compte comme confirmé d
 | **Inscription** | Prénom, e-mail, mot de passe (6 caractères minimum) → compte créé et connecté d'un coup |
 | **Connexion** | E-mail + mot de passe |
 | **Mot de passe oublié** | Envoie un lien de réinitialisation. Le message reste volontairement neutre : il ne révèle pas si l'adresse existe |
-| **Onboarding** | Classe → objectif → matières. Le prénom et la langue viennent déjà de l'inscription |
+| **Onboarding** | Langue → **élève ou professeur ?** → puis la classe (élève) ou la déclaration (professeur). Le chemin n'est pas le même, parce que les questions ne le sont pas |
 
 Les messages d'erreur sont **traduits en français et en créole** — un élève ne devrait jamais lire « Invalid login credentials ».
 

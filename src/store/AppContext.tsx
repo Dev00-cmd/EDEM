@@ -898,6 +898,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     ready &&
     !!userId &&
     profile.onboarded &&
+    // Jamais à un professeur. « Personnalise ton tuteur » demande
+    // la série, l'objectif d'examen et les matières où l'on se sent
+    // faible : ce sont les questions d'un élève. Les poser à un
+    // professeur, c'est lui faire remplir un formulaire qui ne le
+    // concerne pas pour atteindre 100 % d'un profil d'élève.
+    profile.role !== 'prof' &&
     aDejaTravaille &&
     !tuneDismissed &&
     !completion.completed &&

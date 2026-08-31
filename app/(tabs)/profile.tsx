@@ -261,7 +261,7 @@ export default function ProfileScreen() {
       {/* L'écran « Personnalise ton tuteur » est sautable. Sans
           ce point d'entrée, « Plus tard » voudrait dire « jamais » :
           l'élève n'aurait aucun moyen d'y revenir. */}
-      {completion.total > 0 && (
+      {completion.total > 0 && profile.role !== 'prof' && (
         <Section label={t('profile.tuning')}>
           <Card onPress={completion.completed ? undefined : () => router.push('/tune-profile')}>
             {completion.completed ? (
