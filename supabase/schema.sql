@@ -217,7 +217,11 @@ create table if not exists public.schools (
   status text default 'pending'::text not null,
   created_by uuid,
   created_at timestamp with time zone default now() not null,
-  source text default 'user'::text not null
+  source text default 'user'::text not null,
+  menfp_code text,
+  levels text,
+  name_norm text not null,
+  acronym text not null
 );
 
 create table if not exists public.submissions (
@@ -361,7 +365,7 @@ alter table schools add constraint schools_commune_id_fkey FOREIGN KEY (commune_
 alter table schools add constraint schools_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id) ON DELETE SET NULL;
 alter table schools add constraint schools_name_check CHECK (((char_length(btrim(name)) >= 3) AND (char_length(btrim(name)) <= 120)));
 alter table schools add constraint schools_pkey PRIMARY KEY (id);
-alter table schools add constraint schools_source_check CHECK ((source = ANY (ARRAY['ocha'::text, 'osm'::text, 'ocha+osm'::text, 'user'::text])));
+alter table schools add constraint schools_source_check CHECK ((source = ANY (ARRAY['ocha'::text, 'osm'::text, 'ocha+osm'::text, 'user'::text, 'menfp'::text])));
 alter table schools add constraint schools_status_check CHECK ((status = ANY (ARRAY['approved'::text, 'pending'::text, 'rejected'::text])));
 alter table schools add constraint schools_type_check CHECK ((type = ANY (ARRAY['publique'::text, 'privee'::text, 'congreganiste'::text, 'autre'::text])));
 alter table submissions add constraint submissions_assignment_id_fkey FOREIGN KEY (assignment_id) REFERENCES assignments(id) ON DELETE CASCADE;
@@ -416,9 +420,12 @@ CREATE INDEX quiz_sessions_assignment_idx ON public.quiz_sessions USING btree (a
 CREATE INDEX quiz_sessions_history_idx ON public.quiz_sessions USING btree (user_id, graded_at DESC) WHERE (graded_at IS NOT NULL);
 CREATE INDEX quiz_sessions_user_created_idx ON public.quiz_sessions USING btree (user_id, created_at DESC);
 CREATE INDEX role_events_user_idx ON public.role_events USING btree (user_id, created_at DESC);
-CREATE INDEX schools_acronym_idx ON public.schools USING btree (school_acronym(name));
+CREATE INDEX schools_acronym_col_idx ON public.schools USING btree (acronym);
+CREATE INDEX schools_commune_name_idx ON public.schools USING btree (commune_id, name);
 CREATE INDEX schools_created_by_idx ON public.schools USING btree (created_by) WHERE (created_by IS NOT NULL);
-CREATE INDEX schools_name_trgm ON public.schools USING gin (norm_text(name) gin_trgm_ops);
+CREATE UNIQUE INDEX schools_menfp_code_idx ON public.schools USING btree (menfp_code) WHERE (menfp_code IS NOT NULL);
+CREATE INDEX schools_name_norm_prefix_idx ON public.schools USING btree (name_norm text_pattern_ops);
+CREATE INDEX schools_name_norm_trgm_idx ON public.schools USING gin (name_norm gin_trgm_ops);
 CREATE UNIQUE INDEX schools_unique_in_commune ON public.schools USING btree (commune_id, norm_text(name));
 CREATE INDEX submissions_assignment_idx ON public.submissions USING btree (assignment_id);
 CREATE INDEX submissions_user_idx ON public.submissions USING btree (user_id);
@@ -2036,6 +2043,19 @@ AS $function$
 $function$
 ;
 
+CREATE OR REPLACE FUNCTION public.schools_index_name()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SET search_path TO ''
+AS $function$
+begin
+  new.name_norm := public.norm_text(new.name);
+  new.acronym   := public.school_acronym(new.name);
+  return new;
+end;
+$function$
+;
+
 CREATE OR REPLACE FUNCTION public.search_schools(p_query text DEFAULT NULL::text, p_commune_id text DEFAULT NULL::text, p_offset integer DEFAULT 0, p_limit integer DEFAULT 20)
  RETURNS TABLE(id uuid, name text, type text, status text, commune_id text, commune text, departement text, total bigint)
  LANGUAGE sql
@@ -2046,35 +2066,34 @@ AS $function$
     select nullif(btrim(public.norm_text(p_query)), '') as texte
   ),
   trouvees as (
-    select s.*, c.name as commune_nom, d.name as departement_nom,
+    select s.id, s.name, s.type, s.status, s.commune_id, s.name_norm,
       case
-        when (select texte from q) is null then 3
-        when public.norm_text(s.name) like (select texte from q) || '%' then 0
-        when public.school_acronym(s.name) = (select texte from q) then 1
+        when (select texte from q) is null                      then 3
+        when s.name_norm like (select texte from q) || '%'      then 0
+        when s.acronym = (select texte from q)                  then 1
         else 2
       end as rang
     from public.schools s
-    join public.communes c     on c.id = s.commune_id
-    join public.departements d on d.id = c.departement_id
     where (s.status = 'approved' or s.created_by = (select auth.uid()))
       and (p_commune_id is null or s.commune_id = p_commune_id)
       and (
         (select texte from q) is null
-        -- Le sigle : « ica » retrouve International Christian Academy.
-        or public.school_acronym(s.name) = (select texte from q)
+        or s.acronym = (select texte from q)
         or case
              when length((select texte from q)) < 5
                -- \m = début de mot : « ica » ne matche plus « africa ».
-               then public.norm_text(s.name) ~ ('\m' || (select texte from q))
-             else public.norm_text(s.name) like '%' || (select texte from q) || '%'
+               then s.name_norm ~ ('\m' || (select texte from q))
+             else s.name_norm like '%' || (select texte from q) || '%'
            end
       )
   )
   select
     t.id, t.name, t.type, t.status, t.commune_id,
-    t.commune_nom, t.departement_nom,
+    c.name, d.name,
     count(*) over ()
   from trouvees t
+  join public.communes c     on c.id = t.commune_id
+  join public.departements d on d.id = c.departement_id
   order by t.rang, t.name
   offset greatest(coalesce(p_offset, 0), 0)
   limit least(greatest(coalesce(p_limit, 20), 1), 50);
@@ -2577,6 +2596,7 @@ create policy "usage_counters_select_own" on public.usage_counters
 CREATE TRIGGER chat_messages_touch_conversation AFTER INSERT ON public.chat_messages FOR EACH ROW EXECUTE FUNCTION touch_conversation();
 CREATE TRIGGER profiles_guard_role BEFORE UPDATE ON public.profiles FOR EACH ROW EXECUTE FUNCTION guard_profile_role();
 CREATE TRIGGER quiz_seen_skip_duplicates BEFORE INSERT ON public.quiz_seen_questions FOR EACH ROW EXECUTE FUNCTION skip_duplicate_seen_question();
+CREATE TRIGGER schools_index_name_trg BEFORE INSERT OR UPDATE OF name ON public.schools FOR EACH ROW EXECUTE FUNCTION schools_index_name();
 CREATE TRIGGER on_auth_user_auto_confirm BEFORE INSERT ON auth.users FOR EACH ROW EXECUTE FUNCTION auto_confirm_email();
 CREATE TRIGGER on_auth_user_created AFTER INSERT ON auth.users FOR EACH ROW EXECUTE FUNCTION handle_new_user();
 

@@ -689,31 +689,43 @@ export type Database = {
       }
       schools: {
         Row: {
+          acronym: string
           commune_id: string
           created_at: string
           created_by: string | null
           id: string
+          levels: string | null
+          menfp_code: string | null
           name: string
+          name_norm: string
           source: string
           status: string
           type: string
         }
         Insert: {
+          acronym: string
           commune_id: string
           created_at?: string
           created_by?: string | null
           id?: string
+          levels?: string | null
+          menfp_code?: string | null
           name: string
+          name_norm: string
           source?: string
           status?: string
           type?: string
         }
         Update: {
+          acronym?: string
           commune_id?: string
           created_at?: string
           created_by?: string | null
           id?: string
+          levels?: string | null
+          menfp_code?: string | null
           name?: string
+          name_norm?: string
           source?: string
           status?: string
           type?: string
