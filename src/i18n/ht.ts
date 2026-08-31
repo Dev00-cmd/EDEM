@@ -426,6 +426,16 @@ export const ht: Messages = {
     deleteMine: 'L ap disparèt pou tout klas la.',
     deleteOther: 'L ap disparèt pou tout klas la. Efasman an anrejistre.',
     delete: 'Efase',
+    edit: 'Modifye',
+    editing: 'W ap modifye mesaj ou',
+    editPlaceholder: 'Korije mesaj ou…',
+    edited: 'modifye',
+
+    err_pas_le_droit: 'Ou ka modifye sèlman pwòp mesaj ou yo.',
+    err_en_cours_d_examen:
+      'Yo siyale mesaj sa a. Fòk pwofesè ou gade l anvan.',
+    err_trop_tard:
+      'Twò ta pou modifye l. Ou gen yon ka dè apre ou voye l.',
 
     download: 'Telechaje',
     noViewer: 'Fichye a telechaje, men okenn app pa konn louvri l.',

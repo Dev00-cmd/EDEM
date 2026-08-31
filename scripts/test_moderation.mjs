@@ -196,10 +196,64 @@ try {
   });
   ok(pp.b?.ok === true, 'le professeur écrit sans avoir accepté la charte');
 
+  // ══ MODIFIER SON MESSAGE ════════════════════════════════════
+  console.log('\nMODIFIER SON MESSAGE');
+  const sien = await eleveA.rpc('post_classroom_message', {
+    p_classroom_id: classeId, p_text: 'Bonjur tou le monde',
+  });
+  const sienId = sien.b?.id;
+
+  const parAutre = await eleveB.rpc('edit_classroom_message', {
+    p_message_id: sienId, p_text: 'B a ecrit a ma place',
+  });
+  ok(parAutre.b?.error === 'pas_le_droit',
+     'un camarade ne modifie pas le message d un autre', parAutre.b?.error);
+
+  // Le professeur peut SUPPRIMER, jamais REECRIRE : ce serait mettre
+  // des mots dans la bouche d un enfant, sous son nom.
+  const parProf = await prof.rpc('edit_classroom_message', {
+    p_message_id: sienId, p_text: 'le prof a ecrit a sa place',
+  });
+  ok(parProf.b?.error === 'pas_le_droit',
+     'le professeur non plus — il supprime, il ne reecrit pas', parProf.b?.error);
+
+  const corrige = await eleveA.rpc('edit_classroom_message', {
+    p_message_id: sienId, p_text: 'Bonjour tout le monde',
+  });
+  ok(corrige.b?.ok === true, 'l auteur corrige sa faute de frappe');
+
+  const relu = await eleveB.rpc('classroom_messages', { p_classroom_id: classeId });
+  const corrigeVu = (relu.b ?? []).find((m) => m.id === sienId);
+  ok(corrigeVu?.text === 'Bonjour tout le monde', 'le texte corrige est celui qu on lit');
+  ok(!!corrigeVu?.edited_at, 'et il est marque comme modifie');
+
+  // Sans ca, modifier serait le contournement evident du filtre :
+  // on poste « bonjour », qui passe, puis on le remplace.
+  const detour = await eleveA.rpc('edit_classroom_message', {
+    p_message_id: sienId, p_text: 'espece de s@l0pe',
+  });
+  ok(detour.b?.error === 'message_refuse',
+     'le filtre s applique aussi a la modification', detour.b?.error);
+
+  const apresDetour = await sql(
+    `select text, text_original from public.classroom_messages where id = '${sienId}'`);
+  ok(apresDetour[0]?.text === 'Bonjour tout le monde',
+     'et le message refuse n a rien change');
+  ok(apresDetour[0]?.text_original === 'Bonjur tou le monde',
+     'le texte d origine est garde pour la moderation');
+
   // ══ LE FILTRE ═══════════════════════════════════════════════
   console.log('\nLE FILTRE DE TERMES');
   const avant = await sql(
     `select count(*)::int as n from public.classroom_messages where classroom_id = '${classeId}'`,
+  );
+  // Compté en DELTA et non en absolu : une modification refusée par
+  // le filtre se journalise elle aussi, et la section précédente en
+  // a déjà produit une. Un compteur absolu ferait échouer ce test à
+  // chaque fois qu'on ajoute un cas plus haut.
+  const traceAvant = await sql(
+    `select count(*)::int as n from public.moderation_events
+      where event = 'message_bloque' and actor = '${eleveA.uid}'`,
   );
 
   p = await eleveA.rpc('post_classroom_message', {
@@ -221,7 +275,8 @@ try {
     `select count(*)::int as n from public.moderation_events
       where event = 'message_bloque' and actor = '${eleveA.uid}'`,
   );
-  ok(trace[0].n === 1, 'la tentative est journalisée', `${trace[0].n}`);
+  ok(trace[0].n - traceAvant[0].n === 1, 'la tentative est journalisée',
+     `${trace[0].n - traceAvant[0].n}`);
 
   // Le chemin normal : ce qui doit passer passe.
   p = await eleveA.rpc('post_classroom_message', {
@@ -384,9 +439,12 @@ try {
     p_classroom_id: classeId,
     p_days: 7,
   });
+  // Deux : l'envoi refusé plus haut, et la MODIFICATION refusée.
+  // Les deux sont des tentatives d'écrire la même chose, et le
+  // professeur doit voir les deux.
   ok(
-    Array.isArray(tent.b) && tent.b[0]?.tentatives === 1,
-    'la tentative refusée par le filtre remonte au professeur',
+    Array.isArray(tent.b) && tent.b[0]?.tentatives === 2,
+    'les tentatives refusées par le filtre remontent au professeur',
   );
 
   const laisser = await prof.rpc('moderate_message', {

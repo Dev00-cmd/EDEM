@@ -159,9 +159,11 @@ export type Database = {
           created_at: string
           deleted_at: string | null
           deleted_by: string | null
+          edited_at: string | null
           flagged: boolean
           id: string
           text: string
+          text_original: string | null
           user_id: string
         }
         Insert: {
@@ -170,9 +172,11 @@ export type Database = {
           created_at?: string
           deleted_at?: string | null
           deleted_by?: string | null
+          edited_at?: string | null
           flagged?: boolean
           id?: string
           text: string
+          text_original?: string | null
           user_id: string
         }
         Update: {
@@ -181,9 +185,11 @@ export type Database = {
           created_at?: string
           deleted_at?: string | null
           deleted_by?: string | null
+          edited_at?: string | null
           flagged?: boolean
           id?: string
           text?: string
+          text_original?: string | null
           user_id?: string
         }
         Relationships: [
@@ -1188,6 +1194,7 @@ export type Database = {
           affiche: string
           attachment_path: string
           created_at: string
+          edited_at: string
           flagged: boolean
           id: string
           is_teacher: boolean
@@ -1261,6 +1268,10 @@ export type Database = {
       delete_assignment: { Args: { p_assignment_id: string }; Returns: Json }
       delete_classroom_message: {
         Args: { p_message_id: string }
+        Returns: Json
+      }
+      edit_classroom_message: {
+        Args: { p_message_id: string; p_text: string }
         Returns: Json
       }
       generate_join_code: { Args: never; Returns: string }

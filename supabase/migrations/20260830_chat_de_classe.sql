@@ -346,3 +346,102 @@ revoke execute on function public.classroom_messages(uuid, timestamptz, integer)
 grant execute on function public.post_classroom_message(uuid, text, text) to authenticated;
 grant execute on function public.delete_classroom_message(uuid)           to authenticated;
 grant execute on function public.classroom_messages(uuid, timestamptz, integer) to authenticated;;
+
+
+-- ═══ edit_own_classroom_message ═══
+--
+-- Supprimer son message existait depuis le début. Le MODIFIER
+-- n'existait pas, et c'est ce qui manquait pour une faute de frappe.
+alter table public.classroom_messages
+  add column if not exists edited_at timestamptz,
+  -- Le texte d'origine, gardé à la PREMIÈRE modification seulement.
+  -- Sans lui, modifier serait le moyen le plus simple d'effacer ce
+  -- qu'on a vraiment dit : on écrit une insulte, on la remplace par
+  -- « bonjour », et il ne reste rien à constater.
+  add column if not exists text_original text;
+
+-- ── Quatre garde-fous, et chacun ferme une porte précise ──────
+--
+-- 1. L'AUTEUR SEUL, et surtout pas le professeur. Il peut supprimer
+--    le message d'un élève — c'est de la modération — mais le
+--    réécrire serait mettre des mots dans la bouche d'un enfant,
+--    sous le nom de cet enfant, devant sa classe. Ce n'est pas le
+--    même geste et ça ne se confond pas.
+--
+-- 2. LE FILTRE S'APPLIQUE AUSSI ICI. Sans ça, modifier serait le
+--    contournement évident : on poste « bonjour », qui passe, puis
+--    on le remplace par ce qu'on voulait vraiment écrire.
+--
+-- 3. QUINZE MINUTES. De quoi corriger une faute de frappe, pas de
+--    quoi réécrire une conversation à laquelle d'autres ont déjà
+--    répondu — ni de changer ses mots une heure après, quand
+--    quelqu'un s'apprête à les signaler.
+--
+-- 4. UN MESSAGE SIGNALÉ NE SE MODIFIE PLUS : on ne réécrit pas la
+--    pièce pendant que le professeur l'examine.
+create function public.edit_classroom_message(p_message_id uuid, p_text text)
+returns jsonb
+language plpgsql security definer set search_path to ''
+as $$
+declare
+  uid       uuid := (select auth.uid());
+  v_texte   text := btrim(coalesce(p_text, ''));
+  m         public.classroom_messages;
+  v_verdict text;
+begin
+  if uid is null then raise exception 'not authenticated'; end if;
+
+  select * into m from public.classroom_messages where id = p_message_id;
+  if not found or m.deleted_at is not null then
+    return jsonb_build_object('ok', false, 'error', 'introuvable');
+  end if;
+  if m.user_id <> uid then
+    return jsonb_build_object('ok', false, 'error', 'pas_le_droit');
+  end if;
+  if m.flagged then
+    return jsonb_build_object('ok', false, 'error', 'en_cours_d_examen');
+  end if;
+  if m.created_at < now() - interval '15 minutes' then
+    return jsonb_build_object('ok', false, 'error', 'trop_tard');
+  end if;
+  if char_length(v_texte) = 0 then
+    return jsonb_build_object('ok', false, 'error', 'message_vide');
+  end if;
+  if char_length(v_texte) > 2000 then
+    return jsonb_build_object('ok', false, 'error', 'message_trop_long');
+  end if;
+  if v_texte = m.text then
+    return jsonb_build_object('ok', true, 'inchange', true);
+  end if;
+
+  v_verdict := public.moderation_verdict(v_texte);
+  if v_verdict = 'bloque' then
+    insert into public.moderation_events
+      (classroom_id, event, actor, target_user, detail)
+    values (m.classroom_id, 'message_bloque', uid, uid, left(v_texte, 120));
+    return jsonb_build_object('ok', false, 'error', 'message_refuse');
+  end if;
+
+  update public.classroom_messages
+     set text          = v_texte,
+         text_original = coalesce(text_original, m.text),
+         edited_at     = now()
+   where id = p_message_id;
+
+  if v_verdict = 'suspect' then
+    insert into public.moderation_queue (message_id, raison)
+    values (p_message_id, 'filtre')
+    on conflict (message_id) do update set status = 'pending';
+  end if;
+
+  return jsonb_build_object('ok', true, 'edited_at', now());
+end;
+$$;
+
+revoke execute on function public.edit_classroom_message(uuid, text) from public, anon;
+grant  execute on function public.edit_classroom_message(uuid, text) to authenticated;
+
+-- `classroom_messages()` rend `edited_at` en plus : un message
+-- réécrit sans le dire ment à ceux qui l'ont déjà lu. (La fonction
+-- a dû être DROP avant recréation — Postgres refuse de changer le
+-- type de retour d'une fonction table par un `create or replace`.)

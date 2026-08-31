@@ -26,6 +26,8 @@ export interface ChatMessage {
   text: string;
   attachment_path: string | null;
   created_at: string;
+  /** Non nul si l'auteur l'a réécrit. L'écran le dit. */
+  edited_at: string | null;
   flagged: boolean;
   mine: boolean;
 }
@@ -97,6 +99,40 @@ export async function clearClassroomChat(
   return (data as { ok: boolean; supprimes?: number } | null) ?? { ok: false };
 }
 
+export type EditError =
+  | 'introuvable'
+  | 'pas_le_droit'
+  | 'en_cours_d_examen'
+  | 'trop_tard'
+  | 'message_vide'
+  | 'message_trop_long'
+  | 'message_refuse'
+  | 'echec';
+
+/**
+ * Réécrit son propre message.
+ *
+ * L'AUTEUR SEUL — pas le professeur. Il peut supprimer le message
+ * d'un élève, c'est de la modération ; le réécrire serait mettre des
+ * mots dans la bouche d'un enfant, sous le nom de cet enfant, devant
+ * sa classe.
+ *
+ * Quinze minutes, et le filtre s'applique comme à l'envoi : sans ça,
+ * modifier serait le contournement évident — on poste « bonjour »,
+ * qui passe, puis on le remplace par ce qu'on voulait écrire.
+ */
+export async function editMessage(
+  messageId: string,
+  text: string,
+): Promise<{ ok: boolean; error?: EditError }> {
+  const { data, error } = await supabase.rpc('edit_classroom_message', {
+    p_message_id: messageId,
+    p_text: text,
+  });
+  if (error || !data) return { ok: false, error: 'echec' };
+  return data as { ok: boolean; error?: EditError };
+}
+
 export async function deleteMessage(messageId: string): Promise<boolean> {
   const { data } = await supabase.rpc('delete_classroom_message', {
     p_message_id: messageId,
@@ -116,29 +152,54 @@ export async function deleteMessage(messageId: string): Promise<boolean> {
  * trombinoscope qu'il a déjà chargé : une jointure de moins à
  * chaque message.
  */
+export interface LigneBrute {
+  id: string;
+  user_id: string;
+  text: string;
+  attachment_path: string | null;
+  created_at: string;
+  edited_at: string | null;
+  deleted_at: string | null;
+}
+
 export function subscribeToClassroom(
   classroomId: string,
-  onInsert: (row: {
-    id: string;
-    user_id: string;
-    text: string;
-    attachment_path: string | null;
-    created_at: string;
-  }) => void,
+  onInsert: (row: LigneBrute) => void,
+  /**
+   * Modification ou suppression. Les deux arrivent en UPDATE : une
+   * suppression pose `deleted_at`, elle n'efface pas la ligne.
+   *
+   * Sans ça, un message réécrit ou retiré resterait affiché tel quel
+   * chez les autres jusqu'au rechargement de l'écran — c'est-à-dire
+   * exactement au moment où ça compte le moins.
+   */
+  onUpdate?: (row: LigneBrute) => void,
 ): RealtimeChannel {
-  return supabase
-    .channel(`classe-${classroomId}`)
-    .on(
+  const canal = supabase.channel(`classe-${classroomId}`).on(
+    'postgres_changes',
+    {
+      event: 'INSERT',
+      schema: 'public',
+      table: 'classroom_messages',
+      filter: `classroom_id=eq.${classroomId}`,
+    },
+    (payload) => onInsert(payload.new as never),
+  );
+
+  if (onUpdate) {
+    canal.on(
       'postgres_changes',
       {
-        event: 'INSERT',
+        event: 'UPDATE',
         schema: 'public',
         table: 'classroom_messages',
         filter: `classroom_id=eq.${classroomId}`,
       },
-      (payload) => onInsert(payload.new as never),
-    )
-    .subscribe();
+      (payload) => onUpdate(payload.new as never),
+    );
+  }
+
+  return canal.subscribe();
 }
 
 export const unsubscribe = (canal: RealtimeChannel | null) => {

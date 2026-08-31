@@ -27,7 +27,7 @@
 
 import React, { useCallback, useRef, useState } from 'react';
 import {
-  FlatList, Image, Pressable, StyleSheet, Text, View,
+  FlatList, Image, Modal, Pressable, StyleSheet, Text, View,
 } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import type { RealtimeChannel } from '@supabase/supabase-js';
@@ -49,8 +49,8 @@ import {
   pickDocument, pickFromCamera, pickFromGallery, signedUrlFor, uploadAttachment,
 } from '@/lib/attachments';
 import {
-  PAGE, clearClassroomChat, deleteMessage, fetchMessages, postMessage,
-  subscribeToClassroom, unsubscribe, type ChatMessage,
+  PAGE, clearClassroomChat, deleteMessage, editMessage, fetchMessages,
+  postMessage, subscribeToClassroom, unsubscribe, type ChatMessage,
 } from '@/lib/chat';
 import { fetchClassrooms, fetchRoster, type Classroom } from '@/lib/classrooms';
 import { reportContent, type ReportReason } from '@/lib/moderation';
@@ -74,6 +74,12 @@ export default function FilDeClasse() {
   const [encore, setEncore] = useState(true);
   const [erreur, setErreur] = useState('');
   const [aSupprimer, setASupprimer] = useState<ChatMessage | null>(null);
+  // Le message dont on a fait un appui long : on propose alors les
+  // gestes possibles, qui ne sont pas les mêmes selon qui regarde.
+  const [choix, setChoix] = useState<ChatMessage | null>(null);
+  // En cours de réécriture. La barre d'écriture change de rôle
+  // plutôt que d'ouvrir un deuxième champ ailleurs.
+  const [modif, setModif] = useState<ChatMessage | null>(null);
   const [aSignaler, setASignaler] = useState<ChatMessage | null>(null);
   const [aVider, setAVider] = useState(false);
   const [info, setInfo] = useState('');
@@ -112,7 +118,9 @@ export default function FilDeClasse() {
           ),
         );
 
-        canal.current = subscribeToClassroom(id, (ligne) => {
+        canal.current = subscribeToClassroom(
+          id,
+          (ligne) => {
           setMessages((prev) => {
             if (prev.some((m) => m.id === ligne.id)) return prev;
             const connu = noms[ligne.user_id];
@@ -129,13 +137,28 @@ export default function FilDeClasse() {
                 text: ligne.text,
                 attachment_path: ligne.attachment_path,
                 created_at: ligne.created_at,
+                edited_at: ligne.edited_at,
                 flagged: false,
                 mine: ligne.user_id === session?.user.id,
               },
               ...prev,
             ];
           });
-        });
+          },
+          // Modification ou suppression : les deux arrivent en
+          // UPDATE, une suppression posant `deleted_at`.
+          (ligne) => {
+            setMessages((prev) =>
+              ligne.deleted_at
+                ? prev.filter((m) => m.id !== ligne.id)
+                : prev.map((m) =>
+                    m.id === ligne.id
+                      ? { ...m, text: ligne.text, edited_at: ligne.edited_at }
+                      : m,
+                  ),
+            );
+          },
+        );
       })();
 
       // ── Sortie de l'écran : on coupe. ────────────────────────
@@ -217,6 +240,7 @@ export default function FilDeClasse() {
                 text: propre || '📎',
                 attachment_path: piece?.path ?? null,
                 created_at: new Date().toISOString(),
+                edited_at: null,
                 flagged: false,
                 mine: true,
               },
@@ -224,6 +248,27 @@ export default function FilDeClasse() {
             ],
       );
     }
+  };
+
+  const enregistrerModif = async () => {
+    const m = modif;
+    const propre = texte.trim();
+    if (!m || propre === '') return;
+    setEnvoi(true);
+    const r = await editMessage(m.id, propre);
+    setEnvoi(false);
+    if (!r.ok) return setErreur(t(`fil.err_${r.error ?? 'echec'}`));
+
+    // Le temps réel apporte la modification aux autres ; on met à
+    // jour tout de suite chez soi, comme à l'envoi.
+    setMessages((prev) =>
+      prev.map((x) =>
+        x.id === m.id ? { ...x, text: propre, edited_at: new Date().toISOString() } : x,
+      ),
+    );
+    setModif(null);
+    setTexte('');
+    setErreur('');
   };
 
   // ── Signaler ────────────────────────────────────────────────
@@ -293,7 +338,7 @@ export default function FilDeClasse() {
             prof={prof}
             onReport={() => setASignaler(item)}
             onLongPress={() => {
-              if (item.mine || prof) setASupprimer(item);
+              if (item.mine || prof) setChoix(item);
             }}
           />
         )}
@@ -306,6 +351,27 @@ export default function FilDeClasse() {
           { borderColor: colors.border, backgroundColor: colors.bg, marginBottom: keyboard.height },
         ]}
       >
+        {/* On ne réécrit pas un message sans le voir : le bandeau
+            dit ce qui est en cours, et permet d'y renoncer. */}
+        {modif ? (
+          <View style={[styles.piece, { borderColor: colors.accent }]}>
+            <Icon name="edit" size={12} color={colors.accent} />
+            <Text style={[type.caption, { color: colors.textSoft, flex: 1 }]} numberOfLines={1}>
+              {t('fil.editing')}
+            </Text>
+            <Pressable
+              onPress={() => {
+                setModif(null);
+                setTexte('');
+              }}
+              hitSlop={8}
+              accessibilityRole="button"
+            >
+              <Icon name="close" size={13} color={colors.textFaint} />
+            </Pressable>
+          </View>
+        ) : null}
+
         {piece ? (
           <View style={[styles.piece, { borderColor: colors.border }]}>
             <Icon name="paperclip" size={12} color={colors.accent} />
@@ -338,14 +404,20 @@ export default function FilDeClasse() {
           </Pressable>
           <View style={{ flex: 1 }}>
             <Input
-              placeholder={t('fil.placeholder')}
+              placeholder={modif ? t('fil.editPlaceholder') : t('fil.placeholder')}
               value={texte}
               onChangeText={setTexte}
               maxLength={2000}
               multiline
             />
           </View>
-          <Button label="" icon="send" size="sm" loading={envoi} onPress={envoyer} />
+          <Button
+            label=""
+            icon={modif ? 'check' : 'send'}
+            size="sm"
+            loading={envoi}
+            onPress={modif ? enregistrerModif : envoyer}
+          />
         </View>
       </View>
 
@@ -361,6 +433,29 @@ export default function FilDeClasse() {
         visible={!charteVue}
         onAccepted={() => setCharteVue(true)}
         onDecline={() => router.back()}
+      />
+
+      {/* Appui long : ce qu'on peut faire de ce message. Modifier
+          n'apparaît que sur les siens et que dans le quart d'heure —
+          au-delà le serveur refuse, autant ne pas le proposer. Le
+          professeur peut supprimer le message d'un élève, jamais le
+          réécrire : ce serait mettre des mots dans la bouche d'un
+          enfant, sous son nom, devant sa classe. */}
+      <MessageActions
+        message={choix}
+        onEdit={() => {
+          const m = choix;
+          setChoix(null);
+          if (!m) return;
+          setModif(m);
+          setTexte(m.text);
+        }}
+        onDelete={() => {
+          const m = choix;
+          setChoix(null);
+          setASupprimer(m);
+        }}
+        onCancel={() => setChoix(null)}
       />
 
       <ConfirmDialog
@@ -397,6 +492,63 @@ export default function FilDeClasse() {
         }}
       />
     </Screen>
+  );
+}
+
+/**
+ * Ce qu'on peut faire d'un message, après un appui long.
+ *
+ * « Modifier » ne s'affiche que sur les siens, et seulement dans le
+ * quart d'heure : au-delà le serveur refuse, et proposer un bouton
+ * qui échoue est pire que ne rien proposer.
+ */
+function MessageActions({
+  message, onEdit, onDelete, onCancel,
+}: {
+  message: ChatMessage | null;
+  onEdit: () => void;
+  onDelete: () => void;
+  onCancel: () => void;
+}) {
+  const { t } = useApp();
+  const { colors } = useTheme();
+
+  const modifiable =
+    message !== null &&
+    message.mine &&
+    !message.flagged &&
+    Date.now() - new Date(message.created_at).getTime() < 15 * 60 * 1000;
+
+  return (
+    <Modal
+      visible={message !== null}
+      transparent
+      animationType="fade"
+      onRequestClose={onCancel}
+      statusBarTranslucent
+    >
+      <Pressable style={styles.fond} onPress={onCancel} accessibilityRole="button">
+        <Pressable
+          style={[styles.feuille, { backgroundColor: colors.surface, borderColor: colors.border }]}
+          onPress={(e) => e.stopPropagation()}
+        >
+          {modifiable && (
+            <Pressable onPress={onEdit} style={styles.action} accessibilityRole="button">
+              <Icon name="edit" size={17} color={colors.text} />
+              <Text style={[type.body, { color: colors.text }]}>{t('fil.edit')}</Text>
+            </Pressable>
+          )}
+          <Pressable onPress={onDelete} style={styles.action} accessibilityRole="button">
+            <Icon name="trash" size={17} color={colors.danger} />
+            <Text style={[type.body, { color: colors.danger }]}>{t('fil.delete')}</Text>
+          </Pressable>
+          <Pressable onPress={onCancel} style={styles.action} accessibilityRole="button">
+            <Icon name="close" size={17} color={colors.textFaint} />
+            <Text style={[type.body, { color: colors.textSoft }]}>{t('common.cancel')}</Text>
+          </Pressable>
+        </Pressable>
+      </Pressable>
+    </Modal>
   );
 }
 
@@ -570,6 +722,9 @@ function Bulle({
               ]}
             >
               {heure}
+              {/* Un message réécrit sans le dire ment à ceux qui
+                  l'ont déjà lu. */}
+              {message.edited_at ? ` · ${t('fil.edited')}` : ''}
             </Text>
 
             {/* Le drapeau, sur les messages des autres uniquement.
@@ -594,6 +749,16 @@ function Bulle({
 }
 
 const styles = StyleSheet.create({
+  fond: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
+  feuille: {
+    borderTopWidth: 1, borderLeftWidth: 1, borderRightWidth: 1,
+    borderTopLeftRadius: RADIUS.lg, borderTopRightRadius: RADIUS.lg,
+    paddingVertical: 8, paddingHorizontal: 6,
+  },
+  action: {
+    flexDirection: 'row', alignItems: 'center', gap: 13,
+    paddingVertical: 15, paddingHorizontal: 16,
+  },
   header: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
     paddingHorizontal: 20, paddingTop: 8, paddingBottom: 10,

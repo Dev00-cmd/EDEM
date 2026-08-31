@@ -426,6 +426,16 @@ export const fr = {
     deleteMine: 'Il disparaîtra pour toute la classe.',
     deleteOther: 'Il disparaîtra pour toute la classe. La suppression est enregistrée.',
     delete: 'Supprimer',
+    edit: 'Modifier',
+    editing: 'Tu modifies ton message',
+    editPlaceholder: 'Corrige ton message…',
+    edited: 'modifie',
+
+    err_pas_le_droit: 'Tu ne peux modifier que tes propres messages.',
+    err_en_cours_d_examen:
+      'Ce message a ete signale. Ton professeur doit le regarder avant.',
+    err_trop_tard:
+      "Trop tard pour le modifier. Tu as un quart d'heure apres l'envoi.",
 
     download: 'Télécharger',
     noViewer: "Fichier téléchargé, mais aucune application ne sait l'ouvrir.",
