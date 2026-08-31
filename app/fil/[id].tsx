@@ -45,7 +45,7 @@ import { useKeyboard } from '@/theme/useKeyboard';
 import { RADIUS } from '@/theme/colors';
 import { type } from '@/theme/typography';
 import {
-  downloadAttachment, fileNameOf, isImagePath,
+  downloadAttachment, fileNameOf, isImagePath, openLocalFile,
   pickDocument, pickFromCamera, pickFromGallery, signedUrlFor, uploadAttachment,
 } from '@/lib/attachments';
 import {
@@ -416,13 +416,17 @@ function Bulle({
   const chemin = message.attachment_path;
   const estImage = chemin ? isImagePath(chemin) : false;
 
-  // Une image s'affiche dans le fil ; un document part directement
-  // au téléphone — on ne prévisualise pas un PDF dans une bulle.
+  // Une image s'affiche dans le fil ; un document descend dans
+  // l'application puis s'ouvre — on ne prévisualise pas un PDF dans
+  // une bulle de conversation.
   const voir = async () => {
     if (!chemin) return;
-    if (!estImage) return void downloadAttachment(chemin);
     setChargement(true);
-    setImage(await signedUrlFor(chemin));
+    if (estImage) setImage(await signedUrlFor(chemin));
+    else {
+      const r = await downloadAttachment(chemin);
+      if (r.ok && r.file) openLocalFile(r.file);
+    }
     setChargement(false);
   };
 
@@ -483,7 +487,10 @@ function Bulle({
                 {/* Regarder une photo et la GARDER pour la revoir ce
                     soir sans réseau ne sont pas le même geste. */}
                 <Pressable
-                  onPress={() => downloadAttachment(chemin)}
+                  onPress={async () => {
+                    const r = await downloadAttachment(chemin);
+                    if (r.ok && r.file) openLocalFile(r.file);
+                  }}
                   accessibilityRole="button"
                   style={[
                     styles.vignette,

@@ -30,7 +30,7 @@ import { useKeyboard } from '@/theme/useKeyboard';
 import { RADIUS } from '@/theme/colors';
 import { type } from '@/theme/typography';
 import {
-  downloadAttachment, fileNameOf, isImagePath,
+  downloadAttachment, fileNameOf, isImagePath, localFileFor, openLocalFile,
   pickFromCamera, pickFromGallery, signedUrlFor, uploadAttachment,
 } from '@/lib/attachments';
 import {
@@ -450,6 +450,9 @@ function PieceJointe({ path }: { path: string }) {
   const { colors } = useTheme();
   const [lien, setLien] = useState<string | null>(null);
   const [chargement, setChargement] = useState(false);
+  // Déjà sur le téléphone ? Le bouton le dit, plutôt que de
+  // retélécharger ce qu'on a déjà payé une fois.
+  const [garde, setGarde] = useState(() => localFileFor(path));
 
   const nom = fileNameOf(path);
   const estImage = isImagePath(path);
@@ -462,11 +465,20 @@ function PieceJointe({ path }: { path: string }) {
     setChargement(false);
   };
 
-  // Télécharger : le fichier part dans les Téléchargements du
-  // téléphone, et y reste. Deux gestes différents — regarder une
-  // photo d'énoncé et la garder pour la faire ce soir sans réseau
-  // ne sont pas la même chose.
-  const telecharger = () => downloadAttachment(path);
+  // Télécharger : le fichier descend DANS l'application et y reste.
+  // Une fois là, il s'ouvre sans réseau — c'est tout l'intérêt :
+  // on télécharge le matin à l'école où il y a du wifi, on travaille
+  // le soir chez soi où il n'y en a pas.
+  const telecharger = async () => {
+    if (garde) return void openLocalFile(garde);
+    setChargement(true);
+    const r = await downloadAttachment(path);
+    setChargement(false);
+    if (r.ok && r.file) {
+      setGarde(r.file);
+      openLocalFile(r.file);
+    }
+  };
 
   return (
     <Card style={{ marginTop: 12 }}>
@@ -478,7 +490,11 @@ function PieceJointe({ path }: { path: string }) {
         <Icon name={estImage ? 'image' : 'file'} size={16} color={colors.accent} />
         <View style={{ flex: 1 }}>
           <Text style={[type.captionMedium, { color: colors.text }]} numberOfLines={1}>
-            {estImage ? t('assignment.fileOpen') : t('assignment.fileDownload')}
+            {estImage
+              ? t('assignment.fileOpen')
+              : garde
+                ? t('assignment.fileSaved')
+                : t('assignment.fileDownload')}
           </Text>
           <Text style={[type.caption, { color: colors.textFaint }]} numberOfLines={1}>
             {chargement ? t('common.loading') : nom}
@@ -488,10 +504,11 @@ function PieceJointe({ path }: { path: string }) {
       </Pressable>
 
       <Button
-        label={t('assignment.fileDownload')}
-        icon="download"
+        label={garde ? t('assignment.fileSaved') : t('assignment.fileDownload')}
+        icon={garde ? 'check-circle' : 'download'}
         variant="ghost"
         size="sm"
+        loading={chargement}
         style={{ marginTop: 8 }}
         onPress={telecharger}
       />

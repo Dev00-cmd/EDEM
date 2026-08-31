@@ -11,11 +11,11 @@
 //    4. le tuteur lit le fichier côté serveur : il n'est jamais public
 // ═══════════════════════════════════════════════════════════════
 
-import { Linking } from 'react-native';
+import { Linking, Platform } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
-import { File } from 'expo-file-system';
+import { Directory, File, Paths } from 'expo-file-system';
 import { supabase } from './supabase';
 import type { Lang } from '@/i18n';
 
@@ -217,41 +217,90 @@ export async function signedUrlFor(path: string): Promise<string | null> {
   return error ? null : data.signedUrl;
 }
 
-/**
- * Télécharge une pièce jointe sur le téléphone.
- *
- * On passe par `Linking` et le navigateur du système, qui dépose le
- * fichier dans les Téléchargements et sait ouvrir un PDF. Les deux
- * autres voies coûtaient trop cher pour ce qu'elles apportent :
- *
- *  · `expo-media-library` rangerait une image dans la galerie, mais
- *    c'est un module NATIF — donc un nouvel APK à réinstaller par
- *    tout le monde, alors que tout le reste passe en OTA ;
- *  · `FileSystem.StorageAccessFramework` existe déjà, mais force
- *    l'élève à choisir un dossier à chaque fichier, et n'existe pas
- *    sur iOS.
- *
- * L'URL signée vaut une heure. Elle est demandée au moment du clic,
- * jamais à l'affichage : rien ne se télécharge tant que personne
- * n'a demandé.
- */
-export async function downloadAttachment(path: string): Promise<boolean> {
-  const url = await signedUrlFor(path);
-  if (!url) return false;
-  try {
-    await Linking.openURL(url);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 /** Le nom de fichier seul, pour l'afficher. */
 export const fileNameOf = (path: string) => path.split('/').pop() ?? '';
 
 /** Une image s'affiche dans l'écran ; le reste part au lecteur. */
 export const isImagePath = (path: string) =>
   /\.(jpe?g|png|webp|gif|heic)$/i.test(path);
+
+/**
+ * Le dossier où EDEM garde les fichiers téléchargés.
+ *
+ * `Paths.document` et non `Paths.cache` : le système vide le cache
+ * dès qu'il manque de place, et un élève qui a téléchargé l'énoncé
+ * la veille pour le faire sans réseau le retrouverait vide.
+ */
+function dossierLocal(): Directory {
+  const d = new Directory(Paths.document, 'EDEM');
+  if (!d.exists) d.create();
+  return d;
+}
+
+/** Le fichier local correspondant à une pièce jointe, s'il existe. */
+export function localFileFor(path: string): File | null {
+  try {
+    const f = new File(dossierLocal(), fileNameOf(path));
+    return f.exists ? f : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Télécharge une pièce jointe DANS L'APPLICATION.
+ *
+ * Le fichier atterrit dans le stockage de l'app et y reste : une
+ * fois téléchargé, l'énoncé s'ouvre sans réseau. C'est tout
+ * l'intérêt ici — un élève télécharge le matin à l'école, où il y a
+ * du wifi, et travaille le soir chez lui où il n'y en a pas.
+ *
+ * La première version ouvrait simplement l'URL signée dans le
+ * navigateur. Ça « marchait », mais ça jetait l'élève hors de
+ * l'application sur une adresse `supabase.co` en lui demandant de
+ * se débrouiller, et le fichier n'était nulle part quand le réseau
+ * repartait.
+ *
+ * L'URL signée ne vit qu'une heure : elle sert au transfert, elle
+ * n'est jamais donnée à l'élève ni gardée.
+ */
+export async function downloadAttachment(
+  path: string,
+): Promise<{ ok: boolean; file?: File }> {
+  const local = localFileFor(path);
+  if (local) return { ok: true, file: local };
+
+  const url = await signedUrlFor(path);
+  if (!url) return { ok: false };
+
+  try {
+    // Destination explicite : sans elle, le nom serait déduit de
+    // l'URL signée, qui traîne un jeton en paramètre.
+    const cible = new File(dossierLocal(), fileNameOf(path));
+    if (cible.exists) cible.delete();
+    const fichier = await File.downloadFileAsync(url, cible);
+    return { ok: true, file: fichier };
+  } catch {
+    return { ok: false };
+  }
+}
+
+/**
+ * Ouvre un fichier déjà téléchargé avec le lecteur du téléphone.
+ *
+ * Sur Android il faut passer par `contentUri` : un `file://` qui
+ * sort de l'application déclenche une FileUriExposedException
+ * depuis Android 7.
+ */
+export async function openLocalFile(file: File): Promise<boolean> {
+  try {
+    const uri = Platform.OS === 'android' ? file.contentUri : file.uri;
+    await Linking.openURL(uri);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 /** Supprime une pièce jointe (message effacé, conversation vidée). */
 export async function removeAttachments(paths: string[]): Promise<void> {

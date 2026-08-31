@@ -336,6 +336,7 @@ export const ht: Messages = {
     fileDoc: 'Dokiman',
     fileOpen: 'Louvri konsiy la',
     fileDownload: 'Telechaje',
+    fileSaved: 'Sou telefòn ou · louvri',
     titleNeeded: 'Bay devwa a yon tit',
     instructionsLabel: 'Konsiy',
     instructionsPlaceholder: 'Sa elèv la dwe fè, ak kijan pou l remèt li.',

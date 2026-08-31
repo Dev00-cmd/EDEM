@@ -336,6 +336,7 @@ export const fr = {
     fileDoc: 'Document',
     fileOpen: "Ouvrir l'énoncé",
     fileDownload: 'Télécharger',
+    fileSaved: 'Sur ton téléphone · ouvrir',
     titleNeeded: 'Donne un titre au devoir',
     instructionsLabel: 'Consignes',
     instructionsPlaceholder: "Ce que l'élève doit faire, et comment le rendre.",
