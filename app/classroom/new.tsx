@@ -72,6 +72,10 @@ export default function NouvelleClasse() {
   // trois autres chemins ont été essayés sans succès. Mais laisser
   // remplir tout un formulaire pour finir sur un refus, c'est faire
   // croire que ça a failli marcher. On le dit d'emblée.
+  //
+  // En pratique un élève n'arrive plus jamais ici : ni son profil
+  // ni sa liste de classes n'y mènent. Cet écran reste le dernier
+  // filet, pas un chemin.
   if (profile.role !== 'prof') {
     return (
       <Screen>
@@ -92,13 +96,16 @@ export default function NouvelleClasse() {
           <Text style={[type.caption, { color: colors.textSoft, marginTop: 10 }]}>
             {t('classroom.needRoleBody')}
           </Text>
+          {/* Plus de raccourci « Je suis professeur » ici. Le
+              choix se fait à l'inscription, sur un écran qui le
+              pose franchement — pas au détour d'un refus, où il se
+              lit comme une porte à pousser. */}
           <Button
-            label={t('teacher.cta')}
-            icon="arrow-right"
-            iconRight
+            label={t('common.back')}
+            variant="ghost"
             full
             style={{ marginTop: 14 }}
-            onPress={() => router.replace('/teacher-request')}
+            onPress={() => router.back()}
           />
         </Card>
       </Screen>

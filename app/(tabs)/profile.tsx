@@ -324,7 +324,7 @@ export default function ProfileScreen() {
                 {t('classes.title')}
               </Text>
               <Text style={[type.caption, { color: colors.textFaint, marginTop: 2 }]}>
-                {profile.role === 'prof' ? t('classes.create') : t('classes.joinTitle')}
+                {t('classes.joinTitle')}
               </Text>
             </View>
             <Icon name="chevron-right" size={16} color={colors.textFaint} />
@@ -361,30 +361,40 @@ export default function ProfileScreen() {
         </Section>
       )}
 
-      {/* ── Professeur ──────────────────────────────────────── */}
-      {/* Sans point d'entrée, la demande de rôle serait
-          injoignable : la RPC existerait sans que personne ne
-          puisse l'appeler. */}
-      <Section label={t('teacher.title')}>
-        <Card onPress={() => router.push('/teacher-request')}>
-          <View style={styles.settingLeft}>
-            <Icon
-              name={profile.role === 'prof' ? 'check-circle' : 'user'}
-              size={18}
-              color={profile.role === 'prof' ? colors.accent : colors.textSoft}
-            />
-            <View style={{ flex: 1 }}>
-              <Text style={[type.bodyMedium, { color: colors.text }]}>
-                {profile.role === 'prof' ? t('teacher.alreadyTitle') : t('teacher.cta')}
-              </Text>
-              <Text style={[type.caption, { color: colors.textFaint, marginTop: 2 }]}>
-                {profile.role === 'prof' ? t('teacher.alreadySub') : t('teacher.ctaSub')}
-              </Text>
+      {/* ── Professeur ───────────────────────────────────────
+          RIEN POUR UN ÉLÈVE, et ce n'est pas du rangement.
+
+          Depuis que la déclaration est instantanée, ce bouton
+          proposait à chaque élève de se déclarer professeur et
+          d'ouvrir une salle. Un adolescent de 14 ans obtenait en
+          trois champs une pièce où faire entrer d'autres mineurs,
+          sans qu'aucun adulte y soit — c'est exactement la chose
+          contre laquelle tout le reste est construit.
+
+          Le choix se fait maintenant à l'inscription, sur un écran
+          qui le pose franchement. Un élève ne voit ici que sa
+          classe, et il n'y entre que par le code de son professeur.
+
+          Pour un professeur, la carte reste : elle confirme son
+          statut et mène à sa déclaration. */}
+      {profile.role === 'prof' && (
+        <Section label={t('teacher.title')}>
+          <Card onPress={() => router.push('/teacher-request')}>
+            <View style={styles.settingLeft}>
+              <Icon name="check-circle" size={18} color={colors.accent} />
+              <View style={{ flex: 1 }}>
+                <Text style={[type.bodyMedium, { color: colors.text }]}>
+                  {t('teacher.alreadyTitle')}
+                </Text>
+                <Text style={[type.caption, { color: colors.textFaint, marginTop: 2 }]}>
+                  {t('teacher.alreadySub')}
+                </Text>
+              </View>
+              <Icon name="chevron-right" size={16} color={colors.textFaint} />
             </View>
-            <Icon name="chevron-right" size={16} color={colors.textFaint} />
-          </View>
-        </Card>
-      </Section>
+          </Card>
+        </Section>
+      )}
 
       {/* ── Réglages ────────────────────────────────────────── */}
       <Section label={t('profile.settings')}>

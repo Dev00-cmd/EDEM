@@ -334,7 +334,7 @@ export const fr = {
     tooMany:
       'Tu as dix classes ouvertes, le maximum. Archive une classe terminée pour en ouvrir une autre.',
     needRoleTitle: "Il faut être professeur",
-    needRoleBody: "Ouvrir une classe demande le rôle professeur. Déclare qui tu es — nom, école, matières — et tu l'obtiens tout de suite. Ça prend une minute.",
+    needRoleBody: "Ouvrir une classe est réservé aux professeurs. Le choix se fait à l'inscription. Toi, tu entres dans une classe avec le code que ton professeur te donne.",
     title: 'Classe',
     newTitle: 'Ouvrir une classe',
     nameLabel: 'Nom de la classe',

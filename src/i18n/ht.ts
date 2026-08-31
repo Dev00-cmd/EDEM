@@ -334,7 +334,7 @@ export const ht: Messages = {
     tooMany:
       'Ou gen dis klas louvri, se maksimòm nan. Achive yon klas ki fini pou ou ka louvri yon lòt.',
     needRoleTitle: "Fòk ou se yon pwofesè",
-    needRoleBody: "Pou louvri yon klas ou bezwen wòl pwofesè a. Deklare kiyès ou ye — non, lekòl, matyè — epi ou jwenn li touswit. Sa pran yon minit.",
+    needRoleBody: "Se pwofesè sèlman ki ka louvri yon klas. Chwa a fèt lè ou enskri. Ou menm, ou antre nan yon klas ak kòd pwofesè ou ba ou.",
     title: 'Klas',
     newTitle: 'Louvri yon klas',
     nameLabel: 'Non klas la',
