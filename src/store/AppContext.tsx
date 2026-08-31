@@ -24,6 +24,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { STORAGE_KEYS, type Difficulty } from '@/config/app';
 import { supabase } from '@/lib/supabase';
 import { removeAttachments } from '@/lib/attachments';
+import { acceptCharter as acceptCharterRpc } from '@/lib/moderation';
 import { useAuth } from './AuthContext';
 import type { Lang } from '@/i18n';
 import { translate } from '@/i18n';
@@ -69,6 +70,12 @@ export interface Profile {
   studyMinutes: number | null;
   /** Rôle. Accordé par le serveur, jamais modifiable ici. */
   role: 'eleve' | 'prof';
+  /**
+   * Quand l'élève a accepté la charte de la classe. null tant
+   * qu'il ne l'a pas lue — le serveur refuse alors ses messages,
+   * l'écran n'est pas seul à garder la porte.
+   */
+  charterAcceptedAt: string | null;
   /** Date du bonus de profil complet. Non nul = déjà versé. */
   profileCompletedAt: string | null;
 }
@@ -174,6 +181,7 @@ const DEFAULT_PROFILE: Profile = {
   studyMinutes: null,
   role: 'eleve',
   profileCompletedAt: null,
+  charterAcceptedAt: null,
 };
 
 const DEFAULT_PROGRESS: Progress = {
@@ -242,6 +250,13 @@ interface AppState {
   shouldTune: boolean;
   /** « Plus tard ». On ne le repropose pas sur cet appareil. */
   dismissTune: () => void;
+
+  /**
+   * Accepte la charte de la classe. Écrit par une fonction
+   * SECURITY DEFINER : `charter_accepted_at` ne figure pas dans
+   * les colonnes que l'application a le droit de modifier.
+   */
+  acceptCharter: () => Promise<boolean>;
 }
 
 const AppContext = createContext<AppState | null>(null);
@@ -351,6 +366,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             studyMinutes: p.study_minutes ?? null,
             role: p.role === 'prof' ? 'prof' : 'eleve',
             profileCompletedAt: p.profile_completed_at ?? null,
+            charterAcceptedAt: p.charter_accepted_at ?? null,
           }
         : DEFAULT_PROFILE;
 
@@ -807,6 +823,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Le serveur est seul juge : c'est lui qui sait quels champs
   // s'appliquent à ce niveau (un élève de 5e AF n'a pas de série)
   // et lui seul qui peut verser le bonus.
+  // ── La charte ───────────────────────────────────────────────
+  //
+  // On ne passe pas par `updateProfile` : `charter_accepted_at`
+  // ne fait pas partie des colonnes que l'application a le droit
+  // d'écrire, et Postgres refuserait TOUT l'upsert — le profil ne
+  // s'enregistrerait plus du tout. C'est le serveur qui date
+  // l'acceptation, on ne fait que relire ce qu'il a écrit.
+  const acceptCharter = useCallback(async (): Promise<boolean> => {
+    const at = await acceptCharterRpc();
+    if (!at) return false;
+    setProfile((prev) => ({ ...prev, charterAcceptedAt: at }));
+    return true;
+  }, []);
+
   const refreshCompletion = useCallback(async (): Promise<Completion> => {
     if (!userId) return DEFAULT_COMPLETION;
     const { data, error } = await supabase.rpc('profile_completion');
@@ -880,6 +910,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     refreshCompletion,
     shouldTune,
     dismissTune,
+    acceptCharter,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

@@ -354,10 +354,126 @@ export type Database = {
         }
         Relationships: []
       }
+      moderation_events: {
+        Row: {
+          actor: string | null
+          classroom_id: string | null
+          created_at: string
+          detail: string | null
+          event: string
+          id: number
+          target_id: string | null
+          target_user: string | null
+        }
+        Insert: {
+          actor?: string | null
+          classroom_id?: string | null
+          created_at?: string
+          detail?: string | null
+          event: string
+          id?: never
+          target_id?: string | null
+          target_user?: string | null
+        }
+        Update: {
+          actor?: string | null
+          classroom_id?: string | null
+          created_at?: string
+          detail?: string | null
+          event?: string
+          id?: never
+          target_id?: string | null
+          target_user?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "moderation_events_classroom_id_fkey"
+            columns: ["classroom_id"]
+            isOneToOne: false
+            referencedRelation: "classrooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      moderation_queue: {
+        Row: {
+          created_at: string
+          essais: number
+          message_id: string
+          model: string | null
+          raison: string
+          reviewed_at: string | null
+          score: number | null
+          status: string
+          verdict: string | null
+        }
+        Insert: {
+          created_at?: string
+          essais?: number
+          message_id: string
+          model?: string | null
+          raison: string
+          reviewed_at?: string | null
+          score?: number | null
+          status?: string
+          verdict?: string | null
+        }
+        Update: {
+          created_at?: string
+          essais?: number
+          message_id?: string
+          model?: string | null
+          raison?: string
+          reviewed_at?: string | null
+          score?: number | null
+          status?: string
+          verdict?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "moderation_queue_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: true
+            referencedRelation: "classroom_messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      moderation_terms: {
+        Row: {
+          created_at: string
+          gravite: string
+          id: number
+          lang: string
+          mot_entier: boolean
+          terme: string
+          terme_norm: string | null
+        }
+        Insert: {
+          created_at?: string
+          gravite: string
+          id?: never
+          lang?: string
+          mot_entier?: boolean
+          terme: string
+          terme_norm?: string | null
+        }
+        Update: {
+          created_at?: string
+          gravite?: string
+          id?: never
+          lang?: string
+          mot_entier?: boolean
+          terme?: string
+          terme_norm?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           board_alias: string | null
           board_visible: boolean
+          charter_accepted_at: string | null
           commune_id: string | null
           created_at: string
           exam_year: number | null
@@ -380,6 +496,7 @@ export type Database = {
         Insert: {
           board_alias?: string | null
           board_visible?: boolean
+          charter_accepted_at?: string | null
           commune_id?: string | null
           created_at?: string
           exam_year?: number | null
@@ -402,6 +519,7 @@ export type Database = {
         Update: {
           board_alias?: string | null
           board_visible?: boolean
+          charter_accepted_at?: string | null
           commune_id?: string | null
           created_at?: string
           exam_year?: number | null
@@ -590,6 +708,56 @@ export type Database = {
             columns: ["assignment_id"]
             isOneToOne: false
             referencedRelation: "assignments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reports: {
+        Row: {
+          classroom_id: string | null
+          created_at: string
+          detail: string | null
+          handled_at: string | null
+          handled_by: string | null
+          id: string
+          reason: string
+          reporter_id: string
+          status: string
+          target_id: string
+          target_type: string
+        }
+        Insert: {
+          classroom_id?: string | null
+          created_at?: string
+          detail?: string | null
+          handled_at?: string | null
+          handled_by?: string | null
+          id?: string
+          reason: string
+          reporter_id: string
+          status?: string
+          target_id: string
+          target_type: string
+        }
+        Update: {
+          classroom_id?: string | null
+          created_at?: string
+          detail?: string | null
+          handled_at?: string | null
+          handled_by?: string | null
+          id?: string
+          reason?: string
+          reporter_id?: string
+          status?: string
+          target_id?: string
+          target_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reports_classroom_id_fkey"
+            columns: ["classroom_id"]
+            isOneToOne: false
+            referencedRelation: "classrooms"
             referencedColumns: ["id"]
           },
         ]
@@ -936,6 +1104,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      accept_charter: { Args: never; Returns: Json }
       apply_quiz_results: {
         Args: { p_difficulty?: string; p_results: Json; p_subject_id: string }
         Returns: Json
@@ -991,6 +1160,16 @@ export type Database = {
           topic_ids: string[]
         }[]
       }
+      classroom_blocked_attempts: {
+        Args: { p_classroom_id: string; p_days?: number }
+        Returns: {
+          affiche: string
+          derniere: string
+          tentatives: number
+          user_id: string
+          vrai_nom: string
+        }[]
+      }
       classroom_dashboard: {
         Args: { p_classroom_id: string }
         Returns: {
@@ -1015,6 +1194,24 @@ export type Database = {
           mine: boolean
           text: string
           user_id: string
+          vrai_nom: string
+        }[]
+      }
+      classroom_moderation: {
+        Args: { p_classroom_id: string }
+        Returns: {
+          affiche: string
+          attachment: boolean
+          auteur_id: string
+          created_at: string
+          details: string[]
+          extrait: string
+          flagged: boolean
+          message_id: string
+          raisons: string[]
+          score_ia: number
+          signalements: number
+          verdict_ia: string
           vrai_nom: string
         }[]
       }
@@ -1084,6 +1281,42 @@ export type Database = {
           xp: number
         }[]
       }
+      moderate_message: {
+        Args: { p_decision: string; p_message_id: string }
+        Returns: Json
+      }
+      moderation_audit: {
+        Args: { p_days?: number }
+        Returns: {
+          actor: string
+          classes: number
+          derniere: string
+          exclusions: number
+          masquages: number
+          nom: string
+          role: string
+          suppressions: number
+        }[]
+      }
+      moderation_next_batch: {
+        Args: { p_limit?: number }
+        Returns: {
+          lang: string
+          message_id: string
+          raison: string
+          texte: string
+        }[]
+      }
+      moderation_record_verdict: {
+        Args: {
+          p_message_id: string
+          p_model?: string
+          p_score: number
+          p_verdict: string
+        }
+        Returns: Json
+      }
+      moderation_verdict: { Args: { p_text: string }; Returns: string }
       my_assignments: {
         Args: never
         Returns: {
@@ -1130,6 +1363,7 @@ export type Database = {
           xp: number
         }[]
       }
+      norm_moderation: { Args: { p_text: string }; Returns: string }
       norm_text: { Args: { p_text: string }; Returns: string }
       post_classroom_message: {
         Args: {
@@ -1172,6 +1406,15 @@ export type Database = {
       }
       remove_member: {
         Args: { p_classroom_id: string; p_user_id: string }
+        Returns: Json
+      }
+      report_content: {
+        Args: {
+          p_detail?: string
+          p_reason: string
+          p_target_id: string
+          p_target_type: string
+        }
         Returns: Json
       }
       request_teacher_role: {

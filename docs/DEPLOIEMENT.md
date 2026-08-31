@@ -107,9 +107,16 @@ Puis scanner le QR code, ou saisir `exp://<ip-du-pc>:8081` dans Expo Go. **Même
 ### Vérifications automatiques
 
 ```bash
-npx tsc --noEmit    # types — doit être silencieux
-npx expo-doctor     # configuration
+npm run check                      # types + i18n FR/HT + routage de l'IA
+npx expo-doctor                    # configuration
+
+node scripts/smoke_test.mjs        # quiz, XP, quotas, anti-rejeu
+node scripts/test_moderation.mjs   # modération : 6 comptes, 47 vérifications REST
 ```
+
+> 💡 **`npm run check` avant chaque livraison.** Une clé de traduction absente ne plante pas : elle s'affiche telle quelle à l'écran (« moderation.entrySub »), ce qui passe inaperçu en développement et saute aux yeux de l'élève.
+>
+> Les deux scripts de test créent de vrais comptes, font de vraies requêtes REST, et suppriment tout à la fin. Ils tournent contre la base **de production** : c'est volontaire, c'est la seule façon de vérifier les règles d'accès telles qu'elles sont réellement appliquées.
 
 ---
 
@@ -177,8 +184,19 @@ npx eas-cli submit --platform android     # soumission automatique
 - [ ] Testé sur un Android d'entrée de gamme
 - [ ] Mode avion : l'app s'ouvre et affiche les données en cache
 - [ ] Page **Politique de confidentialité** en ligne (obligatoire — e-mail et progression collectés)
-- [ ] **Quota par élève en place** — sans lui, rien n'empêche 300 quiz dans la journée
+- [x] **Quota par élève en place** — `usage_counters`, quotidien pour l'IA, horaire pour les messages et les codes
 - [ ] Budget Google surveillé le premier mois
+
+**Avant qu'une classe de vrais élèves entre** — le public est mineur, ces lignes ne se reportent pas :
+
+- [ ] `node scripts/test_moderation.mjs` passe intégralement
+- [ ] La charte s'affiche à la première entrée dans une classe, en français **et** en créole
+- [ ] Un message insultant est refusé ; « ils se sont disputés » passe
+- [ ] Trois signalements de trois élèves différents masquent bien un message
+- [ ] Le professeur voit sa pile de modération, et « laisser » remet le message en ligne
+- [ ] Le rôle professeur n'a été accordé qu'à des personnes **vérifiées à la main**
+- [ ] Protection contre les mots de passe compromis activée dans Auth
+- [ ] Décision prise sur `auto_confirm_email` : un compte non vérifié peut demander à rejoindre une classe d'enfants
 - [ ] Keystore sauvegardé à **deux** endroits (§5)
 - [ ] `version` et `runtimeVersion` incrémentées ensemble (§3)
 

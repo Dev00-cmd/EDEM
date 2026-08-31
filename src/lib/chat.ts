@@ -36,6 +36,10 @@ export type PostError =
   | 'message_trop_long'
   | 'classe_fermee'
   | 'trop_de_messages'
+  /** Le filtre de modération a refusé le message : il n'existe nulle part. */
+  | 'message_refuse'
+  /** La charte n'a pas été acceptée. Le serveur la vérifie aussi. */
+  | 'charte_non_acceptee'
   | 'echec';
 
 export const PAGE = 20;

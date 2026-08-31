@@ -29,7 +29,7 @@ export type IconName =
   | 'bulb' | 'flash' | 'clock' | 'award'
   // formulaire & réglages
   | 'mail' | 'lock' | 'eye' | 'eye-off' | 'user' | 'globe' | 'sun' | 'moon'
-  | 'alert' | 'info' | 'shield'
+  | 'alert' | 'info' | 'shield' | 'flag'
   // matières
   | 'calculator' | 'landmark' | 'leaf' | 'atom' | 'flask' | 'laptop' | 'language'
   // pièces jointes
@@ -339,6 +339,15 @@ const PATHS: Record<IconName, ReactNode> = {
     <>
       <Path d="M12 3 5.1 5.7v5.4c0 4.2 2.94 7.86 6.9 9 3.96-1.14 6.9-4.8 6.9-9V5.7Z" />
       <Path d="m9 12 2.1 2.1 4.2-4.5" />
+    </>
+  ),
+  // Le drapeau du signalement. Volontairement discret dans le fil,
+  // et volontairement présent sur chaque message : une protection
+  // qu'il faut chercher n'en est pas une.
+  flag: (
+    <>
+      <Path d="M5.4 21V3.6" />
+      <Path d="M5.4 4.5h11.4l-1.8 3.9 1.8 3.9H5.4Z" />
     </>
   ),
 

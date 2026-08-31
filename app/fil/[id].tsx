@@ -13,6 +13,16 @@
 //    · l'abonnement temps réel s'ouvre à l'arrivée sur l'écran et
 //      se COUPE en sortant. Un abonnement qui tourne en
 //      arrière-plan, c'est de l'argent perdu par l'élève.
+//
+//  Modération (étape 8) :
+//    · la charte se lit AVANT d'entrer, une fois pour toutes les
+//      classes. Le serveur refuse les messages tant qu'elle n'est
+//      pas acceptée : l'écran n'est pas seul à garder la porte ;
+//    · un drapeau discret sur chaque message des autres. Deux
+//      touches : le drapeau, puis le motif. Une protection qu'il
+//      faut chercher n'en est pas une ;
+//    · le professeur voit les messages masqués, les élèves non.
+//      C'est la base qui le décide, pas cet écran.
 // ═══════════════════════════════════════════════════════════════
 
 import React, { useCallback, useRef, useState } from 'react';
@@ -26,6 +36,8 @@ import { Button } from '@/components/Button';
 import { Input } from '@/components/Input';
 import { Icon } from '@/components/Icon';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
+import { CharteDialog } from '@/components/CharteDialog';
+import { ReportDialog } from '@/components/ReportDialog';
 import { useApp } from '@/store/AppContext';
 import { useAuth } from '@/store/AuthContext';
 import { useTheme } from '@/theme/ThemeContext';
@@ -38,6 +50,7 @@ import {
   subscribeToClassroom, unsubscribe, type ChatMessage,
 } from '@/lib/chat';
 import { fetchClassrooms, fetchRoster, type Classroom } from '@/lib/classrooms';
+import { reportContent, type ReportReason } from '@/lib/moderation';
 
 export default function FilDeClasse() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -56,7 +69,12 @@ export default function FilDeClasse() {
   const [encore, setEncore] = useState(true);
   const [erreur, setErreur] = useState('');
   const [aSupprimer, setASupprimer] = useState<ChatMessage | null>(null);
+  const [aSignaler, setASignaler] = useState<ChatMessage | null>(null);
+  const [info, setInfo] = useState('');
   const canal = useRef<RealtimeChannel | null>(null);
+
+  // La charte se lit une fois, et vaut pour toutes les classes.
+  const [charteVue, setCharteVue] = useState(profile.charterAcceptedAt !== null);
 
   const prof = classe?.is_teacher ?? false;
 
@@ -139,13 +157,35 @@ export default function FilDeClasse() {
     setEnvoi(true);
     const r = await postMessage(id, propre || '📎', piece?.path);
     setEnvoi(false);
-    if (!r.ok) return setErreur(t(`fil.err_${r.error ?? 'echec'}`));
+    if (!r.ok) {
+      // Le serveur vérifie la charte lui aussi : s'il la refuse,
+      // c'est que l'écran l'a laissée passer. On la remontre.
+      if (r.error === 'charte_non_acceptee') setCharteVue(false);
+      return setErreur(t(`fil.err_${r.error ?? 'echec'}`));
+    }
     setTexte('');
     setPiece(null);
     setErreur('');
     // Le temps réel apporte le message ; on rafraîchit quand même
     // si la socket a été refusée pour une raison quelconque.
     if (!canal.current) setMessages(await fetchMessages(id));
+  };
+
+  // ── Signaler ────────────────────────────────────────────────
+  //
+  // Le motif choisi part immédiatement : deux touches en tout. On
+  // ne retire PAS le message de l'écran de celui qui signale — il
+  // faut trois personnes pour le masquer, et le faire disparaître
+  // ici laisserait croire que le signalement l'a effacé.
+  const signaler = async (reason: ReportReason) => {
+    const m = aSignaler;
+    setASignaler(null);
+    if (!m) return;
+    const r = await reportContent('message', m.id, reason);
+    setErreur('');
+    setInfo('');
+    if (r.ok) setInfo(t('fil.reportSent'));
+    else setErreur(t(`fil.err_${r.error ?? 'echec'}`));
   };
 
   return (
@@ -182,6 +222,7 @@ export default function FilDeClasse() {
           <Bulle
             message={item}
             prof={prof}
+            onReport={() => setASignaler(item)}
             onLongPress={() => {
               if (item.mine || prof) setASupprimer(item);
             }}
@@ -212,6 +253,10 @@ export default function FilDeClasse() {
           <Text style={[type.caption, { color: colors.danger, marginBottom: 6 }]}>{erreur}</Text>
         ) : null}
 
+        {info !== '' ? (
+          <Text style={[type.caption, { color: colors.accent, marginBottom: 6 }]}>{info}</Text>
+        ) : null}
+
         <View style={styles.saisie}>
           <Pressable onPress={() => joindre('camera')} hitSlop={8} accessibilityRole="button">
             <Icon name="camera" size={19} color={colors.textFaint} />
@@ -231,6 +276,20 @@ export default function FilDeClasse() {
           <Button label="" icon="send" size="sm" loading={envoi} onPress={envoyer} />
         </View>
       </View>
+
+      <ReportDialog
+        visible={aSignaler !== null}
+        onPick={signaler}
+        onCancel={() => setASignaler(null)}
+      />
+
+      {/* La charte, avant tout le reste. « Plus tard » ne fait pas
+          entrer à moitié : on ressort de l'écran. */}
+      <CharteDialog
+        visible={!charteVue}
+        onAccepted={() => setCharteVue(true)}
+        onDecline={() => router.back()}
+      />
 
       <ConfirmDialog
         visible={aSupprimer !== null}
@@ -254,10 +313,11 @@ export default function FilDeClasse() {
 }
 
 function Bulle({
-  message, prof, onLongPress,
+  message, prof, onReport, onLongPress,
 }: {
   message: ChatMessage;
   prof: boolean;
+  onReport: () => void;
   onLongPress: () => void;
 }) {
   const { t } = useApp();
@@ -307,6 +367,14 @@ function Bulle({
                   · {message.vrai_nom}
                 </Text>
               ) : null}
+              {/* Masqué aux élèves : la base ne rend ce message
+                  qu'au professeur, il doit savoir pourquoi il est
+                  le seul à le lire. */}
+              {message.flagged && (
+                <View style={[styles.badge, { backgroundColor: colors.danger }]}>
+                  <Text style={styles.badgeTexte}>{t('fil.hiddenBadge')}</Text>
+                </View>
+              )}
             </View>
           )}
 
@@ -342,14 +410,31 @@ function Bulle({
             )
           ) : null}
 
-          <Text
-            style={[
-              type.caption,
-              { color: message.mine ? 'rgba(255,255,255,0.6)' : colors.textFaint, marginTop: 4 },
-            ]}
-          >
-            {heure}
-          </Text>
+          <View style={styles.pied}>
+            <Text
+              style={[
+                type.caption,
+                { color: message.mine ? 'rgba(255,255,255,0.6)' : colors.textFaint },
+              ]}
+            >
+              {heure}
+            </Text>
+
+            {/* Le drapeau, sur les messages des autres uniquement.
+                Discret, mais toujours là : une protection qu'il
+                faut chercher n'en est pas une. Une touche ici, une
+                touche sur le motif, c'est fait. */}
+            {!message.mine && (
+              <Pressable
+                onPress={onReport}
+                hitSlop={10}
+                accessibilityRole="button"
+                accessibilityLabel={t('fil.report')}
+              >
+                <Icon name="flag" size={13} color={colors.textFaint} />
+              </Pressable>
+            )}
+          </View>
         </View>
       </View>
     </Pressable>
@@ -377,6 +462,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 9, paddingVertical: 7, marginTop: 8,
   },
   image: { width: 220, height: 160, borderRadius: RADIUS.md, marginTop: 8 },
+  pied: {
+    flexDirection: 'row', alignItems: 'center',
+    justifyContent: 'space-between', gap: 12, marginTop: 4,
+  },
   barre: { borderTopWidth: 1, paddingHorizontal: 16, paddingTop: 10, paddingBottom: 12 },
   piece: {
     flexDirection: 'row', alignItems: 'center', gap: 7,

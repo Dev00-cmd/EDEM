@@ -33,6 +33,29 @@ EDEM est une app **100 % IA** : le tuteur **M. Thomas** et les quiz passent par 
 
 - `action: "chat"` → `{ reply, topic }` — `topic` est la notion détectée, qui fait progresser la maîtrise automatiquement
 - `action: "quiz"` → `{ questions: [{ question, choices[4], answer, explanation, topic }] }`
+- `action: "moderate"` → `{ reviewed }` — relecture des messages signalés, réservée au professeur de la classe
+
+### Le troisième appel : la modération
+
+C'est le **deuxième temps** du filtre. Le modèle ne voit **que** les messages que la liste de termes SQL a marqués, ou qu'un élève a signalés — jamais le fil de discussion.
+
+| | |
+|---|---|
+| Qui déclenche | Le **professeur**, en ouvrant son écran de modération |
+| Ce qui part au modèle | Un message à la fois, 1000 caractères maximum |
+| Ce qui revient | `{"verdict": "...", "score": 0-100}`, 120 jetons de sortie |
+| Ce que ça déclenche | Au-delà de 70 : le message est **masqué** en attendant la décision du professeur |
+| Quota | `QUOTA_MODERATION`, 20 relectures par jour et par professeur |
+
+**Rien ne tourne en arrière-plan.** Pas de tâche planifiée à surveiller, et aucune dépense tant que personne ne regarde. Sur un fil de classe ordinaire, la file reste vide.
+
+> 🔒 **Une machine met en attente, elle ne tranche pas.** Le verdict ne supprime jamais rien : il masque, et c'est le professeur qui décide. Sur le message d'un enfant, c'est la seule limite tenable.
+
+Le prompt (`MODERATION_PROMPT`) porte trois précautions apprises en l'écrivant :
+
+1. **Le créole.** Un modèle entraîné surtout sur du français lit « bouzen » comme du charabia s'il ne sait pas de quelle langue il s'agit. On le lui dit.
+2. **Le programme scolaire.** Un cours de SVT parle de reproduction, un cours d'histoire d'Haïti parle de massacres et d'esclavage. Un modérateur qui l'ignore signale la moitié du programme.
+3. **La taquinerie.** Des adolescents qui se chambrent ne se harcèlent pas. Confondre les deux apprend au professeur à ignorer les alertes — et le jour où il y a un vrai problème, il l'ignore aussi.
 
 ---
 
@@ -62,6 +85,7 @@ La détection de calcul reconnaît le français **et** le créole, avec ou sans 
 | Question d'histoire | **2,8 s** |
 | Calcul de fractions | **2,7 s** |
 | Quiz de 10 questions | 15 s |
+| Relecture de modération | ~1 s par message, et seulement sur les messages marqués |
 
 ---
 

@@ -8,6 +8,8 @@
 //        → { reply, topic }
 //  POST { action: "quiz", prompt, subjectId, difficulty }
 //        → { questions: [...] }
+//  POST { action: "moderate", classroomId }
+//        → { reviewed: n }   (réservé au professeur de la classe)
 //
 //  Le moteur est Gemini (Google). Le modèle n'est pas fixe : il
 //  est choisi question par question (section CHOIX DU MODÈLE
@@ -1002,6 +1004,10 @@ function adminClient() {
 const LIMITS: Record<string, number> = {
   chat: Number(Deno.env.get("QUOTA_CHAT") ?? 80),
   quiz: Number(Deno.env.get("QUOTA_QUIZ") ?? 20),
+  // Un professeur qui ouvre son écran de modération. Une classe
+  // normale produit deux ou trois relectures par jour ; vingt est
+  // large, et borne quand même la dépense.
+  moderation: Number(Deno.env.get("QUOTA_MODERATION") ?? 20),
 };
 
 interface Quota {
@@ -1017,7 +1023,10 @@ interface Quota {
  * passer un appel que priver toute une classe de son tuteur parce
  * qu'un compteur n'a pas répondu.
  */
-async function checkQuota(userId: string, kind: "chat" | "quiz"): Promise<Quota> {
+async function checkQuota(
+  userId: string,
+  kind: "chat" | "quiz" | "moderation",
+): Promise<Quota> {
   const limit = LIMITS[kind];
   try {
     const { data, error } = await adminClient().rpc("bump_usage", {
@@ -1036,6 +1045,67 @@ const quotaMessage = (q: Quota, kind: "chat" | "quiz") =>
   kind === "quiz"
     ? `Tu as déjà fait ${q.limit} quiz aujourd'hui — belle journée de travail. Reviens demain, ou continue avec le tuteur.`
     : `Tu as posé ${q.limit} questions aujourd'hui. Repose-toi un peu, on continue demain.`;
+
+// ═══════════════════════════════════════════════════════════════
+//  MODÉRATION — le deuxième temps du filtre
+//
+//  Ce prompt ne voit JAMAIS le fil entier : seulement les messages
+//  que la liste de termes SQL a marqués, ou qu'un élève a
+//  signalés. C'est ce qui rend la modération quasi gratuite.
+//
+//  Trois précautions écrites dans le prompt lui-même :
+//
+//  1. Le créole. Un modèle entraîné surtout sur du français lit
+//     « bouzen » ou « makorèl » comme du charabia s'il ne sait pas
+//     de quelle langue il s'agit. On le lui dit.
+//
+//  2. Le programme scolaire. Un cours de SVT parle de
+//     reproduction, un cours d'histoire parle de massacres et
+//     d'esclavage. Un modérateur qui ne le sait pas signale la
+//     moitié du programme d'histoire d'Haïti.
+//
+//  3. La taquinerie. Des adolescents qui se chambrent ne se
+//     harcèlent pas. Confondre les deux apprend au professeur à
+//     ignorer les alertes — et le jour où il y a un vrai problème,
+//     il l'ignore aussi.
+// ═══════════════════════════════════════════════════════════════
+
+const MODERATION_VERDICTS = [
+  "ok",
+  "insulte",
+  "harcelement",
+  "contenu_sexuel",
+  "triche",
+  "autre",
+];
+
+const MODERATION_PROMPT = `Tu es modérateur d'un fil de discussion scolaire entre
+élèves haïtiens de 12 à 19 ans, dans une classe où un professeur est présent.
+
+Les messages sont en français, en créole haïtien, ou dans un mélange des deux.
+Tu dois comprendre les deux langues, y compris les insultes créoles.
+
+Classe le message et réponds UNIQUEMENT par un objet JSON, sans rien autour :
+{"verdict":"ok|insulte|harcelement|contenu_sexuel|triche|autre","score":0-100}
+
+Le score est la GRAVITÉ, pas ta confiance :
+  0-30   sans problème, ou taquinerie entre camarades
+  31-69  déplacé, mérite un mot du professeur
+  70-100 grave : insulte visant une personne, menace, harcèlement,
+         contenu sexuel, ou tentative d'emmener un élève hors de la classe
+         (numéro de téléphone, réseau social, rendez-vous)
+
+Ce qui n'est PAS un problème, et que tu ne dois jamais signaler :
+- le vocabulaire du programme scolaire : reproduction, organes sexuels,
+  esclavage, massacre, viol dans un texte d'histoire ou de littérature ;
+- « nèg », qui veut simplement dire « type » en créole ;
+- deux élèves qui se chambrent sans méchanceté ;
+- une faute d'orthographe qui ressemble à un gros mot ;
+- demander de l'aide pour un devoir. Demander LA RÉPONSE toute faite est
+  au plus « triche », jamais grave.
+
+En cas de doute, mets un score BAS. Un professeur qui reçoit des alertes pour
+rien finit par toutes les ignorer, y compris la seule qui comptait.`;
 
 // ═══════════════════════════════════════════════════════════════
 //  Quiz : position de la bonne réponse
@@ -1521,7 +1591,102 @@ Deno.serve(async (req: Request) => {
       return json({ questions, sessionId });
     }
 
-    return json({ error: "action inconnue (chat | quiz)" }, 400);
+    // ── Relecture de modération ───────────────────────────────
+    //
+    //  Le deuxième temps du filtre. Le modèle ne voit QUE ce que la
+    //  liste de termes a marqué ou ce qu'un élève a signalé — jamais
+    //  le fil entier. Faire passer chaque message par l'IA serait la
+    //  ligne la plus chère de la facture pour la fonctionnalité la
+    //  moins rentable.
+    //
+    //  C'est le PROFESSEUR qui déclenche, en ouvrant son écran de
+    //  modération. Rien ne tourne en arrière-plan : pas de tâche
+    //  planifiée à surveiller, et aucune dépense tant que personne
+    //  ne regarde.
+    //
+    //  Le verdict ne supprime jamais rien. Au-delà de 70, il MASQUE
+    //  en attendant la décision du professeur. Une machine met en
+    //  attente, elle ne tranche pas — surtout pas sur le message
+    //  d'un enfant.
+    if (action === "moderate") {
+      const { classroomId } = body as { classroomId?: string };
+      if (typeof classroomId !== "string" || classroomId.length === 0) {
+        return json({ error: "classroomId manquant" }, 400);
+      }
+
+      const userId = await getUserId(req);
+      if (!userId) return json({ error: "non authentifié" }, 401);
+
+      const admin = adminClient();
+
+      // Le professeur de CETTE classe, et personne d'autre.
+      const { data: classe } = await admin
+        .from("classrooms")
+        .select("id")
+        .eq("id", classroomId)
+        .eq("teacher_id", userId)
+        .maybeSingle();
+      if (!classe) return json({ error: "réservé au professeur" }, 403);
+
+      // Vingt relectures par jour et par professeur. Une classe
+      // normale en produit deux ou trois ; au-delà, ce n'est plus
+      // de la modération.
+      const quota = await checkQuota(userId, "moderation");
+      if (!quota.allowed) return json({ reviewed: 0, quota: false });
+
+      const { data: batch } = await admin.rpc("moderation_next_batch", {
+        p_classroom_id: classroomId,
+        p_limit: 10,
+      });
+      const items = (batch ?? []) as {
+        message_id: string;
+        texte: string;
+        raison: string;
+        lang: string;
+      }[];
+      if (items.length === 0) return json({ reviewed: 0 });
+
+      let reviewed = 0;
+      for (const it of items) {
+        try {
+          const raw = await generate({
+            model: FAST,
+            thinking: "minimal",
+            system: MODERATION_PROMPT,
+            contents: [{ role: "user", parts: [{ text: it.texte }] }],
+            maxOutputTokens: 120,
+          });
+
+          // Le modèle rend du JSON. S'il l'entoure de texte, on
+          // récupère l'objet — un verdict perdu pour une virgule
+          // serait un message laissé sans avis.
+          const m = raw.match(/\{[\s\S]*\}/);
+          const parsed = m ? JSON.parse(m[0]) : null;
+          const verdict = MODERATION_VERDICTS.includes(parsed?.verdict)
+            ? parsed.verdict
+            : "autre";
+          const score = Math.max(0, Math.min(100, Number(parsed?.score) || 0));
+
+          await admin.rpc("moderation_record_verdict", {
+            p_message_id: it.message_id,
+            p_verdict: verdict,
+            p_score: score,
+            p_model: FAST,
+          });
+          reviewed++;
+        } catch (e) {
+          // Un message qui fait échouer le modèle ne bloque pas les
+          // suivants. `essais` est déjà incrémenté : au bout de
+          // trois, il sort de la file et le professeur tranche sans
+          // avis — il n'en a jamais eu besoin pour décider.
+          console.error("moderation", it.message_id, e);
+        }
+      }
+
+      return json({ reviewed });
+    }
+
+    return json({ error: "action inconnue (chat | quiz | moderate)" }, 400);
   } catch (e) {
     console.error(e);
     if (e instanceof GeminiError) return json({ error: e.message }, 502);

@@ -21,6 +21,7 @@ import { Button } from '@/components/Button';
 import { Input } from '@/components/Input';
 import { Icon } from '@/components/Icon';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
+import { CharteDialog } from '@/components/CharteDialog';
 import { useApp } from '@/store/AppContext';
 import { useTheme } from '@/theme/ThemeContext';
 import { useKeyboard } from '@/theme/useKeyboard';
@@ -36,6 +37,7 @@ import {
   fetchClassAssignments, fetchMyAssignments,
   type ClassAssignment, type MyAssignment,
 } from '@/lib/assignments';
+import { fetchModeration } from '@/lib/moderation';
 
 export default function UneClasse() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -52,6 +54,11 @@ export default function UneClasse() {
   const [enCours, setEnCours] = useState(false);
   const [aRetirer, setARetirer] = useState<RosterEntry | null>(null);
   const [devoirs, setDevoirs] = useState<(ClassAssignment | MyAssignment)[]>([]);
+  const [aVerifier, setAVerifier] = useState(0);
+  // La charte se lit une fois, et vaut pour toutes les classes.
+  // Elle est écrite pour les élèves : le professeur n'y est pas
+  // soumis, c'est le journal de ses gestes qui l'engage.
+  const [charteVue, setCharteVue] = useState(profile.charterAcceptedAt !== null);
 
   const recharger = useCallback(async () => {
     const [classes, membres] = await Promise.all([fetchClassrooms(), fetchRoster(id)]);
@@ -68,6 +75,9 @@ export default function UneClasse() {
           ? await fetchClassAssignments(id)
           : (await fetchMyAssignments()).filter((a) => a.classroom_id === id),
       );
+      // Une requête de plus, et seulement pour le professeur :
+      // l'élève n'a rien à modérer, il n'a pas à la payer.
+      setAVerifier(c.is_teacher ? (await fetchModeration(id)).length : 0);
     }
   }, [id]);
 
@@ -265,6 +275,36 @@ export default function UneClasse() {
           </Card>
         )}
 
+        {/* ── La modération, professeur seulement ────────────
+            Le compteur est ce qui compte : un professeur ne vient
+            pas ici « voir si », il vient parce qu'il y a quelque
+            chose. Zéro à vérifier, pas de pastille. */}
+        {prof && (
+          <Card
+            style={{ marginTop: 12 }}
+            onPress={() => router.push(`/moderation/${classe.id}`)}
+          >
+            <View style={styles.row}>
+              <Icon
+                name="shield"
+                size={18}
+                color={aVerifier > 0 ? colors.danger : colors.textFaint}
+              />
+              <View style={{ flex: 1 }}>
+                <Text style={[type.cardTitle, { color: colors.text }]}>
+                  {t('moderation.entry')}
+                </Text>
+                <Text style={[type.caption, { color: colors.textFaint, marginTop: 2 }]}>
+                  {aVerifier > 0
+                    ? t('moderation.badge', { n: String(aVerifier) })
+                    : t('moderation.entrySub')}
+                </Text>
+              </View>
+              <Icon name="chevron-right" size={16} color={colors.textFaint} />
+            </View>
+          </Card>
+        )}
+
         {/* ── Les devoirs ────────────────────────────────────── */}
         <View style={styles.entete}>
           <Text style={[type.eyebrow, { color: colors.textFaint, flex: 1 }]}>
@@ -360,6 +400,14 @@ export default function UneClasse() {
           {t('classroom.privacy')}
         </Text>
       </ScrollView>
+
+      {/* La charte, à la première entrée dans une classe. « Plus
+          tard » ne fait pas entrer à moitié : on ressort. */}
+      <CharteDialog
+        visible={!charteVue && !prof}
+        onAccepted={() => setCharteVue(true)}
+        onDecline={() => router.back()}
+      />
 
       <ConfirmDialog
         visible={aRetirer !== null}

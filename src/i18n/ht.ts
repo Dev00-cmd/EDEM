@@ -405,7 +405,83 @@ export const ht: Messages = {
     err_message_trop_long: 'Mesaj twò long (2000 karaktè maksimòm).',
     err_classe_fermee: 'Klas sa a fèmen.',
     err_trop_de_messages: 'Ou ap ekri twò vit. Tann yon ti kras.',
+    err_message_refuse:
+      'Mesaj sa a pa ka pati. Di l yon lòt jan, san jouman.',
+    err_charte_non_acceptee: 'Li règ klas la anvan ou ekri.',
     err_echec: 'Mesaj la pa pati. Eseye ankò.',
+
+    // ── Siyale ──────────────────────────────────────────────
+    report: 'Siyale',
+    reportTitle: 'Siyale mesaj sa a',
+    reportSub: 'Pwofesè w ap wè l. Pèsonn p ap konnen se ou menm.',
+    reason_insulte: 'Jouman',
+    reason_harcelement: 'Pèsekisyon',
+    reason_contenu_sexuel: 'Bagay seksyèl',
+    reason_triche: 'Tronpri',
+    reason_autre: 'Lòt bagay',
+    reportSent: 'Siyale. Pwofesè w ap gade sa.',
+    err_deja_signale: 'Ou te deja siyale mesaj sa a.',
+    err_ton_propre_contenu: 'Se pwòp mesaj pa w.',
+    err_trop_de_signalements: 'Twòp siyalman. Tann yon ti kras.',
+    err_introuvable: 'Mesaj sa a pa la ankò.',
+
+    hiddenBadge: 'KACHE',
+    hiddenNote: 'Kache pou elèv yo. Se ou ki pou deside.',
+  },
+
+  // ═══════════════════════════════════════════════════════════
+  //  RÈG YO
+  // ═══════════════════════════════════════════════════════════
+  charte: {
+    title: 'Règ klas la',
+    subtitle: 'Senk règ. Li yo yon sèl fwa, yo bon pou tout klas ou yo.',
+    r1: 'Isit la, nou pale sou leson an. Fil sa a se pou travay, se pa pou pase moun nan betiz.',
+    r2: 'Nou pa joure pèsonn, janm. Yon jouman refize, oswa efase.',
+    r3: 'Pwofesè w li tout bagay, li ka efase yon mesaj oswa retire yon moun.',
+    r4: 'Si yon mesaj fè w santi w mal, siyale l. Se pou sa li fèt.',
+    r5: 'Nou pa bay nimewo, ni adrès, ni randevou. Nou rete nan klas la.',
+    accept: 'Mwen konprann',
+    later: 'Pita',
+  },
+
+  // ═══════════════════════════════════════════════════════════
+  //  MODERASYON (pwofesè)
+  // ═══════════════════════════════════════════════════════════
+  moderation: {
+    title: 'Pou verifye',
+    entry: 'Moderasyon',
+    entrySub: 'Mesaj yo siyale ak sa filt la make',
+    badge: '{n} pou verifye',
+    empty: 'Anyen pou verifye. Fil la kalm.',
+    emptySub:
+      'Yon mesaj rive isit la sèlman si yo siyale l, oswa si filt la make l. Toutotan paj sa a vid, pa gen anyen pou fè.',
+
+    reportedBy: '{n} siyalman',
+    hidden: 'Kache pou elèv yo',
+    visible: 'Toujou vizib',
+    filterOnly: 'Filt la make l',
+    aiNote: 'Avi otomatik : {verdict} ({score}/100)',
+    aiPending: 'Relekti otomatik ap fèt',
+    attachment: 'Gen yon imaj ladan l',
+
+    decide: 'Desizyon w',
+    delete: 'Efase',
+    hide: 'Kache',
+    keep: 'Kite l',
+    keepHint: 'Pa gen anyen grav : mesaj la tounen vizib.',
+    removeMember: 'Retire elèv la',
+    removeTitle: 'Retire {nom} nan klas la ?',
+    removeBody:
+      'Li pèdi aksè nan fil la ak nan devwa yo. Li p ap ka tounen ak kòd la.',
+    deleteTitle: 'Efase mesaj sa a ?',
+    deleteBody: 'L ap disparèt pou tout klas la. Efasman an anrejistre.',
+
+    blocked: 'FILT LA REFIZE YO',
+    blockedSub:
+      'Mesaj sa yo pa janm pati : filt la refize yo lè yo t ap voye yo. Pèsonn pa li yo. Se kantite a ki konte, se pa sa ki ladan yo.',
+    blockedCount: '{n} eseyay',
+
+    note: 'Se ou ki premye moderatè klas ou. Chak efasman ak chak retire anrejistre — pa w yo tankou pa lòt yo.',
   },
 
 

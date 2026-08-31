@@ -405,7 +405,88 @@ export const fr = {
     err_message_trop_long: 'Message trop long (2000 caractères maximum).',
     err_classe_fermee: 'Cette classe est fermée.',
     err_trop_de_messages: 'Tu écris trop vite. Attends un peu.',
+    err_message_refuse:
+      "Ce message ne peut pas être envoyé. Dis-le autrement, sans insulte.",
+    err_charte_non_acceptee: "Lis les règles de la classe avant d'écrire.",
     err_echec: "Le message n'est pas parti. Réessaie.",
+
+    // ── Signaler ────────────────────────────────────────────
+    report: 'Signaler',
+    reportTitle: 'Signaler ce message',
+    reportSub: 'Ton professeur le verra. Personne ne saura que ça vient de toi.',
+    reason_insulte: 'Insulte',
+    reason_harcelement: 'Harcèlement',
+    reason_contenu_sexuel: 'Contenu sexuel',
+    reason_triche: 'Triche',
+    reason_autre: 'Autre',
+    reportSent: 'Signalé. Ton professeur va regarder.',
+    err_deja_signale: 'Tu as déjà signalé ce message.',
+    err_ton_propre_contenu: 'C’est ton propre message.',
+    err_trop_de_signalements: 'Trop de signalements. Attends un peu.',
+    err_introuvable: 'Ce message n’existe plus.',
+
+    hiddenBadge: 'MASQUÉ',
+    hiddenNote: 'Masqué aux élèves. À toi de décider.',
+  },
+
+  // ═══════════════════════════════════════════════════════════
+  //  LA CHARTE
+  //
+  //  Cinq lignes, acceptées à la première entrée dans une classe,
+  //  compréhensibles par un élève de 14 ans. Pas une politique de
+  //  confidentialité de trois pages : personne ne les lit, et une
+  //  règle qu'on n'a pas lue ne protège personne.
+  // ═══════════════════════════════════════════════════════════
+  charte: {
+    title: 'Les règles de la classe',
+    subtitle: 'Cinq règles. Lis-les une fois, elles valent pour toutes tes classes.',
+    r1: 'Ici, on parle du cours. Ce fil sert à travailler, pas à se moquer.',
+    r2: 'On n’insulte personne, jamais. Une insulte est refusée, ou effacée.',
+    r3: 'Ton professeur lit tout et peut effacer un message ou retirer quelqu’un.',
+    r4: 'Si un message te met mal à l’aise, signale-le. C’est fait pour ça.',
+    r5: 'On ne donne ni numéro, ni adresse, ni rendez-vous. On reste dans la classe.',
+    accept: 'J’ai compris',
+    later: 'Plus tard',
+  },
+
+  // ═══════════════════════════════════════════════════════════
+  //  MODÉRATION (professeur)
+  // ═══════════════════════════════════════════════════════════
+  moderation: {
+    title: 'À vérifier',
+    entry: 'Modération',
+    entrySub: 'Les messages signalés et ce que le filtre a marqué',
+    badge: '{n} à vérifier',
+    empty: 'Rien à vérifier. Le fil est calme.',
+    emptySub:
+      "Un message n'arrive ici que s'il a été signalé, ou si le filtre l'a marqué. Tant que cette page est vide, il n'y a rien à faire.",
+
+    reportedBy: '{n} signalement(s)',
+    hidden: 'Masqué aux élèves',
+    visible: 'Encore visible',
+    filterOnly: 'Marqué par le filtre',
+    aiNote: 'Avis automatique : {verdict} ({score}/100)',
+    aiPending: 'Relecture automatique en cours',
+    attachment: 'Contient une image',
+
+    decide: 'Ta décision',
+    delete: 'Supprimer',
+    hide: 'Masquer',
+    keep: 'Laisser',
+    keepHint: 'Rien de grave : le message redevient visible.',
+    removeMember: "Retirer l'élève",
+    removeTitle: 'Retirer {nom} de la classe ?',
+    removeBody:
+      "Il perd l'accès au fil et aux devoirs. Il ne pourra pas revenir avec le code.",
+    deleteTitle: 'Supprimer ce message ?',
+    deleteBody: 'Il disparaît pour toute la classe. La suppression est enregistrée.',
+
+    blocked: 'REFUSÉS PAR LE FILTRE',
+    blockedSub:
+      "Ces messages ne sont jamais partis : le filtre les a refusés à l'envoi. Personne ne les a lus. C'est le nombre qui compte, pas le contenu.",
+    blockedCount: '{n} tentative(s)',
+
+    note: "Tu es le premier modérateur de ta classe. Chaque suppression et chaque exclusion est enregistrée — les tiennes comme celles des autres.",
   },
 
 
