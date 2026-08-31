@@ -357,6 +357,30 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
       if (profileRes.error) throw profileRes.error;
 
+      // ── UNE SESSION PEUT SURVIVRE À SON COMPTE ────────────────
+      //
+      // Le téléphone garde un jeton valide jusqu'à son expiration.
+      // Si le compte a disparu entre-temps, ce jeton continue de
+      // passer pour authentifié : `auth.uid()` rend un identifiant
+      // qui ne correspond plus à personne.
+      //
+      // L'app envoyait alors l'utilisateur dans l'onboarding — un
+      // profil vide, ça ressemble à un compte neuf — et TOUT
+      // échouait ensuite sans explication : la moindre écriture
+      // butait sur une clé étrangère vers `auth.users`, rendue à
+      // l'écran comme « Ça n'a pas marché. Réessaie. »
+      //
+      // Vu en vrai. On vérifie donc auprès d'Auth avant de conclure
+      // au compte neuf, et on déconnecte : se reconnecter est la
+      // seule issue, autant y conduire.
+      if (!profileRes.data) {
+        const { error: authErr } = await supabase.auth.getUser();
+        if (authErr) {
+          await supabase.auth.signOut();
+          return;
+        }
+      }
+
       // Profil
       const p = profileRes.data;
       const nextProfile: Profile = p

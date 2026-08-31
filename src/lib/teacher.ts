@@ -93,7 +93,7 @@ export async function declareTeacherRole(input: {
   subjects: string[];
   schoolId?: string | null;
   message?: string | null;
-}): Promise<{ ok: boolean; error?: DeclareError }> {
+}): Promise<{ ok: boolean; error?: DeclareError; detail?: string }> {
   const { data, error } = await supabase.rpc('declare_teacher_role', {
     p_full_name: input.fullName,
     p_contact: input.contact,
@@ -101,6 +101,11 @@ export async function declareTeacherRole(input: {
     p_school_id: input.schoolId ?? undefined,
     p_message: input.message ?? undefined,
   });
-  if (error || !data) return { ok: false, error: 'echec' };
+  // On REND la cause au lieu de la réduire à « échec ». C'est ce
+  // « Ça n'a pas marché » sans détail qui a caché pendant deux
+  // essais qu'un compte avait disparu sous sa propre session.
+  if (error || !data) {
+    return { ok: false, error: 'echec', detail: error?.message };
+  }
   return data as unknown as { ok: boolean; error?: DeclareError };
 }

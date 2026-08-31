@@ -123,7 +123,7 @@ export default function Onboarding() {
     });
     if (!r.ok) {
       setEnvoi(false);
-      return setError(t(`teacher.err_${r.error ?? 'echec'}`));
+      return setError(r.detail ?? t(`teacher.err_${r.error ?? 'echec'}`));
     }
 
     updateProfile({ onboarded: true });
