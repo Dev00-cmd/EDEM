@@ -171,7 +171,7 @@ export const ht: Messages = {
   teacher: {
     title: 'Mwen se yon pwofesè',
     intro:
-      'Yon kont pwofesè rete kont elèv ou : ou kenbe pwofil ou, XP ou ak M. Thomas. Wòl la ajoute dwa pou louvri yon klas.',
+      'Di kiyès ou ye, epi sal ou louvri touswit apre. Okenn demann, okenn tann. Kont elèv ou pa chanje : ou kenbe pwofil ou, XP ou ak M. Thomas.',
 
     whyTitle: 'SA W AP DEKLARE',
     whyBody:
@@ -197,13 +197,7 @@ export const ht: Messages = {
     messageLabel: 'Yon mo pou nou (si ou vle)',
     messagePlaceholder: 'Klas ou, nivo a, sa ou vle fè ak EDEM…',
 
-    send: 'Vin yon pwofesè',
-
-    doneTitle: 'Sa fèt, ou se yon pwofesè',
-    doneSub:
-      'Ou ka louvri klas ou kounye a. Kont elèv ou a pa chanje : ou kenbe pwofil ou, XP ou ak M. Thomas.',
-
-    openClass: 'Louvri klas mwen',
+    send: 'Kreye sal mwen',
 
     rejectedTitle: 'Yo retire wòl pwofesè ou a',
     rejectedSub:
@@ -233,7 +227,10 @@ export const ht: Messages = {
     codeLength: 'Kòd la gen 6 karaktè',
     join: 'Antre',
     joined: 'Demann voye bay {teacher} pou « {name} ». Li dwe valide l toujou.',
-    create: 'Louvri yon klas',
+    createTitle: 'Sal klas ou yo',
+    createSub:
+      'Louvri yon sal pou chak matyè oswa chak gwoup, otan ou vle jiska dis. Chak grenn gen kòd pa l, epi ou antre ladan l lè ou vle.',
+    create: 'Kreye yon sal',
     mine: 'KLAS MWEN YO',
     empty: 'Ou pa nan okenn klas pou kounye a. Mande pwofesè ou kòd li.',
     waiting: 'N ap tann',

@@ -8,6 +8,13 @@
 //  Le code d'invitation ne s'affiche qu'au professeur. Montré à un
 //  élève, il aurait fait le tour de la cour à la récréation
 //  suivante, et n'importe qui serait entré dans la classe.
+//
+//  L'écran ne montre pas la même chose aux deux : le professeur
+//  voit d'abord « Créer une salle », l'élève d'abord le champ du
+//  code. Chacun a son geste principal sous le pouce, et celui de
+//  l'autre plus bas — un professeur ne rejoint pas sa propre
+//  classe, mais il peut très bien être élève dans celle d'un
+//  collègue, donc on ne retire rien.
 // ═══════════════════════════════════════════════════════════════
 
 import React, { useCallback, useState } from 'react';
@@ -33,6 +40,7 @@ export default function ClassesScreen() {
   const router = useRouter();
 
   const lang = profile.lang;
+  const prof = profile.role === 'prof';
   const [classes, setClasses] = useState<Classroom[]>([]);
   const [chargement, setChargement] = useState(true);
   const [code, setCode] = useState('');
@@ -92,6 +100,28 @@ export default function ClassesScreen() {
           <Text style={[type.title, { color: colors.text }]}>{t('classes.title')}</Text>
         </View>
 
+        {/* ── Créer une salle : le geste principal du professeur ─
+            Il passe AVANT le code d'invitation, qui ne le concerne
+            pas : un professeur ne rejoint pas sa propre classe. Il
+            peut en ouvrir autant qu'il veut, jusqu'à dix. */}
+        {prof && (
+          <Card style={{ marginTop: 18 }}>
+            <Text style={[type.cardTitle, { color: colors.text }]}>
+              {t('classes.createTitle')}
+            </Text>
+            <Text style={[type.caption, { color: colors.textSoft, marginTop: 6 }]}>
+              {t('classes.createSub')}
+            </Text>
+            <Button
+              label={t('classes.create')}
+              icon="plus"
+              full
+              style={{ marginTop: 12 }}
+              onPress={() => router.push('/classroom/new')}
+            />
+          </Card>
+        )}
+
         {/* ── Rejoindre ──────────────────────────────────────── */}
         <Card style={{ marginTop: 18 }}>
           <Text style={[type.cardTitle, { color: colors.text }]}>{t('classes.joinTitle')}</Text>
@@ -129,18 +159,6 @@ export default function ClassesScreen() {
             </View>
           )}
         </Card>
-
-        {/* ── Ouvrir une classe : professeurs seulement ──────── */}
-        {profile.role === 'prof' && (
-          <Button
-            label={t('classes.create')}
-            icon="plus"
-            variant="ghost"
-            full
-            style={{ marginTop: 14 }}
-            onPress={() => router.push('/classroom/new')}
-          />
-        )}
 
         {/* ── La liste ───────────────────────────────────────── */}
         <Text style={[type.eyebrow, { color: colors.textFaint, marginTop: 28, marginBottom: 10 }]}>

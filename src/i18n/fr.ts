@@ -171,7 +171,7 @@ export const fr = {
   teacher: {
     title: 'Je suis professeur',
     intro:
-      "Un compte professeur reste ton compte d'élève : tu gardes ton profil, tes XP et M. Thomas. Le rôle ajoute le droit d'ouvrir une classe.",
+      "Dis qui tu es, et ta salle s'ouvre juste après. Aucune demande, aucune attente. Ton compte d'élève ne change pas : tu gardes ton profil, tes XP et M. Thomas.",
 
     whyTitle: 'CE QUE TU DÉCLARES',
     whyBody:
@@ -197,13 +197,7 @@ export const fr = {
     messageLabel: 'Un mot pour nous (facultatif)',
     messagePlaceholder: 'Ta classe, ton niveau, ce que tu veux faire avec EDEM…',
 
-    send: 'Devenir professeur',
-
-    doneTitle: "C'est fait, tu es professeur",
-    doneSub:
-      "Tu peux ouvrir ta classe maintenant. Ton compte d'élève, lui, n'a pas changé : tu gardes ton profil, tes XP et M. Thomas.",
-
-    openClass: 'Ouvrir ma classe',
+    send: 'Créer ma salle',
 
     rejectedTitle: 'Ton rôle de professeur a été retiré',
     rejectedSub:
@@ -233,7 +227,10 @@ export const fr = {
     codeLength: 'Le code fait 6 caractères',
     join: 'Entrer',
     joined: 'Demande envoyée à {teacher} pour « {name} ». Il doit encore la valider.',
-    create: 'Ouvrir une classe',
+    createTitle: 'Tes salles de classe',
+    createSub:
+      "Ouvre une salle par matière ou par groupe, autant que tu veux jusqu'à dix. Chacune a son propre code, et tu y entres quand tu veux.",
+    create: 'Créer une salle',
     mine: 'MES CLASSES',
     empty: "Tu n'es dans aucune classe pour l'instant. Demande son code à ton professeur.",
     waiting: 'En attente',

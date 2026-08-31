@@ -21,7 +21,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { Redirect, useRouter } from 'expo-router';
 import { Screen } from '@/components/Screen';
 import { Card } from '@/components/Card';
 import { Button } from '@/components/Button';
@@ -56,7 +56,6 @@ export default function TeacherRequestScreen() {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [sending, setSending] = useState(false);
-  const [sent, setSent] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -103,46 +102,21 @@ export default function TeacherRequestScreen() {
     // la création de classe, et le supposer serait le seul endroit
     // de l'app où l'écran devancerait la base.
     await refresh();
-    setSent(true);
+
+    // Et on enchaîne SANS écran intermédiaire. Un « c'est fait,
+    // maintenant clique ici » de plus est un clic de plus entre le
+    // professeur et sa salle, pour ne lui apprendre rien qu'il ne
+    // sache déjà : il a demandé à créer une salle, il la crée.
+    router.replace('/classroom/new');
   };
 
-  // ── C'est fait : professeur, tout de suite ──────────────────
+  // ── Déjà professeur : rien à déclarer, on va à la salle ─────
   //
-  // Un seul écran pour « tu viens de te déclarer » et « tu l'étais
-  // déjà » : dans les deux cas la seule chose à faire ensuite est
-  // d'ouvrir une classe, et c'est le bouton qu'on met sous le
-  // pouce. Un écran de félicitations sans porte de sortie est un
-  // cul-de-sac.
-  if (sent || profile.role === 'prof') {
-    return (
-      <Screen>
-        <Header onBack={() => router.back()} title={t('teacher.title')} />
-        <Card style={{ marginTop: 20 }}>
-          <View style={styles.row8}>
-            <Icon name="check-circle" size={18} color={colors.accent} />
-            <Text style={[type.cardTitle, { color: colors.text, flex: 1 }]}>
-              {sent ? t('teacher.doneTitle') : t('teacher.alreadyTitle')}
-            </Text>
-          </View>
-          <Text style={[type.caption, { color: colors.textSoft, marginTop: 10 }]}>
-            {sent ? t('teacher.doneSub') : t('teacher.alreadySub')}
-          </Text>
-        </Card>
-
-        <Button
-          label={t('teacher.openClass')}
-          style={{ marginTop: 20 }}
-          onPress={() => router.replace('/classroom/new')}
-          full
-        />
-        <Button
-          label={t('common.back')}
-          variant="ghost"
-          style={{ marginTop: 8 }}
-          onPress={() => router.back()}
-        />
-      </Screen>
-    );
+  // Cet écran ne sert qu'à devenir professeur. Quand on l'est déjà,
+  // il n'a plus rien à dire : le rediriger vaut mieux que de lui
+  // faire lire une félicitation qu'il a déjà lue.
+  if (profile.role === 'prof') {
+    return <Redirect href="/classroom/new" />;
   }
 
   return (
