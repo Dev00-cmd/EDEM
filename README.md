@@ -172,7 +172,9 @@ EDEM/
 │   │   ├── board.tsx           🥇 Classement de tous les élèves
 │   │   └── profile.tsx         👤 Profil, réglages & mises à jour
 │   │
-│   └── (prof)/                 L'INTERFACE PROFESSEUR
+│   ├── +not-found.tsx          Route inconnue → on rentre chez soi, dans sa langue
+│   │
+│   └── prof/                   L'INTERFACE PROFESSEUR (un vrai segment : /prof)
 │       ├── _layout.tsx         Ses onglets — ni Quiz ni Classement
 │       ├── index.tsx           🏫 Ses salles, codes et demandes en attente
 │       ├── suivi.tsx           📊 OÙ EN EST SA CLASSE, notion par notion

@@ -243,6 +243,12 @@ export const ht: Messages = {
     badgeCorriger: '{n} pou korije',
   },
 
+  introuvable: {
+    titre: 'Paj sa a pa egziste',
+    corps: 'Ou rive sou yon ekran ki pa la ankò. Anyen pa pèdi : kont ou ak travay ou entak.',
+    retour: 'Tounen nan akèy la',
+  },
+
   teacher: {
     title: 'Mwen se yon pwofesè',
     intro:

@@ -132,7 +132,7 @@ export default function Onboarding() {
     // le professeur du côté élève, avec un profil encore périmé.
     await refresh();
     setEnvoi(false);
-    router.replace('/(prof)/index');
+    router.replace('/prof');
   };
 
   return (

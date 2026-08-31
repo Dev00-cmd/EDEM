@@ -243,6 +243,12 @@ export const fr = {
     badgeCorriger: '{n} à corriger',
   },
 
+  introuvable: {
+    titre: 'Cette page n’existe pas',
+    corps: "Tu es arrivé sur un écran qui n'existe plus. Rien n'est perdu : ton compte et ton travail sont intacts.",
+    retour: 'Revenir à l’accueil',
+  },
+
   teacher: {
     title: 'Je suis professeur',
     intro:

@@ -26,7 +26,7 @@ SplashScreen.preventAutoHideAsync().catch(() => {});
  *
  *   pas de compte        → /login
  *   compte sans profil   → /onboarding
- *   professeur           → /(prof)   ses classes, son suivi
+ *   professeur           → /prof     ses classes, son suivi
  *   élève                → /(tabs)   son parcours, son tuteur
  *
  * UN SEUL COMPTE, DEUX INTERFACES. Le rôle vit en base et le
@@ -66,15 +66,20 @@ function Navigator() {
     // Un professeur qui a demandé à voir l'app « comme un élève »
     // reste du côté élève : c'est un point de vue, pas un rôle.
     const cotePro = profile.role === 'prof' && !vueEleve;
-    const racine = cotePro ? '/(prof)/index' : '/(tabs)';
+    // `/prof` est un VRAI segment d'URL, pas un groupe entre
+    // parenthèses. Un groupe n'ajoute rien au chemin : `(prof)/index`
+    // et `(tabs)/index` réclamaient donc tous les deux `/`, et la
+    // racine devenait introuvable — « Unmatched Route » au
+    // démarrage, pour tout le monde.
+    const racine = cotePro ? '/prof' : '/(tabs)';
 
     if (inAuthScreen || inOnboarding) return router.replace(racine);
 
     // On ne déplace que si l'utilisateur est du mauvais côté : sans
     // ce garde, chaque navigation interne renverrait à la racine et
     // l'app se figerait sur le premier onglet.
-    if (cotePro && group === '(tabs)') router.replace('/(prof)/index');
-    if (!cotePro && group === '(prof)') router.replace('/(tabs)');
+    if (cotePro && group === '(tabs)') router.replace('/prof');
+    if (!cotePro && group === 'prof') router.replace('/(tabs)');
   }, [ready, session, profile.onboarded, profile.role, vueEleve, segments, router]);
 
   const onLayout = useCallback(() => {
@@ -112,7 +117,7 @@ function Navigator() {
         <Stack.Screen name="fil/[id]" />
         <Stack.Screen name="moderation/[id]" />
         <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="(prof)" />
+        <Stack.Screen name="prof" />
       </Stack>
 
       {/* Au-dessus de tout : applique les mises à jour toute seule

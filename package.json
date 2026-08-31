@@ -46,7 +46,7 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "go": "cross-env EXPO_GO=1 expo start --go",
-    "check": "tsc --noEmit && node scripts/check_i18n.mjs && node scripts/check_routing.mjs",
+    "check": "tsc --noEmit && node scripts/check_i18n.mjs && node scripts/check_routes.mjs && node scripts/check_routing.mjs",
     "check:plan": "tsx scripts/check_plan.ts"
   },
   "private": true
