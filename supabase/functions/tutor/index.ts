@@ -995,15 +995,30 @@ function adminClient() {
 //  Deux compteurs séparés : un élève bavard avec le tuteur ne doit
 //  pas se retrouver privé de quiz.
 //
-//  Les limites sont volontairement hautes. Elles ne visent pas à
-//  rationner le travail scolaire — un élève très assidu ne les
-//  atteindra jamais — mais à borner l'emballement d'un script ou
-//  d'un compte détourné.
+//  Les limites ne visent pas à rationner le travail scolaire — un
+//  élève très assidu ne les atteindra jamais — mais à borner
+//  l'emballement d'un script ou d'un compte détourné.
+//
+//  LES CHIFFRES ONT ÉTÉ REVUS À LA BAISSE, sur mesure et non au
+//  jugé. Une question au tuteur coûte 0,0026 $ (≈ 3 700 tokens
+//  d'entrée, dont 1 933 pour la seule méthode d'enseignement, plus
+//  600 en sortie) ; un quiz de dix questions, 0,0069 $.
+//
+//  À 80 questions et 20 quiz par jour, UN SEUL compte poussé à
+//  fond coûtait 6,24 $ par mois. Cent comptes ainsi, 624 $ — sur un
+//  projet qui n'a pas encore de revenu.
+//
+//  30 et 10 laissent une session de travail de trois heures sans
+//  jamais toucher le plafond, et ramènent ce pire cas à 2,4 $.
+//
+//  Ces valeurs restent réglables SANS REDÉPLOYER : ce sont des
+//  secrets de la fonction. Le jour où un vrai usage montre que 30
+//  est trop bas, il se change dans le dashboard.
 // ═══════════════════════════════════════════════════════════════
 
 const LIMITS: Record<string, number> = {
-  chat: Number(Deno.env.get("QUOTA_CHAT") ?? 80),
-  quiz: Number(Deno.env.get("QUOTA_QUIZ") ?? 20),
+  chat: Number(Deno.env.get("QUOTA_CHAT") ?? 30),
+  quiz: Number(Deno.env.get("QUOTA_QUIZ") ?? 10),
   // Un professeur qui ouvre son écran de modération. Une classe
   // normale produit deux ou trois relectures par jour ; vingt est
   // large, et borne quand même la dépense.

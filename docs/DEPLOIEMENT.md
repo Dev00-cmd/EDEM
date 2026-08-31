@@ -197,6 +197,7 @@ npx eas-cli submit --platform android     # soumission automatique
 - [ ] `node scripts/test_prof_autonome.mjs` passe intégralement
 - [ ] `node scripts/test_pieces_jointes.mjs` passe intégralement
 - [ ] `node scripts/test_completion.mjs` passe intégralement
+- [ ] `node scripts/test_recherche_ecoles.mjs` passe intégralement
 - [ ] Un compte **professeur** ouvre bien sur ses salles, un compte **élève** sur son accueil
 - [ ] L'app s'ouvre sans « Unmatched Route » — `npm run check` vérifie les collisions de routes
 - [ ] Si `tsc` se plaint d'une route qui existe (`/prof`…), régénère les types :
