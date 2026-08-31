@@ -203,10 +203,6 @@ export const fr = {
     doneSub:
       "Tu peux ouvrir ta classe maintenant. Ton compte d'élève, lui, n'a pas changé : tu gardes ton profil, tes XP et M. Thomas.",
 
-    capTitle: 'TROIS CLASSES POUR COMMENCER',
-    capBody:
-      "Tu peux ouvrir trois classes, sans limite d'élèves à l'intérieur. Si tu en enseignes davantage, écris-nous et on lève la limite.",
-
     openClass: 'Ouvrir ma classe',
 
     rejectedTitle: 'Ton rôle de professeur a été retiré',
@@ -257,7 +253,7 @@ export const fr = {
 
   classroom: {
     tooMany:
-      "Tu as atteint le nombre de classes que tu peux ouvrir. Archive une classe terminée, ou écris-nous pour lever la limite.",
+      'Tu as dix classes ouvertes, le maximum. Archive une classe terminée pour en ouvrir une autre.',
     needRoleTitle: "Il faut être professeur",
     needRoleBody: "Ouvrir une classe demande le rôle professeur. Déclare qui tu es — nom, école, matières — et tu l'obtiens tout de suite. Ça prend une minute.",
     title: 'Classe',

@@ -1,12 +1,14 @@
-// Verifie qu un professeur ouvre sa classe SANS validation humaine,
-// et que ce qui remplace la validation tient.
+// Verifie qu un professeur ouvre sa classe SANS personne.
 //
 //   node scripts/test_prof_autonome.mjs
 //
-// On teste les deux chemins, pas seulement l attaque : qu un vrai
-// professeur passe compte autant que le fait qu un role retire ne
-// repasse pas. Une regression qui bloque tout le monde passerait un
-// test de securite les yeux fermes.
+// Il n y a ni file d attente, ni verification, ni relecture : il se
+// declare, et il cree sa salle. Ce script verifie les deux chemins,
+// pas seulement l attaque — que la declaration accorde le role et
+// que la classe s ouvre dans la foulee compte autant que le fait
+// qu un eleve ne se donne pas le role tout seul. Une regression qui
+// bloque tout le monde passerait un test de securite les yeux
+// fermes.
 
 import fs from 'fs';
 
@@ -57,8 +59,9 @@ const ecole = (await sql(`select id from public.schools limit 1`))[0]?.id;
 const niveau = (await sql(`select id from public.school_levels limit 1`))[0]?.id;
 
 const prof = await compte('prof');
-const eleve = await compte('eleve');
-const comptes = [prof.uid, eleve.uid];
+const vieux = await compte('vieux');
+const tiers = await compte('tiers');
+const comptes = [prof.uid, vieux.uid, tiers.uid];
 
 try {
   console.log('AVANT LA DECLARATION');
@@ -77,7 +80,6 @@ try {
   });
   ok(d.b?.ok === true, 'la declaration passe', JSON.stringify(d.b));
   ok(d.b?.role === 'prof', 'le role est accorde dans la foulee', d.b?.role);
-  ok(d.b?.verified === false, 'mais pas verifie');
 
   const role = (await sql(`select role from public.profiles where id='${prof.uid}'`))[0]?.role;
   ok(role === 'prof', 'la base confirme le role', role);
@@ -90,44 +92,46 @@ try {
   });
   ok(c.s === 200 && !!c.b?.join_code, 'classe ouverte, code rendu', c.b?.join_code);
 
-  console.log('\nLE PLAFOND REMPLACE LA VALIDATION');
+  console.log('\nPLUS RIEN A RELIRE, PLUS RIEN A APPROUVER');
+  const file = await sql('select public.teachers_to_review()');
+  ok(/does not exist/i.test(JSON.stringify(file)), 'teachers_to_review a disparu');
+  const appr = await sql(`select public.approve_teacher_role('${prof.uid}')`);
+  ok(/does not exist/i.test(JSON.stringify(appr)), 'approve_teacher_role a disparu');
   st = await prof.rpc('my_teacher_status');
-  ok(st.b?.limite === 3, 'plafond a 3 tant que non verifie', `${st.b?.limite}`);
+  ok(st.b?.verified === undefined, 'la notion de verification a disparu');
+
+  console.log('\nDIX CLASSES, LE MEME PLAFOND POUR TOUT LE MONDE');
+  ok(st.b?.limite === 10, 'plafond a 10', `${st.b?.limite}`);
   ok(st.b?.ouvertes === 1, 'une classe ouverte', `${st.b?.ouvertes}`);
-  for (const n of ['NS3 B', 'NS3 C']) {
+  for (const n of ['B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J']) {
     await prof.rpc('create_classroom', {
-      p_school_id: ecole, p_name: n, p_subject_id: 'math', p_grade_level: niveau,
+      p_school_id: ecole, p_name: `NS3 ${n}`, p_subject_id: 'math', p_grade_level: niveau,
     });
   }
-  const quatrieme = await prof.rpc('create_classroom', {
-    p_school_id: ecole, p_name: 'NS3 D', p_subject_id: 'math', p_grade_level: niveau,
+  const onzieme = await prof.rpc('create_classroom', {
+    p_school_id: ecole, p_name: 'NS3 K', p_subject_id: 'math', p_grade_level: niveau,
   });
-  ok(quatrieme.s >= 400, 'la 4e classe est refusee', `HTTP ${quatrieme.s}`);
-  ok(/trop de classes/i.test(JSON.stringify(quatrieme.b)), 'et pour la bonne raison');
+  ok(onzieme.s >= 400, 'la 11e classe est refusee', `HTTP ${onzieme.s}`);
+  ok(/trop de classes/i.test(JSON.stringify(onzieme.b)), 'et pour la bonne raison');
 
-  console.log('\nLA VERIFICATION LEVE LE PLAFOND, ELLE NE DEBLOQUE RIEN');
-  await sql(`select public.approve_teacher_role('${prof.uid}', 'test')`);
-  st = await prof.rpc('my_teacher_status');
-  ok(st.b?.verified === true, 'verifie');
-  ok(st.b?.limite === 10, 'plafond leve a 10', `${st.b?.limite}`);
-  const cinq = await prof.rpc('create_classroom', {
-    p_school_id: ecole, p_name: 'NS3 D', p_subject_id: 'math', p_grade_level: niveau,
+  console.log('\nL ANCIEN NOM MARCHE ENCORE (bundles deja installes)');
+  const alias = await vieux.rpc('request_teacher_role', {
+    p_full_name: 'Marie Pierre', p_contact: 'marie@lycee.ht',
+    p_subjects: ['francais'], p_school_id: ecole,
   });
-  ok(cinq.s === 200, 'la 4e passe maintenant', `HTTP ${cinq.s}`);
+  ok(alias.b?.ok === true && alias.b?.role === 'prof',
+     'request_teacher_role redirige vers la declaration', JSON.stringify(alias.b));
 
   console.log('\nCE QUI N A PAS BOUGE');
-  const p = await eleve.patch(`profiles?id=eq.${eleve.uid}`, { role: 'prof' });
-  const apres = (await sql(`select role from public.profiles where id='${eleve.uid}'`))[0]?.role;
+  const p = await tiers.patch(`profiles?id=eq.${tiers.uid}`, { role: 'prof' });
+  const apres = (await sql(`select role from public.profiles where id='${tiers.uid}'`))[0]?.role;
   ok(apres === 'eleve', 'un eleve ne se donne pas le role par PATCH', `HTTP ${p.s} → ${apres}`);
 
-  const q = await eleve.rpc('teachers_to_review');
-  ok(q.s >= 400, 'la file de relecture est fermee aux comptes connectes', `HTTP ${q.s}`);
-
-  const decl = await eleve.get(`teacher_requests?select=contact`);
+  const decl = await tiers.get('teacher_requests?select=contact');
   ok(Array.isArray(decl.b) && decl.b.length === 0,
      'un eleve ne lit pas le contact d un professeur', `${decl.b?.length}`);
 
-  console.log('\nUN ROLE RETIRE NE SE REPREND PAS');
+  console.log('\nLE FREIN D URGENCE, LUI, RESTE');
   await sql(`select public.revoke_teacher_role('${prof.uid}', 'test')`);
   const reprise = await prof.rpc('declare_teacher_role', {
     p_full_name: 'Jean Baptiste', p_contact: '+509 3712 4590',
@@ -140,10 +144,6 @@ try {
   const classes = await sql(
     `select count(*)::int n from public.classrooms where teacher_id='${prof.uid}' and archived_at is null`);
   ok(classes[0]?.n === 0, 'ses classes sont archivees du meme geste', `${classes[0]?.n}`);
-
-  console.log('\nLA FILE DE RELECTURE, QUI NE BLOQUE PLUS RIEN');
-  const file = await sql(`select count(*)::int n from public.teachers_to_review()`);
-  ok(typeof file[0]?.n === 'number', 'lisible en service_role', `${file[0]?.n} a relire`);
 } finally {
   await sql(`delete from auth.users where id in (${comptes.map((c) => `'${c}'`).join(',')})`);
   console.log('\nComptes de test supprimes.');

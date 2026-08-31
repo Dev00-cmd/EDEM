@@ -203,10 +203,6 @@ export const ht: Messages = {
     doneSub:
       'Ou ka louvri klas ou kounye a. Kont elèv ou a pa chanje : ou kenbe pwofil ou, XP ou ak M. Thomas.',
 
-    capTitle: 'TWA KLAS POU KÒMANSE',
-    capBody:
-      'Ou ka louvri twa klas, san limit sou kantite elèv anndan. Si ou anseye plis pase sa, ekri nou epi n ap leve limit la.',
-
     openClass: 'Louvri klas mwen',
 
     rejectedTitle: 'Yo retire wòl pwofesè ou a',
@@ -257,7 +253,7 @@ export const ht: Messages = {
 
   classroom: {
     tooMany:
-      'Ou rive nan kantite klas ou ka louvri a. Achive yon klas ki fini, oswa ekri nou pou nou leve limit la.',
+      'Ou gen dis klas louvri, se maksimòm nan. Achive yon klas ki fini pou ou ka louvri yon lòt.',
     needRoleTitle: "Fòk ou se yon pwofesè",
     needRoleBody: "Pou louvri yon klas ou bezwen wòl pwofesè a. Deklare kiyès ou ye — non, lekòl, matyè — epi ou jwenn li touswit. Sa pran yon minit.",
     title: 'Klas',

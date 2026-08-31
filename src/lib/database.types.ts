@@ -1113,10 +1113,6 @@ export type Database = {
         Args: { p_classroom_id: string; p_user_id: string }
         Returns: Json
       }
-      approve_teacher_role: {
-        Args: { p_note?: string; p_user_id: string }
-        Returns: Json
-      }
       archive_classroom: { Args: { p_classroom_id: string }; Returns: Json }
       assignment_classroom: {
         Args: { p_assignment_id: string }
@@ -1428,6 +1424,16 @@ export type Database = {
         }
         Returns: Json
       }
+      request_teacher_role: {
+        Args: {
+          p_contact: string
+          p_full_name: string
+          p_message?: string
+          p_school_id?: string
+          p_subjects?: string[]
+        }
+        Returns: Json
+      }
       reset_progress: { Args: never; Returns: undefined }
       revoke_teacher_role: {
         Args: { p_reason?: string; p_user_id: string }
@@ -1524,21 +1530,6 @@ export type Database = {
           statut: string
           user_id: string
           xp: number
-        }[]
-      }
-      teachers_to_review: {
-        Args: never
-        Returns: {
-          classes: number
-          commune: string
-          contact: string
-          declare_le: string
-          ecole: string
-          eleves: number
-          full_name: string
-          message: string
-          subjects: string[]
-          user_id: string
         }[]
       }
       touch_activity: {

@@ -49,7 +49,7 @@ et sait **lire la photo d'un devoir** pour l'expliquer pas à pas.
 | 🏆 | **Quiz IA** | 10 questions générées à la demande, **3 niveaux au choix** (facile / intermédiaire / difficile) avec des XP différents, chrono adapté à la matière, et jamais deux fois la même question |
 | 🥇 | **Classement** | Palmarès de tous les élèves de la base, avec la position de l'élève |
 | 🏫 | **Ton école, pas un champ libre** | Les **25 347 écoles d'Haïti** (source MENFP), les 146 communes et les 10 départements. On choisit la sienne dans une liste, on ne la tape pas |
-| 👩‍🏫 | **Rôle professeur** | Obtenu en se déclarant — nom, école, matières, moyen de joindre — et accordé dans la seconde. Trois classes tant que personne ne l'a vérifié. Un compte prof reste un compte élève, avec des droits en plus |
+| 👩‍🏫 | **Rôle professeur** | Obtenu en se déclarant — nom, école, matières, moyen de joindre — et accordé dans la seconde. Aucune file d'attente, aucune validation. Un compte prof reste un compte élève, avec des droits en plus |
 | 🚪 | **Classes sur invitation** | Le prof ouvre une classe, distribue un code à 6 caractères, puis **valide chaque élève**. Écrire « Lycée X, NS3 » dans son profil n'ouvre aucune porte |
 | 📝 | **Devoirs et quiz assignés** | Texte, photo du cahier, ou quiz généré pour chaque élève. Le prof note et commente |
 | 📊 | **Tableau de bord du prof** | La maîtrise moyenne de sa classe notion par notion, et qui est sous 40 % — sans avoir corrigé une seule copie |
@@ -424,7 +424,7 @@ Avoir écrit « Lycée Alexandre Pétion, NS3 » dans son profil ne donne accès
         ↓                                  DANS LA MÊME TRANSACTION — aucune attente
 2. Il ouvre une classe, tout de suite      create_classroom() → code à 6 caractères
         ↓                                  sans 0/O/1/I/L : un code se recopie du tableau
-        ↓                                  3 classes, ou 10 s'il a été vérifié
+        ↓                                  10 classes au maximum
 3. Les élèves entrent avec le code         join_classroom() → statut « en attente »
         ↓                                  10 essais/heure : 887 millions de codes possibles,
         ↓                                  mais on ne les essaie pas
@@ -435,7 +435,9 @@ Avoir écrit « Lycée Alexandre Pétion, NS3 » dans son profil ne donne accès
 
 > 🔑 **Pourquoi personne ne valide le professeur.** Parce que ça ne protégeait rien. La question n'est pas « peut-on se déclarer professeur ? » mais « que peut faire un adulte malveillant qui s'est déclaré professeur ? » — et la réponse est *rien*, tant qu'aucun élève n'entre dans sa classe. Pour qu'un élève entre, il faut lui remettre un code à 6 caractères, et **EDEM n'offre aucun moyen de le remettre** : pas de fil public, pas de recherche d'utilisateurs, pas de messages privés. Un inconnu ne peut adresser la parole à personne. Le code se distribue dans le monde physique, et quelqu'un qui a déjà cet accès aux enfants ne gagnait rien à être validé — il écrivait un nom et un numéro plausibles. La validation coûtait des jours à chaque vrai professeur pour l'impression d'une protection.
 >
-> Ce qui protège reste en place : la déclaration est **obligatoire** et montrée aux élèves qui rejoignent, le plafond de classes borne ce qu'un abus multiplie, la modération et son journal couvrent chaque geste, et [`revoke_teacher_role()`](supabase/migrations/20260830_classes_et_adhesions.sql) retire le rôle **et** archive toutes ses classes du même geste. La vérification humaine existe toujours — `teachers_to_review()` puis `approve_teacher_role()` — mais elle est passée *après*, et elle ne bloque plus personne.
+> Ce qui protège reste en place : la déclaration est **obligatoire** et montrée aux élèves qui rejoignent, le plafond de 10 classes borne ce qu'un abus multiplie, la modération et son journal couvrent chaque geste, et [`revoke_teacher_role()`](supabase/migrations/20260830_classes_et_adhesions.sql) retire le rôle **et** archive toutes ses classes du même geste — un rôle retiré ne se reprend pas en remplissant le formulaire une seconde fois.
+>
+> Il n'y a **rien à relire, rien à approuver, aucune liste qui t'attend**. La seule file qui demande une réponse est celle des élèves qui veulent rejoindre une classe — et c'est le professeur qui la traite, dans l'app.
 
 ### Ce que chacun voit
 

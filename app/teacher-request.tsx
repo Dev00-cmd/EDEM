@@ -1,9 +1,10 @@
 // ═══════════════════════════════════════════════════════════════
 //  « JE SUIS PROFESSEUR »
 //
-//  Quatre champs, et la classe s'ouvre dans la minute. Il n'y a
-//  plus de file d'attente : le rôle est accordé par la déclaration
-//  elle-même, pas par quelqu'un qui la lira un jour.
+//  Quatre champs, et la classe s'ouvre dans la minute. Il n'y a ni
+//  file d'attente, ni vérification, ni relecture : le rôle est
+//  accordé par la déclaration elle-même. Le professeur crée sa
+//  salle, un point c'est tout.
 //
 //  Le moyen de joindre reste obligatoire, mais il a changé de
 //  raison d'être. Il ne sert plus à AUTORISER — il sert à
@@ -125,21 +126,6 @@ export default function TeacherRequestScreen() {
           </View>
           <Text style={[type.caption, { color: colors.textSoft, marginTop: 10 }]}>
             {sent ? t('teacher.doneSub') : t('teacher.alreadySub')}
-          </Text>
-        </Card>
-
-        {/* Le plafond, dit avant de le heurter. Trois classes
-            suffisent à un vrai professeur ; il doit quand même
-            savoir qu'il existe et pourquoi. */}
-        <Card style={{ marginTop: 12 }}>
-          <View style={styles.row8}>
-            <Icon name="info" size={13} color={colors.textFaint} />
-            <Text style={[type.eyebrow, { color: colors.textFaint }]}>
-              {t('teacher.capTitle')}
-            </Text>
-          </View>
-          <Text style={[type.caption, { color: colors.textSoft, marginTop: 8 }]}>
-            {t('teacher.capBody')}
           </Text>
         </Card>
 

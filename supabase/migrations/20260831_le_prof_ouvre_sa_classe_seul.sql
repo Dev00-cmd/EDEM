@@ -1,9 +1,10 @@
 -- ═══════════════════════════════════════════════════════════════
 --  LE PROFESSEUR OUVRE SA CLASSE SEUL
 --
---  Appliqué le 31 août 2026, en deux migrations Supabase :
+--  Appliqué le 31 août 2026, en trois migrations Supabase :
 --    · teacher_role_granted_on_declaration
 --    · classroom_cap_depends_on_verification
+--    · no_teacher_verification_at_all
 --
 --  ── Ce qui change ─────────────────────────────────────────────
 --
@@ -51,9 +52,9 @@
 --
 --  ── Ce qui remplace la validation : un plafond, pas une porte ──
 --
---  Tant que personne n'a vérifié le professeur, il est limité à
---  TROIS classes. Un vrai professeur en ouvre deux ou trois ; un
---  compte qui fabrique des codes en veut dix.
+--  DIX classes par professeur, le même chiffre pour tout le monde.
+--  Ce n'est pas une file d'attente : rien ni personne ne le lève,
+--  il borne simplement ce qu'un compte peut fabriquer.
 --
 --  Le plafond porte sur le NOMBRE DE CLASSES, jamais sur le nombre
 --  d'élèves. Une classe haïtienne compte couramment cinquante ou
@@ -62,9 +63,15 @@
 --  d'autre. On borne ce qu'un abus multiplie, pas ce dont un vrai
 --  usage a besoin.
 --
---  La vérification humaine existe toujours, mais elle est passée
---  APRÈS et elle ne bloque plus rien : `teachers_to_review()` rend
---  la liste, `approve_teacher_role()` lève le plafond.
+--  Une première version gardait une vérification humaine facultative
+--  qui faisait passer le plafond de trois à dix. Retirée : tant
+--  qu'il reste quelque part une liste que quelqu'un doit relire, il
+--  reste une file d'attente, même si elle ne bloque personne. Le
+--  professeur crée sa salle, un point c'est tout.
+--
+--  Le frein d'urgence, lui, reste entier : `revoke_teacher_role`
+--  retire le rôle ET archive toutes ses classes du même geste, et
+--  la déclaration ne se rejoue pas ensuite.
 -- ═══════════════════════════════════════════════════════════════
 
 
@@ -392,3 +399,193 @@ $$;
 
 revoke execute on function public.my_teacher_status() from public, anon;
 grant  execute on function public.my_teacher_status() to authenticated;
+
+
+-- ═══ no_teacher_verification_at_all ═══
+
+-- ── On retire la vérification, entièrement ────────────────────
+--
+-- Les deux migrations ci-dessus laissaient une vérification
+-- FACULTATIVE : elle ne bloquait personne, elle faisait seulement
+-- passer le plafond de trois à dix classes.
+--
+-- C'était encore une file. Tant qu'il existe quelque part une liste
+-- que quelqu'un doit relire, il reste un endroit où l'on prend du
+-- retard, et un professeur qui vaut moins qu'un autre en attendant.
+-- Elles disparaissent.
+drop function if exists public.teachers_to_review();
+drop function if exists public.approve_teacher_role(uuid, text);
+
+-- Il ne reste que deux états : on est professeur, ou on l'a été et
+-- le rôle a été retiré. « approved » n'a plus de sens puisque plus
+-- rien n'approuve.
+update public.teacher_requests set status = 'active' where status = 'approved';
+
+alter table public.teacher_requests
+  drop constraint if exists teacher_requests_status_check;
+
+alter table public.teacher_requests
+  add constraint teacher_requests_status_check
+  check (status in ('active', 'rejected'));
+
+
+-- ── Un seul plafond, celui de l'étape 5 ───────────────────────
+create or replace function public.create_classroom(
+  p_school_id uuid, p_name text, p_subject_id text, p_grade_level text)
+returns jsonb language plpgsql security definer set search_path to ''
+as $$
+declare
+  uid uuid := (select auth.uid());
+  v_role text;
+  v_ouvertes integer;
+  v_nom text := btrim(coalesce(p_name, ''));
+  v_code text;
+  v_id uuid;
+begin
+  if uid is null then raise exception 'not authenticated'; end if;
+
+  select role into v_role from public.profiles where id = uid;
+  if v_role is distinct from 'prof' then
+    raise exception 'seul un professeur peut ouvrir une classe';
+  end if;
+  if char_length(v_nom) < 2 then raise exception 'nom de classe trop court'; end if;
+  if not exists (select 1 from public.schools where id = p_school_id) then
+    raise exception 'ecole inconnue';
+  end if;
+  if not exists (select 1 from public.school_levels where id = p_grade_level) then
+    raise exception 'niveau inconnu';
+  end if;
+
+  select count(*) into v_ouvertes from public.classrooms
+   where teacher_id = uid and archived_at is null;
+  if v_ouvertes >= 10 then
+    raise exception 'trop de classes ouvertes';
+  end if;
+
+  v_code := public.generate_join_code();
+  insert into public.classrooms (school_id, teacher_id, name, subject_id, grade_level, join_code)
+  values (p_school_id, uid, v_nom, p_subject_id, p_grade_level, v_code)
+  returning classrooms.id into v_id;
+
+  return jsonb_build_object('id', v_id, 'join_code', v_code, 'name', v_nom);
+end;
+$$;
+
+
+-- `verified` disparaît des deux fonctions qui le rendaient encore.
+create or replace function public.my_teacher_status()
+returns jsonb
+language sql
+security definer
+stable
+set search_path to ''
+as $$
+  select jsonb_build_object(
+    'role',      coalesce(p.role, 'eleve'),
+    'declared',  t.user_id is not null,
+    'revoked',   t.status = 'rejected',
+    'full_name', t.full_name,
+    'limite',    10,
+    'ouvertes',  (select count(*)::integer from public.classrooms c
+                   where c.teacher_id = p.id and c.archived_at is null)
+  )
+  from public.profiles p
+  left join public.teacher_requests t on t.user_id = p.id
+  where p.id = (select auth.uid());
+$$;
+
+create or replace function public.declare_teacher_role(
+  p_full_name text, p_contact text, p_subjects text[] default '{}',
+  p_school_id uuid default null, p_message text default null)
+returns jsonb language plpgsql security definer set search_path to ''
+as $$
+declare
+  uid       uuid := (select auth.uid());
+  v_nom     text := btrim(coalesce(p_full_name, ''));
+  v_contact text := btrim(coalesce(p_contact, ''));
+  v_statut  text;
+  v_role    text;
+  v_quota   jsonb;
+begin
+  if uid is null then raise exception 'not authenticated'; end if;
+  if char_length(v_nom) < 3 then
+    return jsonb_build_object('ok', false, 'error', 'nom_requis');
+  end if;
+  if char_length(v_contact) < 5 then
+    return jsonb_build_object('ok', false, 'error', 'contact_requis');
+  end if;
+  if coalesce(cardinality(p_subjects), 0) = 0 then
+    return jsonb_build_object('ok', false, 'error', 'matiere_requise');
+  end if;
+
+  select role into v_role from public.profiles where id = uid;
+  select status into v_statut from public.teacher_requests where user_id = uid;
+
+  if v_statut = 'rejected' then
+    return jsonb_build_object('ok', false, 'error', 'role_retire');
+  end if;
+  if v_role = 'prof' then
+    return jsonb_build_object('ok', true, 'role', 'prof');
+  end if;
+
+  v_quota := public.bump_usage(uid, 'teacher_request', 3);
+  if not (v_quota ->> 'allowed')::boolean then
+    return jsonb_build_object('ok', false, 'error', 'trop_de_demandes');
+  end if;
+
+  insert into public.teacher_requests
+    (user_id, school_id, full_name, subjects, contact, message, status, updated_at)
+  values
+    (uid, p_school_id, v_nom, p_subjects, v_contact,
+     nullif(btrim(coalesce(p_message, '')), ''), 'active', now())
+  on conflict (user_id) do update
+    set school_id  = excluded.school_id,
+        full_name  = excluded.full_name,
+        subjects   = excluded.subjects,
+        contact    = excluded.contact,
+        message    = excluded.message,
+        status     = 'active',
+        updated_at = now();
+
+  update public.profiles set role = 'prof', updated_at = now() where id = uid;
+
+  insert into public.role_events (user_id, event, actor, reason)
+  values (uid, 'approved', uid, 'declaration');
+
+  return jsonb_build_object('ok', true, 'role', 'prof');
+end;
+$$;
+
+
+-- ── Compatibilité avec les installations d'avant ──────────────
+--
+-- L'application déjà posée sur les téléphones appelle encore
+-- `request_teacher_role`. La supprimer sèchement a cassé le bouton
+-- « Envoyer la demande » pour tout le monde tant que la mise à jour
+-- n'était pas passée — vu sur un vrai téléphone, avec un « La
+-- demande n'est pas partie » qui ne disait évidemment pas que la
+-- fonction n'existait plus.
+--
+-- Une migration ne doit pas casser les clients déjà installés :
+-- l'ancien nom redirige donc vers le nouveau. À retirer quand plus
+-- personne ne fait tourner un bundle d'août 2026.
+create or replace function public.request_teacher_role(
+  p_full_name text,
+  p_contact   text,
+  p_subjects  text[] default '{}',
+  p_school_id uuid   default null,
+  p_message   text   default null
+)
+returns jsonb
+language sql
+security definer
+set search_path to ''
+as $$
+  select public.declare_teacher_role(
+    p_full_name, p_contact, p_subjects, p_school_id, p_message);
+$$;
+
+revoke execute on function public.request_teacher_role(text, text, text[], uuid, text)
+  from public, anon;
+grant  execute on function public.request_teacher_role(text, text, text[], uuid, text)
+  to authenticated;

@@ -12,23 +12,25 @@
 //  caractères à des enfants, dans le monde physique. Quelqu'un qui
 //  a déjà cet accès ne gagnait rien à être validé par un humain.
 //
+//  Il n'y a NI file d'attente, NI vérification, NI relecture. Le
+//  professeur crée sa salle, un point c'est tout.
+//
 //  Ce qui reste, et qui compte :
 //    · la déclaration, obligatoire — un adulte responsable d'une
-//      salle de mineurs donne son nom et un moyen de le joindre ;
-//    · trois classes tant que personne ne l'a vérifié ;
+//      salle de mineurs donne son nom et un moyen de le joindre,
+//      et c'est ce que voit l'élève qui rejoint ;
 //    · la modération, et le journal de chacun de ses gestes ;
-//    · `revoke_teacher_role`, qui retire le rôle ET archive ses
-//      classes du même geste.
+//    · `revoke_teacher_role`, le frein d'urgence : il retire le
+//      rôle ET archive ses classes du même geste.
 // ═══════════════════════════════════════════════════════════════
 
 import { supabase } from './supabase';
 
 /**
- * `active`   — déclaré, rôle accordé, vérification pas encore faite
- * `approved` — vérifié à la main : le plafond de classes est levé
+ * `active`   — professeur
  * `rejected` — rôle retiré. La déclaration ne se rejoue pas.
  */
-export type TeacherStatus = 'active' | 'approved' | 'rejected';
+export type TeacherStatus = 'active' | 'rejected';
 
 export interface TeacherRequest {
   status: TeacherStatus;
@@ -44,11 +46,10 @@ export interface TeacherRequest {
 export interface TeacherStatusInfo {
   role: 'eleve' | 'prof';
   declared: boolean;
-  /** Vérifié à la main. Lève le plafond de 3 à 10 classes. */
-  verified: boolean;
   /** Le rôle a été retiré : la déclaration ne se rejoue pas. */
   revoked: boolean;
   full_name: string | null;
+  /** Classes ouvertes au maximum. Le même pour tout le monde. */
   limite: number;
   ouvertes: number;
 }
@@ -71,7 +72,7 @@ export async function fetchTeacherRequest(): Promise<TeacherRequest | null> {
   return data as TeacherRequest;
 }
 
-/** Rôle, plafond, classes déjà ouvertes — calculés par le serveur. */
+/** Rôle et classes déjà ouvertes — calculés par le serveur. */
 export async function fetchTeacherStatus(): Promise<TeacherStatusInfo | null> {
   const { data, error } = await supabase.rpc('my_teacher_status');
   if (error || !data) return null;
@@ -92,7 +93,7 @@ export async function declareTeacherRole(input: {
   subjects: string[];
   schoolId?: string | null;
   message?: string | null;
-}): Promise<{ ok: boolean; error?: DeclareError; verified?: boolean }> {
+}): Promise<{ ok: boolean; error?: DeclareError }> {
   const { data, error } = await supabase.rpc('declare_teacher_role', {
     p_full_name: input.fullName,
     p_contact: input.contact,
@@ -101,5 +102,5 @@ export async function declareTeacherRole(input: {
     p_message: input.message ?? undefined,
   });
   if (error || !data) return { ok: false, error: 'echec' };
-  return data as unknown as { ok: boolean; error?: DeclareError; verified?: boolean };
+  return data as unknown as { ok: boolean; error?: DeclareError };
 }
