@@ -87,6 +87,50 @@ try {
   await patch({ exam_year: 2027 });
   c = await rpc('profile_completion');
   ok(c.b?.pct === 100, 'et une fois donnee, on retombe a 100 %', `${c.b?.pct}%`);
+
+  // ══ L INVARIANT QUI EMPECHE LE BUG DE REVENIR ══════════════
+  //
+  // Le defaut n etait pas « la serie manque », c etait « un champ
+  // compte dans le total sans qu aucun ecran ne permette de le
+  // remplir ». Ca peut se reproduire au prochain champ ajoute.
+  //
+  // On verifie donc la propriete generale : pour CHAQUE niveau et
+  // CHAQUE objectif, un profil rempli avec les seules colonnes que
+  // le client a le droit d ecrire atteint 100 pour cent. Si un jour
+  // quelqu un ajoute un champ au compteur sans l ajouter a un ecran,
+  // ce test tombe le jour meme.
+  console.log('\nCHAQUE NIVEAU ET CHAQUE OBJECTIF ATTEIGNENT 100 %');
+  const niveaux = (await sql(
+    'select id, needs_section from public.school_levels order by rank')) ?? [];
+  const objectifs = ['exams', 'grades', 'learn', 'english', 'catchup'];
+  let combos = 0;
+  const rates = [];
+
+  for (const n of niveaux) {
+    for (const g of objectifs) {
+      // Tout ce que le client peut ecrire, et rien d autre.
+      const r = await patch({
+        name: 'Test',
+        level: n.id,
+        section: n.needs_section ? 'SMP' : null,
+        favorites: ['math'],
+        weak_subjects: ['math'],
+        goal: g,
+        exam_year: g === 'exams' ? 2027 : null,
+        study_minutes: 30,
+        school_id: ecole,
+        commune_id: 'jacmel',
+      });
+      const v = await rpc('profile_completion');
+      combos++;
+      if (r.s >= 400 || v.b?.pct !== 100) {
+        rates.push(`${n.id}/${g} → ${v.b?.pct}% (manque ${JSON.stringify(v.b?.missing)})`);
+      }
+    }
+  }
+  ok(rates.length === 0,
+     `les ${combos} combinaisons niveau x objectif atteignent 100 %`,
+     rates.length ? rates.join(' | ') : `${combos} testees`);
 } finally {
   await sql(`delete from auth.users where id='${uid}'`);
   console.log('\nCompte de test supprime.');
