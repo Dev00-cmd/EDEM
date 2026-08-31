@@ -21,6 +21,7 @@ import { Chip } from '@/components/Chip';
 import { Input } from '@/components/Input';
 import { Icon } from '@/components/Icon';
 import { useApp } from '@/store/AppContext';
+import { useAuth } from '@/store/AuthContext';
 import { useTheme } from '@/theme/ThemeContext';
 import { useKeyboard } from '@/theme/useKeyboard';
 import { RADIUS } from '@/theme/colors';
@@ -29,6 +30,7 @@ import { topicsFor } from '@/data/curriculum';
 import { DIFFICULTIES, type Difficulty } from '@/config/app';
 import { publishAssignment, saveAssignment, type AssignmentKind } from '@/lib/assignments';
 import { fetchClassrooms } from '@/lib/classrooms';
+import { pickDocument, pickFromCamera, pickFromGallery, uploadAttachment } from '@/lib/attachments';
 
 const ECHEANCES = [
   { jours: 1, cle: 'tomorrow' },
@@ -40,6 +42,7 @@ const ECHEANCES = [
 export default function NouveauDevoir() {
   const { classroom } = useLocalSearchParams<{ classroom: string }>();
   const { t, profile } = useApp();
+  const { session } = useAuth();
   const { colors } = useTheme();
   const keyboard = useKeyboard();
   const router = useRouter();
@@ -53,6 +56,7 @@ export default function NouveauDevoir() {
   const [echeance, setEcheance] = useState(3);
   const [envoi, setEnvoi] = useState(false);
   const [erreur, setErreur] = useState('');
+  const [piece, setPiece] = useState<{ path: string; name: string } | null>(null);
 
   // Les notions proposées sont celles du programme, pour la matière
   // et le niveau DE LA CLASSE. C'est ce qui permettra au tableau de
@@ -80,6 +84,26 @@ export default function NouveauDevoir() {
       prev.includes(id) ? prev.filter((x) => x !== id) : prev.length >= 8 ? prev : [...prev, id],
     );
 
+  // Photo, galerie ou document — le PDF compte autant que la photo :
+  // beaucoup de professeurs ont déjà leur feuille d'exercices en
+  // fichier, et la reprendre en photo serait absurde.
+  const joindre = async (source: 'camera' | 'galerie' | 'document') => {
+    const f =
+      source === 'camera' ? await pickFromCamera(profile.lang)
+      : source === 'galerie' ? await pickFromGallery(profile.lang)
+      : await pickDocument(profile.lang);
+    if (typeof f === 'string') return f === '' ? undefined : setErreur(f);
+    if (!session?.user.id) return;
+    setEnvoi(true);
+    const up = await uploadAttachment(
+      f, session.user.id, profile.lang, `classroom/${classroom}/consigne`,
+    );
+    setEnvoi(false);
+    if (typeof up === 'string') return setErreur(up);
+    setPiece({ path: up.path, name: up.name });
+    setErreur('');
+  };
+
   const enregistrer = async (publier: boolean) => {
     if (titre.trim().length < 2) return setErreur(t('assignment.titleNeeded'));
     if (kind === 'quiz' && notions.length === 0) return setErreur(t('assignment.topicsNeeded'));
@@ -95,6 +119,7 @@ export default function NouveauDevoir() {
       difficulty: kind === 'quiz' ? difficulte : null,
       dueAt:
         echeance > 0 ? new Date(Date.now() + echeance * 864e5).toISOString() : null,
+      attachmentPath: piece?.path ?? null,
     });
     if (id && publier) await publishAssignment(id, true);
     setEnvoi(false);
@@ -174,6 +199,48 @@ export default function NouveauDevoir() {
               multiline
               numberOfLines={4}
             />
+          </View>
+        )}
+
+        {/* ── L'énoncé joint ─────────────────────────────────
+            Le professeur pouvait décrire un devoir, jamais le
+            DONNER. Une feuille d'exercices, un extrait de manuel,
+            un schéma : rien ne pouvait être joint, alors que
+            l'élève rendait déjà une photo de son cahier. Le sens
+            ne circulait que dans un sens.
+
+            Le chemin porte « consigne » : c'est lui qui rend le
+            fichier lisible par TOUTE la classe, là où une remise
+            d'élève reste privée entre lui et son professeur. */}
+        {kind === 'devoir' && (
+          <View style={styles.field}>
+            <Text style={[type.captionMedium, { color: colors.textSoft }]}>
+              {t('assignment.fileLabel')}
+            </Text>
+            <Text style={[type.caption, { color: colors.textFaint, marginTop: 4 }]}>
+              {t('assignment.fileHint')}
+            </Text>
+
+            {piece ? (
+              <View style={[styles.piece, { borderColor: colors.border }]}>
+                <Icon name="paperclip" size={13} color={colors.accent} />
+                <Text style={[type.caption, { color: colors.textSoft, flex: 1 }]} numberOfLines={1}>
+                  {piece.name}
+                </Text>
+                <Pressable onPress={() => setPiece(null)} hitSlop={8} accessibilityRole="button">
+                  <Icon name="close" size={14} color={colors.textFaint} />
+                </Pressable>
+              </View>
+            ) : (
+              <View style={styles.joindre}>
+                <Button label={t('assignment.filePhoto')} icon="camera" variant="ghost"
+                        size="sm" onPress={() => joindre('camera')} />
+                <Button label={t('assignment.fileGallery')} icon="image" variant="ghost"
+                        size="sm" onPress={() => joindre('galerie')} />
+                <Button label={t('assignment.fileDoc')} icon="file" variant="ghost"
+                        size="sm" onPress={() => joindre('document')} />
+              </View>
+            )}
           </View>
         )}
 
@@ -275,6 +342,12 @@ export default function NouveauDevoir() {
 }
 
 const styles = StyleSheet.create({
+  joindre: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10 },
+  piece: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    borderWidth: 1, borderRadius: RADIUS.md,
+    paddingHorizontal: 11, paddingVertical: 8, marginTop: 10,
+  },
   scroll: { flexGrow: 1, paddingHorizontal: 22, paddingTop: 10 },
   header: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 6 },
   formes: { flexDirection: 'row', gap: 10, marginTop: 18 },

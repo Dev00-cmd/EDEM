@@ -851,3 +851,62 @@ $$;
 
 revoke execute on function public.assignment_quiz_params(uuid) from public, anon;
 grant  execute on function public.assignment_quiz_params(uuid) to authenticated, service_role;;
+
+
+-- ═══ assignment_attachments_from_teacher ═══
+--
+-- Le professeur pouvait DÉCRIRE un devoir, jamais le DONNER. Une
+-- feuille d'exercices, un extrait de manuel, un schéma : rien ne
+-- pouvait être joint, alors que l'élève rendait déjà une photo de
+-- son cahier. Le sens ne circulait que dans un seul sens.
+alter table public.assignments
+  add column if not exists attachment_path text;
+
+-- ── Un troisième usage du bucket, donc un troisième chemin ────
+--
+--   {eleve}/classroom/{classe}/chat/{fichier}      tous les membres
+--   {prof}/classroom/{classe}/consigne/{fichier}   tous les membres
+--   {eleve}/classroom/{classe}/{devoir}/{fichier}  le professeur seul
+--
+-- L'énoncé DOIT être lisible par toute la classe : un énoncé que
+-- les élèves ne peuvent pas ouvrir n'est pas un énoncé. La remise
+-- reste privée entre l'élève et son professeur ; les camarades
+-- n'ont pas à lire les copies.
+create or replace function public.is_teacher_of_attachment(p_name text)
+returns boolean
+language plpgsql security definer stable set search_path to ''
+as $$
+declare
+  v_parts  text[] := string_to_array(p_name, '/');
+  v_classe uuid;
+begin
+  if array_length(v_parts, 1) < 4 then return false; end if;
+  if v_parts[2] <> 'classroom' then return false; end if;
+  begin
+    v_classe := v_parts[3]::uuid;
+  exception when others then
+    return false;
+  end;
+
+  if v_parts[4] in ('chat', 'consigne') then
+    return public.is_classroom_member(v_classe)
+        or public.is_classroom_teacher(v_classe);
+  end if;
+
+  return public.is_classroom_teacher(v_classe);
+end;
+$$;
+
+-- `save_assignment` gagne `p_attachment_path`, et VÉRIFIE le chemin :
+-- il doit être celui du professeur, dans cette classe, au rayon
+-- « consigne ». Sans ce contrôle la RPC accepterait n'importe quelle
+-- chaîne, et un devoir pourrait pointer vers le fichier d'un autre
+-- pour le rendre lisible par toute la classe.
+--
+-- Le `coalesce` sur la mise à jour compte aussi : modifier le titre
+-- d'un devoir ne doit pas en effacer l'énoncé joint.
+--
+-- (Corps complet appliqué en base ; `my_assignments` et
+-- `classroom_assignments` rendent la colonne en plus, et ont dû être
+-- DROP avant recréation — Postgres refuse de changer le type de
+-- retour d'une fonction table par un simple `create or replace`.)

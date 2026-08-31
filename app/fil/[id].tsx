@@ -44,7 +44,9 @@ import { useTheme } from '@/theme/ThemeContext';
 import { useKeyboard } from '@/theme/useKeyboard';
 import { RADIUS } from '@/theme/colors';
 import { type } from '@/theme/typography';
-import { pickFromCamera, pickFromGallery, signedUrlFor, uploadAttachment } from '@/lib/attachments';
+import {
+  pickDocument, pickFromCamera, pickFromGallery, signedUrlFor, uploadAttachment,
+} from '@/lib/attachments';
 import {
   PAGE, deleteMessage, fetchMessages, postMessage,
   subscribeToClassroom, unsubscribe, type ChatMessage,
@@ -151,9 +153,18 @@ export default function FilDeClasse() {
     setEncore(suite.length === PAGE);
   };
 
-  const joindre = async (source: 'camera' | 'galerie') => {
-    const f = source === 'camera' ? await pickFromCamera(profile.lang) : await pickFromGallery(profile.lang);
-    if (typeof f === 'string') return setErreur(f);
+  // Le document compte autant que la photo : un professeur a
+  // souvent sa feuille d'exercices déjà en PDF, et la reprendre en
+  // photo serait absurde.
+  const joindre = async (source: 'camera' | 'galerie' | 'document') => {
+    const f =
+      source === 'camera' ? await pickFromCamera(profile.lang)
+      : source === 'galerie' ? await pickFromGallery(profile.lang)
+      : await pickDocument(profile.lang);
+    // Chaîne vide = l'utilisateur a fermé le sélecteur. Ce n'est
+    // pas une erreur, et l'afficher en rouge le laisserait croire
+    // que quelque chose a échoué.
+    if (typeof f === 'string') return f === '' ? undefined : setErreur(f);
     if (!session?.user.id) return;
     setEnvoi(true);
     const up = await uploadAttachment(f, session.user.id, profile.lang, `classroom/${id}/chat`);
@@ -305,6 +316,9 @@ export default function FilDeClasse() {
           </Pressable>
           <Pressable onPress={() => joindre('galerie')} hitSlop={8} accessibilityRole="button">
             <Icon name="image" size={19} color={colors.textFaint} />
+          </Pressable>
+          <Pressable onPress={() => joindre('document')} hitSlop={8} accessibilityRole="button">
+            <Icon name="file" size={19} color={colors.textFaint} />
           </Pressable>
           <View style={{ flex: 1 }}>
             <Input

@@ -27,6 +27,8 @@ export interface MyAssignment {
   score_pct: number | null;
   grade: number | null;
   feedback: string | null;
+  /** L'énoncé joint par le professeur. Lisible par toute la classe. */
+  attachment_path: string | null;
 }
 
 /** Un devoir vu par le professeur, avec l'avancement de sa classe. */
@@ -41,6 +43,7 @@ export interface ClassAssignment {
   rendus: number;
   a_corriger: number;
   moyenne: number | null;
+  attachment_path: string | null;
 }
 
 export interface SubmissionRow {
@@ -108,6 +111,13 @@ export async function saveAssignment(input: {
   difficulty?: string | null;
   dueAt?: string | null;
   id?: string | null;
+  /**
+   * Le chemin doit être `{prof}/classroom/{classe}/consigne/…`.
+   * Le serveur le vérifie : sans ça, un devoir pourrait pointer
+   * vers le fichier de quelqu'un d'autre et le rendre lisible par
+   * toute la classe.
+   */
+  attachmentPath?: string | null;
 }): Promise<string | null> {
   const r = await rpc<{ id: string }>('save_assignment', {
     p_classroom_id: input.classroomId,
@@ -118,6 +128,7 @@ export async function saveAssignment(input: {
     p_difficulty: input.difficulty ?? null,
     p_due_at: input.dueAt ?? null,
     p_id: input.id ?? null,
+    p_attachment_path: input.attachmentPath ?? null,
   });
   return r?.id ?? null;
 }

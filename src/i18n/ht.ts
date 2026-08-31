@@ -324,6 +324,13 @@ export const ht: Messages = {
     titleLabel: 'Tit',
     titlePlaceholder_devoir: 'Egz. Egzèsis 12 a 18, paj 47',
     titlePlaceholder_quiz: 'Egz. Kontwòl sou fonksyon yo',
+    fileLabel: 'Mete konsiy la (si ou vle)',
+    fileHint:
+      'Yon foto fèy la, oswa PDF la si ou genyen l deja. Tout klas la ap ka louvri l. 5 Mo maksimòm.',
+    filePhoto: 'Foto',
+    fileGallery: 'Galri',
+    fileDoc: 'Dokiman',
+    fileOpen: 'Louvri konsiy la',
     titleNeeded: 'Bay devwa a yon tit',
     instructionsLabel: 'Konsiy',
     instructionsPlaceholder: 'Sa elèv la dwe fè, ak kijan pou l remèt li.',

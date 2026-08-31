@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       assignments: {
         Row: {
+          attachment_path: string | null
           classroom_id: string
           created_at: string
           created_by: string
@@ -31,6 +32,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          attachment_path?: string | null
           classroom_id: string
           created_at?: string
           created_by: string
@@ -46,6 +48,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          attachment_path?: string | null
           classroom_id?: string
           created_at?: string
           created_by?: string
@@ -1145,6 +1148,7 @@ export type Database = {
         Args: { p_classroom_id: string }
         Returns: {
           a_corriger: number
+          attachment_path: string
           difficulty: string
           due_at: string
           id: string
@@ -1326,6 +1330,7 @@ export type Database = {
       my_assignments: {
         Args: never
         Returns: {
+          attachment_path: string
           classroom: string
           classroom_id: string
           difficulty: string
@@ -1442,6 +1447,7 @@ export type Database = {
       rotate_join_code: { Args: { p_classroom_id: string }; Returns: Json }
       save_assignment: {
         Args: {
+          p_attachment_path?: string
           p_classroom_id: string
           p_difficulty?: string
           p_due_at?: string

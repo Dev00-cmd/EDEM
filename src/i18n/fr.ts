@@ -324,6 +324,13 @@ export const fr = {
     titleLabel: 'Titre',
     titlePlaceholder_devoir: 'Ex. Exercices 12 à 18, page 47',
     titlePlaceholder_quiz: 'Ex. Contrôle sur les fonctions',
+    fileLabel: "Joindre l'énoncé (facultatif)",
+    fileHint:
+      "Une photo de la feuille, ou le PDF si tu l'as déjà. Toute la classe pourra l'ouvrir. 5 Mo maximum.",
+    filePhoto: 'Photo',
+    fileGallery: 'Galerie',
+    fileDoc: 'Document',
+    fileOpen: "Ouvrir l'énoncé",
     titleNeeded: 'Donne un titre au devoir',
     instructionsLabel: 'Consignes',
     instructionsPlaceholder: "Ce que l'élève doit faire, et comment le rendre.",

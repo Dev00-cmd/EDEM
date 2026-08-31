@@ -14,7 +14,9 @@
 // ═══════════════════════════════════════════════════════════════
 
 import React, { useCallback, useState } from 'react';
-import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  Image, Linking, Pressable, ScrollView, StyleSheet, Text, View,
+} from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Screen } from '@/components/Screen';
 import { Card } from '@/components/Card';
@@ -134,6 +136,14 @@ export default function UnDevoir() {
           <Card style={{ marginTop: 16 }}>
             <Text style={[type.body, { color: colors.text }]}>{mien.instructions}</Text>
           </Card>
+        ) : null}
+
+        {/* L'énoncé joint par le professeur. Comme partout ailleurs,
+            il ne se télécharge QU'AU CLIC : l'élève paie sa data à
+            l'unité, et une feuille d'exercices qu'il n'a pas
+            demandée est une gourde de moins pour rien. */}
+        {mien?.attachment_path ? (
+          <PieceJointe path={mien.attachment_path} />
         ) : null}
 
         {mien?.due_at ? (
@@ -433,7 +443,52 @@ function LigneRemise({
   );
 }
 
+/** L'énoncé du professeur : nom du fichier, puis ouverture au clic. */
+function PieceJointe({ path }: { path: string }) {
+  const { t } = useApp();
+  const { colors } = useTheme();
+  const [lien, setLien] = useState<string | null>(null);
+  const [chargement, setChargement] = useState(false);
+
+  const nom = path.split('/').pop() ?? '';
+  const estImage = /\.(jpe?g|png|webp|gif)$/i.test(nom);
+
+  const ouvrir = async () => {
+    if (lien) return Linking.openURL(lien).catch(() => {});
+    setChargement(true);
+    const url = await signedUrlFor(path);
+    setChargement(false);
+    if (!url) return;
+    setLien(url);
+    // Une image s'affiche dans l'écran ; un PDF part au lecteur du
+    // téléphone, qui sait le faire mieux qu'une WebView.
+    if (!estImage) Linking.openURL(url).catch(() => {});
+  };
+
+  return (
+    <Card style={{ marginTop: 12 }}>
+      <Pressable onPress={ouvrir} accessibilityRole="button" style={styles.pj}>
+        <Icon name={estImage ? 'image' : 'file'} size={16} color={colors.accent} />
+        <View style={{ flex: 1 }}>
+          <Text style={[type.captionMedium, { color: colors.text }]} numberOfLines={1}>
+            {t('assignment.fileOpen')}
+          </Text>
+          <Text style={[type.caption, { color: colors.textFaint }]} numberOfLines={1}>
+            {chargement ? t('common.loading') : nom}
+          </Text>
+        </View>
+        <Icon name="chevron-right" size={15} color={colors.textFaint} />
+      </Pressable>
+      {lien && estImage ? (
+        <Image source={{ uri: lien }} style={styles.pjImage} resizeMode="contain" />
+      ) : null}
+    </Card>
+  );
+}
+
 const styles = StyleSheet.create({
+  pj: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  pjImage: { width: '100%', height: 220, borderRadius: RADIUS.md, marginTop: 10 },
   scroll: { flexGrow: 1, paddingHorizontal: 22, paddingTop: 10 },
   header: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginTop: 6 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 10 },
