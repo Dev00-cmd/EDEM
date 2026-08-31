@@ -91,19 +91,31 @@ export async function joinClassroom(code: string): Promise<JoinResult> {
   return data as unknown as JoinResult;
 }
 
+/**
+ * Ouvre une classe.
+ *
+ * Le plafond dépend de la vérification du professeur : trois
+ * classes tant que personne ne l'a vérifié, dix ensuite. La
+ * fonction lève une exception dans ce cas, et on la traduit ici en
+ * code — sinon la phrase SQL, en anglais, arriverait telle quelle à
+ * l'écran.
+ */
 export async function createClassroom(input: {
   schoolId: string;
   name: string;
   subjectId: string;
   gradeLevel: string;
-}): Promise<{ ok: boolean; joinCode?: string }> {
+}): Promise<{ ok: boolean; joinCode?: string; error?: 'trop_de_classes' | 'echec' }> {
   const { data, error } = await supabase.rpc('create_classroom', {
     p_school_id: input.schoolId,
     p_name: input.name,
     p_subject_id: input.subjectId,
     p_grade_level: input.gradeLevel,
   });
-  if (error || !data) return { ok: false };
+  if (error || !data) {
+    const plafond = /trop de classes/i.test(error?.message ?? '');
+    return { ok: false, error: plafond ? 'trop_de_classes' : 'echec' };
+  }
   return { ok: true, joinCode: (data as { join_code: string }).join_code };
 }
 

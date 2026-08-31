@@ -173,18 +173,18 @@ export const fr = {
     intro:
       "Un compte professeur reste ton compte d'élève : tu gardes ton profil, tes XP et M. Thomas. Le rôle ajoute le droit d'ouvrir une classe.",
 
-    whyTitle: 'POURQUOI ON VÉRIFIE',
+    whyTitle: 'CE QUE TU DÉCLARES',
     whyBody:
-      "Une classe met un adulte en contact avec des élèves mineurs. On lit chaque demande à la main, et on rappelle avant d'accorder le rôle. Ça prend quelques jours.",
+      "Une classe met un adulte en contact avec des élèves mineurs. Ton nom et ton école sont montrés aux élèves qui rejoignent, chaque suppression et chaque exclusion est enregistrée, et le rôle peut être retiré. Rien de tout ça ne t'attend : tu ouvres ta classe tout de suite.",
 
     nameLabel: 'Ton nom complet',
     namePlaceholder: 'Prénom et nom',
     nameNeeded: 'Écris ton nom complet',
 
-    contactLabel: 'Comment te joindre pour vérifier',
+    contactLabel: 'Comment te joindre',
     contactPlaceholder: "Numéro professionnel, mail de l'école, ou un référent",
     contactWhy:
-      "C'est la seule coordonnée que l'application demande, et elle ne sert qu'à cette vérification. Elle n'est jamais montrée aux élèves.",
+      "C'est la seule coordonnée que l'application demande. Elle sert à te joindre s'il se passe quelque chose dans ta classe, et n'est jamais montrée aux élèves.",
     contactNeeded: 'Donne un moyen de te joindre',
 
     subjectsLabel: 'Les matières que tu enseignes',
@@ -197,19 +197,32 @@ export const fr = {
     messageLabel: 'Un mot pour nous (facultatif)',
     messagePlaceholder: 'Ta classe, ton niveau, ce que tu veux faire avec EDEM…',
 
-    send: 'Envoyer la demande',
-    failed: "La demande n'est pas partie. Réessaie plus tard.",
+    send: 'Devenir professeur',
 
-    pendingTitle: 'Demande envoyée',
-    pendingSub:
-      "Elle est lue par un humain, pas par un robot. On te recontacte au moyen que tu as donné. En attendant, tu continues à utiliser EDEM normalement.",
+    doneTitle: "C'est fait, tu es professeur",
+    doneSub:
+      "Tu peux ouvrir ta classe maintenant. Ton compte d'élève, lui, n'a pas changé : tu gardes ton profil, tes XP et M. Thomas.",
 
-    rejectedTitle: "Ta demande n'a pas été retenue",
-    rejectedSub: 'Tu peux la renvoyer avec des informations plus précises.',
+    capTitle: 'TROIS CLASSES POUR COMMENCER',
+    capBody:
+      "Tu peux ouvrir trois classes, sans limite d'élèves à l'intérieur. Si tu en enseignes davantage, écris-nous et on lève la limite.",
+
+    openClass: 'Ouvrir ma classe',
+
+    rejectedTitle: 'Ton rôle de professeur a été retiré',
+    rejectedSub:
+      "Tes classes ont été fermées et tu ne peux pas te déclarer à nouveau. Écris-nous si tu penses que c'est une erreur.",
 
     alreadyTitle: 'Tu es professeur',
     alreadySub:
       "Tu peux ouvrir une classe et y inviter tes élèves. Ton compte d'élève, lui, n'a pas changé.",
+
+    err_nom_requis: 'Écris ton nom complet.',
+    err_contact_requis: 'Donne un moyen de te joindre.',
+    err_matiere_requise: 'Choisis au moins une matière.',
+    err_role_retire: "Ton rôle a été retiré : tu ne peux pas te redéclarer.",
+    err_trop_de_demandes: "Trop de tentatives aujourd'hui. Réessaie demain.",
+    err_echec: "Ça n'a pas marché. Réessaie.",
 
     cta: 'Je suis professeur',
     ctaSub: 'Ouvrir une classe pour mes élèves',
@@ -243,8 +256,10 @@ export const fr = {
   },
 
   classroom: {
+    tooMany:
+      "Tu as atteint le nombre de classes que tu peux ouvrir. Archive une classe terminée, ou écris-nous pour lever la limite.",
     needRoleTitle: "Il faut être professeur",
-    needRoleBody: "Ouvrir une classe demande le rôle professeur, et il s'accorde à la main : une classe met un adulte en contact avec des élèves mineurs. Fais ta demande, on te rappelle avant de l'accorder.",
+    needRoleBody: "Ouvrir une classe demande le rôle professeur. Déclare qui tu es — nom, école, matières — et tu l'obtiens tout de suite. Ça prend une minute.",
     title: 'Classe',
     newTitle: 'Ouvrir une classe',
     nameLabel: 'Nom de la classe',

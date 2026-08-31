@@ -1,16 +1,21 @@
 // ═══════════════════════════════════════════════════════════════
 //  « JE SUIS PROFESSEUR »
 //
-//  L'écran est volontairement sobre et lent à remplir. Il ne
-//  promet rien d'immédiat : la demande est lue par un humain, et
-//  c'est écrit en toutes lettres.
+//  Quatre champs, et la classe s'ouvre dans la minute. Il n'y a
+//  plus de file d'attente : le rôle est accordé par la déclaration
+//  elle-même, pas par quelqu'un qui la lira un jour.
 //
-//  Ce n'est pas de la friction gratuite. Un rôle prof accordé à la
-//  légère, c'est un adulte malveillant seul avec une salle de
-//  mineurs. Le moyen de vérification est obligatoire pour cette
-//  raison, et pour elle seule — c'est la seule donnée de contact
-//  que l'application collecte, elle ne concerne qu'un adulte, et
-//  elle sert à l'appeler avant de lui confier une classe.
+//  Le moyen de joindre reste obligatoire, mais il a changé de
+//  raison d'être. Il ne sert plus à AUTORISER — il sert à
+//  RÉPONDRE : un adulte responsable d'une salle de mineurs doit
+//  pouvoir être joint s'il s'y passe quelque chose. C'est la seule
+//  donnée de contact de toute l'application, elle ne concerne qu'un
+//  adulte qui la donne lui-même, et elle n'est jamais montrée à un
+//  élève.
+//
+//  L'écran finit sur « Ouvrir ma classe », pas sur « on te
+//  recontacte ». C'est tout ce qui a changé, et c'est tout ce qui
+//  comptait.
 // ═══════════════════════════════════════════════════════════════
 
 import React, { useEffect, useState } from 'react';
@@ -28,13 +33,13 @@ import { useKeyboard } from '@/theme/useKeyboard';
 import { type } from '@/theme/typography';
 import { SUBJECTS } from '@/data/subjects';
 import {
+  declareTeacherRole,
   fetchTeacherRequest,
-  requestTeacherRole,
   type TeacherRequest,
 } from '@/lib/teacher';
 
 export default function TeacherRequestScreen() {
-  const { t, profile } = useApp();
+  const { t, profile, refresh } = useApp();
   const { colors } = useTheme();
   const keyboard = useKeyboard();
   const router = useRouter();
@@ -82,7 +87,7 @@ export default function TeacherRequestScreen() {
 
     setError('');
     setSending(true);
-    const { ok } = await requestTeacherRole({
+    const r = await declareTeacherRole({
       fullName,
       contact,
       subjects,
@@ -90,12 +95,24 @@ export default function TeacherRequestScreen() {
       message,
     });
     setSending(false);
-    if (!ok) return setError(t('teacher.failed'));
+    if (!r.ok) return setError(t(`teacher.err_${r.error ?? 'echec'}`));
+
+    // Le rôle vient d'être accordé côté serveur. On relit le profil
+    // plutôt que de le supposer : c'est lui qui commande l'accès à
+    // la création de classe, et le supposer serait le seul endroit
+    // de l'app où l'écran devancerait la base.
+    await refresh();
     setSent(true);
   };
 
-  // ── Déjà professeur ─────────────────────────────────────────
-  if (profile.role === 'prof') {
+  // ── C'est fait : professeur, tout de suite ──────────────────
+  //
+  // Un seul écran pour « tu viens de te déclarer » et « tu l'étais
+  // déjà » : dans les deux cas la seule chose à faire ensuite est
+  // d'ouvrir une classe, et c'est le bouton qu'on met sous le
+  // pouce. Un écran de félicitations sans porte de sortie est un
+  // cul-de-sac.
+  if (sent || profile.role === 'prof') {
     return (
       <Screen>
         <Header onBack={() => router.back()} title={t('teacher.title')} />
@@ -103,37 +120,39 @@ export default function TeacherRequestScreen() {
           <View style={styles.row8}>
             <Icon name="check-circle" size={18} color={colors.accent} />
             <Text style={[type.cardTitle, { color: colors.text, flex: 1 }]}>
-              {t('teacher.alreadyTitle')}
+              {sent ? t('teacher.doneTitle') : t('teacher.alreadyTitle')}
             </Text>
           </View>
           <Text style={[type.caption, { color: colors.textSoft, marginTop: 10 }]}>
-            {t('teacher.alreadySub')}
+            {sent ? t('teacher.doneSub') : t('teacher.alreadySub')}
           </Text>
         </Card>
-      </Screen>
-    );
-  }
 
-  // ── Demande envoyée ─────────────────────────────────────────
-  if (sent || (existing?.status === 'pending' && !error)) {
-    return (
-      <Screen>
-        <Header onBack={() => router.back()} title={t('teacher.title')} />
-        <Card style={{ marginTop: 20 }}>
+        {/* Le plafond, dit avant de le heurter. Trois classes
+            suffisent à un vrai professeur ; il doit quand même
+            savoir qu'il existe et pourquoi. */}
+        <Card style={{ marginTop: 12 }}>
           <View style={styles.row8}>
-            <Icon name="clock" size={18} color={colors.sky} />
-            <Text style={[type.cardTitle, { color: colors.text, flex: 1 }]}>
-              {t('teacher.pendingTitle')}
+            <Icon name="info" size={13} color={colors.textFaint} />
+            <Text style={[type.eyebrow, { color: colors.textFaint }]}>
+              {t('teacher.capTitle')}
             </Text>
           </View>
-          <Text style={[type.caption, { color: colors.textSoft, marginTop: 10 }]}>
-            {t('teacher.pendingSub')}
+          <Text style={[type.caption, { color: colors.textSoft, marginTop: 8 }]}>
+            {t('teacher.capBody')}
           </Text>
         </Card>
+
+        <Button
+          label={t('teacher.openClass')}
+          style={{ marginTop: 20 }}
+          onPress={() => router.replace('/classroom/new')}
+          full
+        />
         <Button
           label={t('common.back')}
           variant="ghost"
-          style={{ marginTop: 20 }}
+          style={{ marginTop: 8 }}
           onPress={() => router.back()}
         />
       </Screen>
@@ -153,7 +172,10 @@ export default function TeacherRequestScreen() {
           {t('teacher.intro')}
         </Text>
 
-        {/* Pourquoi c'est long, dit avant qu'on le subisse. */}
+        {/* Ce que la déclaration engage. Plus « pourquoi on te
+            fait attendre » — on ne fait plus attendre — mais
+            « ce à quoi tu t'engages en ouvrant une salle de
+            mineurs ». C'est plus court, et c'est plus vrai. */}
         <Card style={{ marginTop: 18 }}>
           <View style={styles.row8}>
             <Icon name="shield" size={13} color={colors.accent} />
@@ -166,6 +188,10 @@ export default function TeacherRequestScreen() {
           </Text>
         </Card>
 
+        {/* Rôle retiré : la déclaration ne se rejoue pas, sinon la
+            révocation ne servirait à rien. Le serveur refuse ; on
+            le dit ici plutôt que de laisser remplir le formulaire
+            pour rien. */}
         {existing?.status === 'rejected' && (
           <Card accent={colors.danger} style={{ marginTop: 16 }}>
             <Text style={[type.captionMedium, { color: colors.text }]}>

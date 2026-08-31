@@ -1247,6 +1247,16 @@ export type Database = {
         }
         Returns: Json
       }
+      declare_teacher_role: {
+        Args: {
+          p_contact: string
+          p_full_name: string
+          p_message?: string
+          p_school_id?: string
+          p_subjects?: string[]
+        }
+        Returns: Json
+      }
       delete_assignment: { Args: { p_assignment_id: string }; Returns: Json }
       delete_classroom_message: {
         Args: { p_message_id: string }
@@ -1299,7 +1309,7 @@ export type Database = {
         }[]
       }
       moderation_next_batch: {
-        Args: { p_limit?: number }
+        Args: { p_classroom_id?: string; p_limit?: number }
         Returns: {
           lang: string
           message_id: string
@@ -1363,6 +1373,7 @@ export type Database = {
           xp: number
         }[]
       }
+      my_teacher_status: { Args: never; Returns: Json }
       norm_moderation: { Args: { p_text: string }; Returns: string }
       norm_text: { Args: { p_text: string }; Returns: string }
       post_classroom_message: {
@@ -1414,16 +1425,6 @@ export type Database = {
           p_reason: string
           p_target_id: string
           p_target_type: string
-        }
-        Returns: Json
-      }
-      request_teacher_role: {
-        Args: {
-          p_contact: string
-          p_full_name: string
-          p_message?: string
-          p_school_id?: string
-          p_subjects?: string[]
         }
         Returns: Json
       }
@@ -1523,6 +1524,21 @@ export type Database = {
           statut: string
           user_id: string
           xp: number
+        }[]
+      }
+      teachers_to_review: {
+        Args: never
+        Returns: {
+          classes: number
+          commune: string
+          contact: string
+          declare_le: string
+          ecole: string
+          eleves: number
+          full_name: string
+          message: string
+          subjects: string[]
+          user_id: string
         }[]
       }
       touch_activity: {

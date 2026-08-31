@@ -173,18 +173,18 @@ export const ht: Messages = {
     intro:
       'Yon kont pwofesè rete kont elèv ou : ou kenbe pwofil ou, XP ou ak M. Thomas. Wòl la ajoute dwa pou louvri yon klas.',
 
-    whyTitle: 'POUKISA NOU VERIFYE',
+    whyTitle: 'SA W AP DEKLARE',
     whyBody:
-      'Yon klas mete yon granmoun an kontak ak elèv ki minè. Nou li chak demann ak men nou, epi nou rele anvan nou bay wòl la. Sa pran kèk jou.',
+      'Yon klas mete yon granmoun an kontak ak elèv ki minè. Elèv ki antre yo wè non ou ak lekòl ou, chak mesaj ou efase ak chak moun ou retire anrejistre, epi wòl la ka retire. Anyen nan sa a pa fè w tann : ou louvri klas ou touswit.',
 
     nameLabel: 'Non konplè ou',
     namePlaceholder: 'Prenon ak siyati',
     nameNeeded: 'Ekri non konplè ou',
 
-    contactLabel: 'Kijan pou nou jwenn ou pou verifye',
+    contactLabel: 'Kijan pou nou jwenn ou',
     contactPlaceholder: 'Nimewo pwofesyonèl, imèl lekòl la, oswa yon referan',
     contactWhy:
-      'Se sèl kowòdone aplikasyon an mande, epi li sèvi sèlman pou verifikasyon sa a. Elèv yo pa janm wè l.',
+      'Se sèl kowòdone aplikasyon an mande. Li sèvi pou nou jwenn ou si gen yon bagay ki pase nan klas ou, epi elèv yo pa janm wè l.',
     contactNeeded: 'Bay yon fason pou nou jwenn ou',
 
     subjectsLabel: 'Matyè ou anseye',
@@ -197,19 +197,32 @@ export const ht: Messages = {
     messageLabel: 'Yon mo pou nou (si ou vle)',
     messagePlaceholder: 'Klas ou, nivo a, sa ou vle fè ak EDEM…',
 
-    send: 'Voye demann lan',
-    failed: 'Demann lan pa pati. Eseye pita.',
+    send: 'Vin yon pwofesè',
 
-    pendingTitle: 'Demann voye',
-    pendingSub:
-      'Se yon moun ki li l, pa yon robo. N ap kontakte ou nan fason ou te bay la. Pandan tan an, ou kontinye sèvi ak EDEM nòmalman.',
+    doneTitle: 'Sa fèt, ou se yon pwofesè',
+    doneSub:
+      'Ou ka louvri klas ou kounye a. Kont elèv ou a pa chanje : ou kenbe pwofil ou, XP ou ak M. Thomas.',
 
-    rejectedTitle: 'Nou pa t kenbe demann ou',
-    rejectedSub: 'Ou ka voye l ankò ak enfòmasyon pi klè.',
+    capTitle: 'TWA KLAS POU KÒMANSE',
+    capBody:
+      'Ou ka louvri twa klas, san limit sou kantite elèv anndan. Si ou anseye plis pase sa, ekri nou epi n ap leve limit la.',
+
+    openClass: 'Louvri klas mwen',
+
+    rejectedTitle: 'Yo retire wòl pwofesè ou a',
+    rejectedSub:
+      'Klas ou yo fèmen epi ou pa ka deklare ou ankò. Ekri nou si ou panse se yon erè.',
 
     alreadyTitle: 'Ou se yon pwofesè',
     alreadySub:
       'Ou ka louvri yon klas epi envite elèv ou yo. Kont elèv ou a pa chanje.',
+
+    err_nom_requis: 'Ekri non konplè ou.',
+    err_contact_requis: 'Bay yon fason pou nou jwenn ou.',
+    err_matiere_requise: 'Chwazi omwen yon matyè.',
+    err_role_retire: 'Yo retire wòl ou : ou pa ka deklare ou ankò.',
+    err_trop_de_demandes: 'Twòp eseye jodi a. Eseye demen.',
+    err_echec: 'Sa pa mache. Eseye ankò.',
 
     cta: 'Mwen se yon pwofesè',
     ctaSub: 'Louvri yon klas pou elèv mwen yo',
@@ -243,8 +256,10 @@ export const ht: Messages = {
   },
 
   classroom: {
+    tooMany:
+      'Ou rive nan kantite klas ou ka louvri a. Achive yon klas ki fini, oswa ekri nou pou nou leve limit la.',
     needRoleTitle: "Fòk ou se yon pwofesè",
-    needRoleBody: "Pou louvri yon klas ou bezwen wòl pwofesè a, epi li bay ak men : yon klas mete yon granmoun an kontak ak elèv ki minè. Fè demann ou, n ap rele ou anvan nou bay li.",
+    needRoleBody: "Pou louvri yon klas ou bezwen wòl pwofesè a. Deklare kiyès ou ye — non, lekòl, matyè — epi ou jwenn li touswit. Sa pran yon minit.",
     title: 'Klas',
     newTitle: 'Louvri yon klas',
     nameLabel: 'Non klas la',

@@ -56,7 +56,13 @@ export default function NouvelleClasse() {
       gradeLevel: niveau,
     });
     setEnvoi(false);
-    if (!r.ok) return setErreur(t('classroom.failed'));
+    if (!r.ok) {
+      return setErreur(
+        r.error === 'trop_de_classes'
+          ? t('classroom.tooMany')
+          : t('classroom.failed'),
+      );
+    }
     setCode(r.joinCode ?? '');
   };
 
