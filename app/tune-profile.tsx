@@ -38,7 +38,10 @@ import { useKeyboard } from '@/theme/useKeyboard';
 import { RADIUS } from '@/theme/colors';
 import { type } from '@/theme/typography';
 import { SUBJECTS } from '@/data/subjects';
-import { DEPARTEMENTS, communesOf, communeById, departementOf } from '@/data/haiti';
+import {
+  DEPARTEMENTS, SCHOOL_SECTIONS, communesOf, communeById, departementOf,
+  levelNeedsSection,
+} from '@/data/haiti';
 import { searchSchools, proposeSchool, MIN_QUERY, PAGE_SCHOOLS, type School } from '@/lib/schools';
 
 const GOALS: { id: string; icon: IconName }[] = [
@@ -484,6 +487,34 @@ export default function TuneProfile() {
                   tint={colors.danger}
                   selected={profile.weakSubjects.includes(s.id)}
                   onPress={() => toggleWeak(s.id)}
+                />
+              ))}
+            </View>
+          </Question>
+        )}
+
+        {/* ══ Série ═════════════════════════════════════════
+            Elle n'était demandée qu'à l'inscription. Un élève
+            inscrit avant que le champ existe restait donc bloqué à
+            89 % — huit champs sur neuf — sans qu'aucun écran ne lui
+            dise ce qui manquait ni où le remplir.
+
+            Elle n'apparaît qu'au NS3 et au NS4 : plus bas, la série
+            n'existe pas, et un champ qui ne s'applique pas ne
+            compte ni au numérateur ni au dénominateur. */}
+        {levelNeedsSection(profile.level) && (
+          <Question title={t('tune.sectionTitle')} why={t('tune.sectionWhy')}>
+            <View style={styles.chips}>
+              {SCHOOL_SECTIONS.map((sec) => (
+                <Chip
+                  key={sec.id}
+                  label={lang === 'ht' ? sec.labelHt : sec.labelFr}
+                  selected={profile.section === sec.id}
+                  onPress={() =>
+                    updateProfile({
+                      section: profile.section === sec.id ? null : sec.id,
+                    })
+                  }
                 />
               ))}
             </View>

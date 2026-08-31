@@ -142,6 +142,10 @@ export const fr = {
     weakWhy:
       "M. Thomas y revient plus souvent et t'y propose plus de quiz. 5 au maximum.",
 
+    sectionTitle: 'Quelle est ta série ?',
+    sectionWhy:
+      "Tu l'as choisie en entrant en NS3. Elle décide de ce que M. Thomas révise avec toi.",
+
     goalTitle: 'Quel est ton objectif ?',
     goalWhy: "Change le ton de M. Thomas et l'ordre de ton parcours.",
 
@@ -165,6 +169,17 @@ export const fr = {
     cardTitle: 'Profil complété à {pct} %',
     cardSub: 'Complète-le pour que M. Thomas travaille sur ce qu\'il te faut.',
     cardDone: 'Profil complet. M. Thomas te connaît.',
+    cardMissing: 'Il te manque : {champs}.',
+    champ_name: 'ton prénom',
+    champ_level: 'ta classe',
+    champ_section: 'ta série',
+    champ_favorites: 'tes matières',
+    champ_weak_subjects: 'tes matières difficiles',
+    champ_goal: 'ton objectif',
+    champ_exam_year: "l'année de ton examen",
+    champ_study_minutes: 'ton temps d’étude',
+    champ_school_id: 'ton école',
+    champ_commune_id: 'ta commune',
     cardOpen: 'Continuer',
   },
 
@@ -693,6 +708,7 @@ export const fr = {
     light: 'Clair',
     dark: 'Sombre',
     system: 'Auto',
+    yourSection: 'TA SÉRIE',
     yourClass: 'Ta classe',
     yourGoal: 'Ton objectif',
     yourSubjects: 'Tes matières',

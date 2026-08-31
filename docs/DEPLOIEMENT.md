@@ -196,6 +196,7 @@ npx eas-cli submit --platform android     # soumission automatique
 - [ ] Le professeur voit sa pile de modération, et « laisser » remet le message en ligne
 - [ ] `node scripts/test_prof_autonome.mjs` passe intégralement
 - [ ] `node scripts/test_pieces_jointes.mjs` passe intégralement
+- [ ] `node scripts/test_completion.mjs` passe intégralement
 - [ ] Protection contre les mots de passe compromis activée dans Auth
 - [ ] Décision prise sur `auto_confirm_email` : un compte non vérifié peut demander à rejoindre une classe d'enfants
 - [ ] Keystore sauvegardé à **deux** endroits (§5)

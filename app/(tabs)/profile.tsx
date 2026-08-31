@@ -14,6 +14,7 @@ import { useAuth } from '@/store/AuthContext';
 import { useTheme } from '@/theme/ThemeContext';
 import { RADIUS } from '@/theme/colors';
 import { FONTS, type } from '@/theme/typography';
+import { SCHOOL_SECTIONS, levelNeedsSection } from '@/data/haiti';
 import { LEVELS } from '@/data/levels';
 import { SUBJECTS } from '@/data/subjects';
 import { APP_NAME, APP_TAGLINE_FR, APP_TAGLINE_HT, APP_VERSION } from '@/config/app';
@@ -277,6 +278,22 @@ export default function ProfileScreen() {
                 <Text style={[type.caption, { color: colors.textFaint, marginTop: 6 }]}>
                   {t('tune.cardSub')}
                 </Text>
+
+                {/* CE QUI MANQUE, NOMMÉ. Le pourcentage seul laisse
+                    chercher : quelqu'un bloqué à 89 % a cru que son
+                    école ne s'enregistrait pas, alors qu'il lui
+                    manquait la série. Un compteur qui ne dit pas ce
+                    qu'il attend envoie chercher au mauvais endroit. */}
+                {completion.missing.length > 0 && (
+                  <Text style={[type.caption, { color: colors.textSoft, marginTop: 6 }]}>
+                    {t('tune.cardMissing', {
+                      champs: completion.missing
+                        .map((c) => t(`tune.champ_${c}`))
+                        .join(', '),
+                    })}
+                  </Text>
+                )}
+
                 <View style={{ marginTop: 12 }}>
                   <ProgressBar value={completion.pct / 100} />
                 </View>
@@ -398,11 +415,46 @@ export default function ProfileScreen() {
               key={lv}
               label={lv}
               selected={profile.level === lv}
-              onPress={() => updateProfile({ level: lv })}
+              onPress={() =>
+                updateProfile({
+                  level: lv,
+                  // Une série qui ne s'applique plus au nouveau
+                  // niveau ne doit pas rester accrochée au profil.
+                  section: levelNeedsSection(lv) ? profile.section : null,
+                })
+              }
             />
           ))}
         </View>
       </Section>
+
+      {/* ── Série ───────────────────────────────────────────────
+          Elle n'était demandée qu'à l'inscription. Résultat : un
+          élève inscrit avant que le champ existe, ou qui change de
+          classe pour le NS3/NS4 depuis cet écran, ne pouvait plus
+          jamais la renseigner — et sa complétion plafonnait à 89 %
+          sans qu'aucun écran ne lui dise pourquoi.
+
+          Elle vit ici, juste sous la classe, parce que c'est ici que
+          la classe change. */}
+      {levelNeedsSection(profile.level) && (
+        <Section label={t('profile.yourSection')}>
+          <View style={styles.chipsWrap}>
+            {SCHOOL_SECTIONS.map((sec) => (
+              <Chip
+                key={sec.id}
+                label={lang === 'ht' ? sec.labelHt : sec.labelFr}
+                selected={profile.section === sec.id}
+                onPress={() =>
+                  updateProfile({
+                    section: profile.section === sec.id ? null : sec.id,
+                  })
+                }
+              />
+            ))}
+          </View>
+        </Section>
+      )}
 
       {/* ── Objectif ────────────────────────────────────────── */}
       <Section label={t('profile.yourGoal')}>

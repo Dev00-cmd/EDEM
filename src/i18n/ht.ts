@@ -142,6 +142,10 @@ export const ht: Messages = {
     weakWhy:
       'M. Thomas ap tounen sou yo pi souvan epi ba ou plis kwiz. 5 omaksimòm.',
 
+    sectionTitle: 'Ki seri ou ?',
+    sectionWhy:
+      'Ou te chwazi l lè ou t ap antre nan NS3. Se li ki deside sa M. Thomas revize ak ou.',
+
     goalTitle: 'Ki objektif ou ?',
     goalWhy: 'Li chanje jan M. Thomas pale ak lòd chemen ou.',
 
@@ -165,6 +169,17 @@ export const ht: Messages = {
     cardTitle: 'Pwofil konplete a {pct} %',
     cardSub: 'Konplete l pou M. Thomas travay sou sa ou bezwen.',
     cardDone: 'Pwofil konplè. M. Thomas konnen ou.',
+    cardMissing: 'Ou manke : {champs}.',
+    champ_name: 'non ou',
+    champ_level: 'klas ou',
+    champ_section: 'seri ou',
+    champ_favorites: 'matyè ou yo',
+    champ_weak_subjects: 'matyè ki difisil pou ou',
+    champ_goal: 'objektif ou',
+    champ_exam_year: 'ane egzamen ou',
+    champ_study_minutes: 'tan etid ou',
+    champ_school_id: 'lekòl ou',
+    champ_commune_id: 'komin ou',
     cardOpen: 'Kontinye',
   },
 
@@ -688,6 +703,7 @@ export const ht: Messages = {
     light: 'Kle',
     dark: 'Fonse',
     system: 'Oto',
+    yourSection: 'SERI OU',
     yourClass: 'Klas ou',
     yourGoal: 'Objektif ou',
     yourSubjects: 'Matyè w yo',
