@@ -180,7 +180,8 @@ EDEM/
 │       ├── suivi.tsx           📊 OÙ EN EST SA CLASSE, notion par notion
 │       ├── devoirs.tsx         📚 Toutes classes, file de correction
 │       ├── tuteur.tsx          ✦ M. Thomas (le même écran que l'élève)
-│       └── compte.tsx          👤 Profil (le même) + bascule « voir comme élève »
+│       └── compte.tsx          👤 SON profil : salles, élèves, sa déclaration
+│                                  (ni XP, ni classe, ni classement)
 │
 ├── src/
 │   ├── ai/

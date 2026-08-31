@@ -213,6 +213,19 @@ export const fr = {
     vueRevenirSub: 'Tes classes, ton suivi et tes devoirs.',
   },
 
+  compte: {
+    badge: 'Professeur',
+    salles: 'Salles',
+    eleves: 'Élèves',
+    aCorriger: 'À corriger',
+    declaration: 'MA DÉCLARATION',
+    ecoles: 'Établissements',
+    aucuneEcole: 'Aucun pour l’instant',
+    nEcoles: '{n} établissement(s)',
+    contactPrive:
+      "Ton nom et ton école sont visibles des élèves qui rejoignent tes salles. Ton moyen de joindre, jamais.",
+  },
+
   suivi: {
     eyebrow: 'SUIVI',
     title: 'Où en est ta classe',

@@ -213,6 +213,19 @@ export const ht: Messages = {
     vueRevenirSub: 'Klas ou yo, swivi ou ak devwa ou yo.',
   },
 
+  compte: {
+    badge: 'Pwofesè',
+    salles: 'Sal',
+    eleves: 'Elèv',
+    aCorriger: 'Pou korije',
+    declaration: 'DEKLARASYON MWEN',
+    ecoles: 'Lekòl',
+    aucuneEcole: 'Poko genyen',
+    nEcoles: '{n} lekòl',
+    contactPrive:
+      'Elèv ki antre nan sal ou yo wè non ou ak lekòl ou. Fason pou jwenn ou an, jamè.',
+  },
+
   suivi: {
     eyebrow: 'SWIVI',
     title: 'Kote klas ou rive',
