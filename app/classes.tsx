@@ -36,13 +36,17 @@ import { getSubject } from '@/data/subjects';
 import { fetchClassrooms, joinClassroom, type Classroom } from '@/lib/classrooms';
 
 export default function ClassesScreen() {
-  const { t, profile } = useApp();
+  const { t, profile, vueEleve } = useApp();
   const { colors } = useTheme();
   const keyboard = useKeyboard();
   const router = useRouter();
 
   const lang = profile.lang;
-  const prof = profile.role === 'prof';
+  // « Vue élève » veut dire AGIR comme un élève : un professeur qui
+  // regarde de ce côté n'ouvre pas de salle. Ses classes restent
+  // visibles — ce sont les siennes, c'est de la donnée, pas une
+  // action.
+  const prof = profile.role === 'prof' && !vueEleve;
   const [classes, setClasses] = useState<Classroom[]>([]);
   const [chargement, setChargement] = useState(true);
   const [code, setCode] = useState('');

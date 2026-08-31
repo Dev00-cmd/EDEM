@@ -376,8 +376,12 @@ export default function ProfileScreen() {
           classe, et il n'y entre que par le code de son professeur.
 
           Pour un professeur, la carte reste : elle confirme son
-          statut et mène à sa déclaration. */}
-      {profile.role === 'prof' && (
+          statut et mène à sa déclaration — SAUF s'il regarde en
+          « vue élève ». Une vue élève qui laisse traîner les cartes
+          du professeur ne montre pas ce que voit un élève, et c'est
+          pourtant la seule chose qu'on lui demande. Le bouton de
+          bascule, lui, reste : c'est le chemin du retour. */}
+      {profile.role === 'prof' && !vueEleve && (
         <Section label={t('teacher.title')}>
           <Card onPress={() => router.push('/teacher-request')}>
             <View style={styles.settingLeft}>
