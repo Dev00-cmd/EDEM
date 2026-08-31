@@ -10,13 +10,14 @@
 //  rattachée à la mauvaise école fausserait tout le reste.
 // ═══════════════════════════════════════════════════════════════
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Screen } from '@/components/Screen';
 import { Card } from '@/components/Card';
 import { Button } from '@/components/Button';
 import { Chip } from '@/components/Chip';
+import { SchoolPicker } from '@/components/SchoolPicker';
 import { Input } from '@/components/Input';
 import { Icon } from '@/components/Icon';
 import { useApp } from '@/store/AppContext';
@@ -26,6 +27,7 @@ import { type } from '@/theme/typography';
 import { SUBJECTS } from '@/data/subjects';
 import { SCHOOL_LEVELS } from '@/data/haiti';
 import { createClassroom } from '@/lib/classrooms';
+import { lastSchool, rememberSchool, type School } from '@/lib/schools';
 
 export default function NouvelleClasse() {
   const { t, profile } = useApp();
@@ -41,8 +43,20 @@ export default function NouvelleClasse() {
   const [erreur, setErreur] = useState('');
   const [code, setCode] = useState('');
 
+  // L'école appartient à la SALLE, pas au professeur : beaucoup
+  // enseignent dans deux ou trois établissements. La dernière
+  // utilisée revient par défaut — celui qui n'en a qu'une ne la
+  // rechoisit jamais.
+  const [ecole, setEcole] = useState<School | null>(null);
+
+  useEffect(() => {
+    lastSchool().then((e) => {
+      if (e) setEcole(e);
+    });
+  }, []);
+
   const creer = async () => {
-    if (!profile.schoolId) return setErreur(t('classroom.schoolNeeded'));
+    if (!ecole) return setErreur(t('classroom.schoolNeeded'));
     if (nom.trim().length < 2) return setErreur(t('classroom.nameNeeded'));
     if (!matiere) return setErreur(t('classroom.subjectNeeded'));
     if (!niveau) return setErreur(t('classroom.levelNeeded'));
@@ -50,12 +64,14 @@ export default function NouvelleClasse() {
     setErreur('');
     setEnvoi(true);
     const r = await createClassroom({
-      schoolId: profile.schoolId,
+      schoolId: ecole.id,
       name: nom,
       subjectId: matiere,
       gradeLevel: niveau,
     });
     setEnvoi(false);
+    // Retenue pour la prochaine salle, sur cet appareil seulement.
+    rememberSchool(ecole);
     if (!r.ok) {
       return setErreur(
         r.error === 'trop_de_classes'
@@ -155,20 +171,28 @@ export default function NouvelleClasse() {
           <Text style={[type.title, { color: colors.text }]}>{t('classroom.newTitle')}</Text>
         </View>
 
-        {!profile.schoolId && (
-          <Card accent={colors.warning} style={{ marginTop: 16 }}>
-            <Text style={[type.caption, { color: colors.textSoft }]}>
-              {t('classroom.schoolMissing')}
-            </Text>
-            <Button
-              label={t('classroom.chooseSchool')}
-              variant="ghost"
-              size="sm"
-              style={{ marginTop: 8 }}
-              onPress={() => router.push('/tune-profile')}
-            />
-          </Card>
-        )}
+        {/* ── L'école de CETTE salle ────────────────────────
+            L'écran renvoyait vers « Personnalise ton tuteur » —
+            un formulaire d'élève qui demande la série et l'année
+            d'examen d'État. Un professeur n'a rien à y répondre.
+
+            Et l'école n'est pas une propriété du professeur : en
+            Haïti on complète souvent un poste au lycée public par
+            des heures dans le privé. Elle se choisit donc ici, pour
+            chaque salle. */}
+        <View style={styles.field}>
+          <Text style={[type.captionMedium, { color: colors.textSoft }]}>
+            {t('classroom.schoolLabel')}
+          </Text>
+          <Text style={[type.caption, { color: colors.textFaint, marginTop: 4 }]}>
+            {t('classroom.schoolHint')}
+          </Text>
+          <SchoolPicker
+            value={ecole}
+            onPick={setEcole}
+            communeId={profile.communeId}
+          />
+        </View>
 
         <View style={styles.field}>
           <Input

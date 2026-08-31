@@ -199,6 +199,8 @@ npx eas-cli submit --platform android     # soumission automatique
 - [ ] `node scripts/test_completion.mjs` passe intégralement
 - [ ] Un compte **professeur** ouvre bien sur ses salles, un compte **élève** sur son accueil
 - [ ] L'app s'ouvre sans « Unmatched Route » — `npm run check` vérifie les collisions de routes
+- [ ] Si `tsc` se plaint d'une route qui existe (`/prof`…), régénère les types :
+      `npx expo start` une fois, puis Ctrl-C. `.expo/types/router.d.ts` est généré et se périme.
 - [ ] La bascule « voir comme élève » va et revient sans redémarrer l'app
 - [ ] Protection contre les mots de passe compromis activée dans Auth
 - [ ] Décision prise sur `auto_confirm_email` : un compte non vérifié peut demander à rejoindre une classe d'enfants

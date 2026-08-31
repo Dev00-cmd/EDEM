@@ -343,6 +343,9 @@ export const fr = {
     needRoleBody: "Ouvrir une classe est réservé aux professeurs. Le choix se fait à l'inscription. Toi, tu entres dans une classe avec le code que ton professeur te donne.",
     title: 'Classe',
     newTitle: 'Ouvrir une classe',
+    schoolLabel: "L'école de cette salle",
+    schoolHint:
+      "Tu enseignes dans plusieurs établissements ? Chaque salle a la sienne. La dernière choisie revient toute seule.",
     nameLabel: 'Nom de la classe',
     namePlaceholder: 'Ex. NS3 A — Mathématiques',
     nameNeeded: 'Donne un nom à ta classe',

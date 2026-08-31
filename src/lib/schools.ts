@@ -7,6 +7,7 @@
 //  une liste qui ne change jamais n'a pas à être téléchargée.
 // ═══════════════════════════════════════════════════════════════
 
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from './supabase';
 
 export interface School {
@@ -90,4 +91,33 @@ export async function proposeSchool(
   });
   if (error) return { school: null, error: error.message };
   return { school: data as unknown as School, error: null };
+}
+
+
+// ─── La dernière école utilisée, par appareil ────────────────
+//
+// Un professeur qui n'enseigne que dans un établissement ne doit
+// pas le rechercher à chaque salle. Celui qui en a trois change
+// quand il veut : c'est une valeur de départ, pas un réglage.
+//
+// Locale à l'appareil, comme le reste des préférences d'affichage.
+// L'école qui compte vraiment est celle enregistrée SUR LA SALLE,
+// en base, par `create_classroom`.
+const CLE_ECOLE = '@tipwof/derniere-ecole';
+
+export async function rememberSchool(school: School): Promise<void> {
+  try {
+    await AsyncStorage.setItem(CLE_ECOLE, JSON.stringify(school));
+  } catch {
+    // Une préférence de confort : son échec ne casse rien.
+  }
+}
+
+export async function lastSchool(): Promise<School | null> {
+  try {
+    const brut = await AsyncStorage.getItem(CLE_ECOLE);
+    return brut ? (JSON.parse(brut) as School) : null;
+  } catch {
+    return null;
+  }
 }

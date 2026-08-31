@@ -343,6 +343,9 @@ export const ht: Messages = {
     needRoleBody: "Se pwofesè sèlman ki ka louvri yon klas. Chwa a fèt lè ou enskri. Ou menm, ou antre nan yon klas ak kòd pwofesè ou ba ou.",
     title: 'Klas',
     newTitle: 'Louvri yon klas',
+    schoolLabel: 'Lekòl sal sa a',
+    schoolHint:
+      'Ou anseye nan plizyè lekòl ? Chak sal gen pa l. Dènye a ou te chwazi a tounen pou kont li.',
     nameLabel: 'Non klas la',
     namePlaceholder: 'Egz. NS3 A — Matematik',
     nameNeeded: 'Bay klas ou a yon non',

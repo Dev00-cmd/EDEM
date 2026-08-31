@@ -92,11 +92,16 @@ try {
   });
   ok(c.s === 200 && !!c.b?.join_code, 'classe ouverte, code rendu', c.b?.join_code);
 
-  console.log('\nUN CODE UNIQUE PAR SALLE, ET L APP LE RECOIT');
+  // Deux ecoles differentes : en Haiti un professeur complete
+  // souvent un poste au lycee public par des heures dans le prive.
+  // L ecole appartient donc a la SALLE, pas au professeur.
+  const autre = (await sql(
+    `select id from public.schools where id <> '${ecole}' limit 1`))[0]?.id;
+
   const codes = [c.b.join_code];
-  for (const n of ['B', 'C', 'D', 'E']) {
+  for (const [n, ou] of [['B', ecole], ['C', ecole], ['D', autre], ['E', autre]]) {
     const r = await prof.rpc('create_classroom', {
-      p_school_id: ecole, p_name: `NS3 ${n}`, p_subject_id: 'math', p_grade_level: niveau,
+      p_school_id: ou, p_name: `NS3 ${n}`, p_subject_id: 'math', p_grade_level: niveau,
     });
     codes.push(r.b?.join_code);
   }
@@ -110,6 +115,16 @@ try {
   const rendus = (liste.b ?? []).map((x) => x.join_code).filter(Boolean);
   ok(rendus.length === 5, 'my_classrooms rend un code par salle', `${rendus.length}`);
   ok(codes.every((x) => rendus.includes(x)), 'ce sont exactement les memes');
+
+  // Chaque salle porte SON ecole — et celle du profil reste vide,
+  // parce qu'elle n'a jamais eu de raison d'etre remplie.
+  const vueP = await prof.rpc('teacher_overview');
+  const ecoles = new Set((vueP.b ?? []).map((x) => x.school));
+  ok(ecoles.size === 2, 'les salles se repartissent sur DEUX ecoles',
+     `${ecoles.size} ecoles distinctes`);
+  const profil = await prof.get(`profiles?id=eq.${prof.uid}&select=school_id`);
+  ok(profil.b?.[0]?.school_id === null,
+     "sans que l ecole du PROFIL soit jamais renseignee");
 
   console.log('\nPLUS RIEN A RELIRE, PLUS RIEN A APPROUVER');
   const file = await sql('select public.teachers_to_review()');
