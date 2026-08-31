@@ -62,7 +62,9 @@ export default function FilDeClasse() {
 
   const [classe, setClasse] = useState<Classroom | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [noms, setNoms] = useState<Record<string, { affiche: string; vrai: string | null }>>({});
+  const [noms, setNoms] = useState<
+    Record<string, { affiche: string; vrai: string | null; prof: boolean }>
+  >({});
   const [texte, setTexte] = useState('');
   const [piece, setPiece] = useState<{ path: string; name: string } | null>(null);
   const [envoi, setEnvoi] = useState(false);
@@ -93,9 +95,16 @@ export default function FilDeClasse() {
         setClasse(classes.find((c) => c.id === id) ?? null);
         setMessages(page);
         setEncore(page.length === PAGE);
+        // Le trombinoscope sert à nommer les messages qui arrivent
+        // en temps réel : la socket ne transporte que la ligne
+        // brute, sans jointure, donc sans pseudonyme. On garde
+        // aussi qui est le professeur, pour le badge.
         setNoms(
           Object.fromEntries(
-            roster.map((m) => [m.user_id, { affiche: m.affiche, vrai: m.vrai_nom }]),
+            roster.map((m) => [
+              m.user_id,
+              { affiche: m.affiche, vrai: m.vrai_nom, prof: m.is_teacher },
+            ]),
           ),
         );
 
@@ -109,7 +118,10 @@ export default function FilDeClasse() {
                 user_id: ligne.user_id,
                 affiche: connu?.affiche ?? '…',
                 vrai_nom: connu?.vrai ?? null,
-                is_teacher: false,
+                // Se lit dans le trombinoscope, où le professeur
+                // figure désormais. C'était `false` en dur : un
+                // message du professeur arrivait sans son badge.
+                is_teacher: connu?.prof ?? false,
                 text: ligne.text,
                 attachment_path: ligne.attachment_path,
                 created_at: ligne.created_at,
@@ -166,9 +178,39 @@ export default function FilDeClasse() {
     setTexte('');
     setPiece(null);
     setErreur('');
-    // Le temps réel apporte le message ; on rafraîchit quand même
-    // si la socket a été refusée pour une raison quelconque.
-    if (!canal.current) setMessages(await fetchMessages(id));
+
+    // Son propre message s'affiche TOUT DE SUITE, sans attendre la
+    // socket. L'ancienne version ne rafraîchissait que si le canal
+    // n'existait pas — donc quand le temps réel était ouvert mais
+    // muet, on écrivait dans le vide. C'est exactement ce qui est
+    // arrivé au professeur, écarté de son propre fil par la RLS.
+    //
+    // On ajoute la ligne localement plutôt que de relire une page :
+    // on connaît déjà tout ce qu'il faut, et une page de plus est
+    // de la data payée par l'élève. Le temps réel rapportera le
+    // même message, et l'identifiant évitera le doublon.
+    const moi = session?.user.id;
+    if (r.id && moi) {
+      setMessages((prev) =>
+        prev.some((m) => m.id === r.id)
+          ? prev
+          : [
+              {
+                id: r.id!,
+                user_id: moi,
+                affiche: noms[moi]?.affiche ?? profile.boardAlias ?? profile.name,
+                vrai_nom: noms[moi]?.vrai ?? null,
+                is_teacher: prof,
+                text: propre || '📎',
+                attachment_path: piece?.path ?? null,
+                created_at: new Date().toISOString(),
+                flagged: false,
+                mine: true,
+              },
+              ...prev,
+            ],
+      );
+    }
   };
 
   // ── Signaler ────────────────────────────────────────────────

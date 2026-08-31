@@ -1099,3 +1099,84 @@ revoke execute on function public.moderation_record_verdict(uuid, text, smallint
 grant execute on function public.moderation_next_batch(uuid, integer) to service_role;
 grant execute on function public.moderation_record_verdict(uuid, text, smallint, text)
   to service_role;
+
+
+-- ═══ teacher_can_read_own_classroom_messages ═══
+--
+-- Le professeur n'est PAS dans `classroom_members` : il EST la
+-- classe, il ne la rejoint pas. La policy de l'étape 7 exigeait
+-- pourtant `is_classroom_member`, et l'écartait donc de son propre
+-- fil.
+--
+-- Le défaut était masqué par la RPC `classroom_messages()`, qui est
+-- DEFINER et teste « prof OU membre » : au chargement de l'écran,
+-- tout s'affichait. Mais le TEMPS RÉEL, lui, applique la policy. Le
+-- professeur ne recevait donc AUCUNE notification, pas même pour
+-- ses propres messages. Il écrivait, et rien n'apparaissait.
+--
+-- Deux leçons plutôt qu'une :
+--   · une RPC DEFINER qui double une policy peut cacher un trou
+--     dans cette policy pendant des semaines ;
+--   · un test qui interroge la RPC ne teste pas ce que voit le
+--     temps réel. Il faut interroger la TABLE. Le test de l'étape 7
+--     vérifiait un élève membre, jamais le professeur.
+drop policy if exists classroom_messages_select on public.classroom_messages;
+
+create policy classroom_messages_select on public.classroom_messages
+  for select to authenticated
+  using (
+    deleted_at is null
+    and (
+      public.is_classroom_member(classroom_id)
+      or public.is_classroom_teacher(classroom_id)
+    )
+    and (not flagged or public.is_classroom_teacher(classroom_id))
+  );
+
+
+-- ═══ teacher_appears_in_classroom_roster ═══
+--
+-- Même cause, autre conséquence : le professeur n'étant dans aucun
+-- trombinoscope, la liste des membres ne montrait pas l'adulte de
+-- la salle — la première chose qu'un élève veut y voir — et, dans
+-- le fil, ses messages arrivés en temps réel s'affichaient « … »,
+-- sans nom ni badge. La socket ne transporte que la ligne brute :
+-- c'est l'application qui complète depuis le trombinoscope.
+create or replace function public.classroom_roster(p_classroom_id uuid)
+returns table (
+  user_id uuid, affiche text, vrai_nom text,
+  status text, is_teacher boolean, joined_at timestamptz)
+language sql security definer stable set search_path to ''
+as $$
+  with moi as (
+    select public.is_classroom_teacher(p_classroom_id) as prof,
+           public.is_classroom_member(p_classroom_id)  as membre
+  )
+  select
+    c.teacher_id,
+    coalesce(nullif(btrim(t.full_name), ''), nullif(btrim(p.board_alias), ''),
+             nullif(btrim(p.name), ''), 'Professeur'),
+    case when (select prof from moi) then nullif(btrim(p.name), '') else null end,
+    'active', true, c.created_at
+  from public.classrooms c
+  join public.profiles p on p.id = c.teacher_id
+  left join public.teacher_requests t on t.user_id = c.teacher_id
+  where c.id = p_classroom_id
+    and (select prof or membre from moi)
+
+  union all
+
+  select
+    m.user_id,
+    coalesce(nullif(btrim(p.board_alias), ''), nullif(btrim(p.name), ''), 'Élève'),
+    case when (select prof from moi) then nullif(btrim(p.name), '') else null end,
+    m.status, false, m.joined_at
+  from public.classroom_members m
+  join public.profiles p on p.id = m.user_id
+  where (select prof or membre from moi)
+    and m.classroom_id = p_classroom_id
+    and (m.status = 'active' or (select prof from moi))
+    and m.status <> 'removed'
+
+  order by 5 desc, 4, 2;
+$$;

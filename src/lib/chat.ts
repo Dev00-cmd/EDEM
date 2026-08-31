@@ -65,14 +65,17 @@ export async function postMessage(
   classroomId: string,
   text: string,
   attachmentPath?: string | null,
-): Promise<{ ok: boolean; error?: PostError }> {
+): Promise<{ ok: boolean; error?: PostError; id?: string }> {
   const { data, error } = await supabase.rpc('post_classroom_message', {
     p_classroom_id: classroomId,
     p_text: text,
     p_attachment_path: attachmentPath ?? undefined,
   });
   if (error || !data) return { ok: false, error: 'echec' };
-  return data as { ok: boolean; error?: PostError };
+  // L'identifiant sert à afficher le message tout de suite, sans
+  // attendre la socket ni relire une page entière. C'est aussi lui
+  // qui évite le doublon quand le temps réel le rapporte ensuite.
+  return data as { ok: boolean; error?: PostError; id?: string };
 }
 
 export async function deleteMessage(messageId: string): Promise<boolean> {

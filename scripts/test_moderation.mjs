@@ -124,6 +124,43 @@ try {
     ok(j.b?.ok === true && a.b?.status === 'active', `élève ${nom} rejoint et est validé`);
   }
 
+  // ══ LE PROFESSEUR DANS SA PROPRE SALLE ══════════════════════
+  //
+  // Il n'est pas dans `classroom_members` : il EST la classe, il ne
+  // la rejoint pas. La policy exigeait pourtant `is_classroom_member`
+  // et l'écartait donc de son propre fil. Invisible au chargement,
+  // qui passe par une RPC DEFINER — mais le TEMPS RÉEL applique la
+  // policy, et il ne recevait rien du tout. Il écrivait, et rien
+  // n'apparaissait.
+  //
+  // On interroge donc la TABLE et pas la RPC : c'est la table que
+  // voit l'abonnement temps réel.
+  console.log('\nLE PROFESSEUR LIT SON PROPRE FIL');
+  const envoiProf = await prof.rpc('post_classroom_message', {
+    p_classroom_id: classeId,
+    p_text: 'Bonjour, ouvrez le livre page 42',
+  });
+  ok(envoiProf.b?.ok === true, 'le professeur écrit dans sa salle');
+  const filProf = await prof.get(
+    `classroom_messages?classroom_id=eq.${classeId}&select=id,text`,
+  );
+  ok(
+    Array.isArray(filProf.b) && filProf.b.length >= 1,
+    'et il le relit PAR LA TABLE — donc le temps réel le lui apporte',
+    `${filProf.b?.length} ligne(s)`,
+  );
+
+  // Le trombinoscope doit le contenir, sinon un message arrivé en
+  // temps réel s'affiche « … », sans nom ni badge.
+  const roster = await eleveA.rpc('classroom_roster', { p_classroom_id: classeId });
+  const leProf = (roster.b ?? []).find((r) => r.is_teacher);
+  ok(!!leProf, 'le professeur figure au trombinoscope', leProf?.affiche);
+  ok(
+    leProf?.vrai_nom === null,
+    "et un élève n'y lit toujours pas de vrai nom",
+    JSON.stringify(leProf?.vrai_nom),
+  );
+
   // ══ LA CHARTE ═══════════════════════════════════════════════
   console.log('\nLA CHARTE');
   let p = await eleveA.rpc('post_classroom_message', {
