@@ -205,6 +205,9 @@ EDEM/
 │   │   ├── UpdateBanner.tsx    Bandeau « mise à jour prête »
 │   │   ├── ChatBubble.tsx      Bulles de conversation + aperçu de fichier
 │   │   ├── LogoMark.tsx        Le logo, en vectoriel
+│   │   ├── TabBar.tsx          La barre d'onglets — partagée par les 2 interfaces
+│   │   ├── ProfileBlocks.tsx   Langue, thème, mise à jour — partagés par les 2 profils
+│   │   ├── SchoolPicker.tsx    Choisir l'école d'une salle (recherche nationale)
 │   │   └── Screen.tsx          Conteneur commun à tous les écrans
 │   │
 │   ├── config/app.ts           ⚙️ Nom, XP, connexion Supabase
