@@ -5,7 +5,7 @@
 --  relancer le script après toute modification de la base.
 --
 --  Projet   : qoyebljuvrxhcroxapys
---  Exporté  : 2026-08-30
+--  Exporté  : 2026-08-31
 --
 --  Ce fichier est la SEULE copie hors ligne du backend. Sans
 --  lui, un projet Supabase perdu serait irrécupérable.
@@ -416,6 +416,7 @@ CREATE INDEX quiz_sessions_assignment_idx ON public.quiz_sessions USING btree (a
 CREATE INDEX quiz_sessions_history_idx ON public.quiz_sessions USING btree (user_id, graded_at DESC) WHERE (graded_at IS NOT NULL);
 CREATE INDEX quiz_sessions_user_created_idx ON public.quiz_sessions USING btree (user_id, created_at DESC);
 CREATE INDEX role_events_user_idx ON public.role_events USING btree (user_id, created_at DESC);
+CREATE INDEX schools_acronym_idx ON public.schools USING btree (school_acronym(name));
 CREATE INDEX schools_created_by_idx ON public.schools USING btree (created_by) WHERE (created_by IS NOT NULL);
 CREATE INDEX schools_name_trgm ON public.schools USING gin (norm_text(name) gin_trgm_ops);
 CREATE UNIQUE INDEX schools_unique_in_commune ON public.schools USING btree (commune_id, norm_text(name));
@@ -1549,18 +1550,15 @@ CREATE OR REPLACE FUNCTION public.profile_completion()
  SET search_path TO ''
 AS $function$
 declare
-  uid        uuid := (select auth.uid());
-  c_bonus    constant integer := 50;  -- une lecture de notion vaut 8
-  v_p        public.profiles;
-  v_besoin   boolean;      -- ce niveau demande-t-il une série ?
-  v_champs   jsonb := '[]'::jsonb;
-  v_manque   jsonb := '[]'::jsonb;
-  v_total    integer := 0;
-  v_faits    integer := 0;
-  v_pct      integer;
-  v_bonus    integer := 0;
-
-  procedure_champ record;
+  uid      uuid := (select auth.uid());
+  v_p      public.profiles;
+  v_besoin boolean;
+  v_champs jsonb := '[]'::jsonb;
+  v_manque jsonb := '[]'::jsonb;
+  v_total  integer := 0;
+  v_faits  integer := 0;
+  v_pct    integer;
+  champ    record;
 begin
   if uid is null then
     raise exception 'not authenticated';
@@ -1575,31 +1573,30 @@ begin
     from public.school_levels l where l.id = v_p.level;
   v_besoin := coalesce(v_besoin, false);
 
-  -- Chaque ligne : (clé, applicable, rempli). Un champ qui ne
-  -- s'applique pas ne compte ni au numérateur ni au dénominateur —
-  -- sinon un élève de 5e AF plafonnerait à 80 % pour n'avoir pas
-  -- choisi une série qui n'existe pas à son niveau.
-  for procedure_champ in
+  -- Un champ qui ne s'applique pas ne compte ni au numérateur ni au
+  -- dénominateur : un élève de 5e AF plafonnerait sinon à 80 % pour
+  -- n'avoir pas choisi une série qui n'existe pas à son niveau.
+  for champ in
     select * from (values
-      ('name',          true,                       btrim(coalesce(v_p.name, '')) <> ''),
-      ('level',         true,                       btrim(coalesce(v_p.level, '')) <> ''),
-      ('section',       v_besoin,                   v_p.section is not null),
-      ('favorites',     true,                       cardinality(v_p.favorites) > 0),
-      ('weak_subjects', true,                       cardinality(v_p.weak_subjects) > 0),
-      ('goal',          true,                       btrim(coalesce(v_p.goal, '')) <> ''),
-      ('exam_year',     v_p.goal = 'exams',         v_p.exam_year is not null),
-      ('study_minutes', true,                       v_p.study_minutes is not null),
-      ('school_id',     true,                       v_p.school_id is not null),
-      ('commune_id',    true,                       v_p.commune_id is not null)
+      ('name',          true,               btrim(coalesce(v_p.name, '')) <> ''),
+      ('level',         true,               btrim(coalesce(v_p.level, '')) <> ''),
+      ('section',       v_besoin,           v_p.section is not null),
+      ('favorites',     true,               cardinality(v_p.favorites) > 0),
+      ('weak_subjects', true,               cardinality(v_p.weak_subjects) > 0),
+      ('goal',          true,               btrim(coalesce(v_p.goal, '')) <> ''),
+      ('exam_year',     v_p.goal = 'exams', v_p.exam_year is not null),
+      ('study_minutes', true,               v_p.study_minutes is not null),
+      ('school_id',     true,               v_p.school_id is not null),
+      ('commune_id',    true,               v_p.commune_id is not null)
     ) as f(cle, applicable, rempli)
   loop
-    if procedure_champ.applicable then
+    if champ.applicable then
       v_total := v_total + 1;
-      if procedure_champ.rempli then
+      if champ.rempli then
         v_faits  := v_faits + 1;
-        v_champs := v_champs || to_jsonb(procedure_champ.cle);
+        v_champs := v_champs || to_jsonb(champ.cle);
       else
-        v_manque := v_manque || to_jsonb(procedure_champ.cle);
+        v_manque := v_manque || to_jsonb(champ.cle);
       end if;
     end if;
   end loop;
@@ -1607,20 +1604,10 @@ begin
   v_pct := case when v_total = 0 then 0
                 else round((v_faits::numeric / v_total) * 100) end;
 
-  -- Le bonus, une seule fois dans la vie du compte.
+  -- On garde la DATE de complétion : elle sert à savoir quand ne
+  -- plus proposer l'écran. Mais plus aucune XP n'est versée.
   if v_pct = 100 and v_p.profile_completed_at is null then
     update public.profiles set profile_completed_at = now() where id = uid;
-
-    update public.progress
-       set xp = xp + c_bonus, updated_at = now()
-     where user_id = uid;
-
-    insert into public.daily_activity (user_id, day, xp_gained)
-    values (uid, current_date, c_bonus)
-    on conflict (user_id, day) do update
-      set xp_gained = public.daily_activity.xp_gained + c_bonus;
-
-    v_bonus := c_bonus;
   end if;
 
   return jsonb_build_object(
@@ -1629,7 +1616,7 @@ begin
     'total',     v_total,
     'filled',    v_champs,
     'missing',   v_manque,
-    'bonus',     v_bonus,
+    'bonus',     0,
     'completed', v_p.profile_completed_at is not null or v_pct = 100
   );
 end;
@@ -1663,26 +1650,19 @@ begin
     raise exception 'commune inconnue';
   end if;
 
-  -- Si l'école existe déjà dans cette commune, on la RETOURNE au
-  -- lieu d'en créer une deuxième. L'élève qui ne l'a pas trouvée
-  -- avait sans doute écrit « lycee petion » au lieu du nom complet.
-  -- C'est exactement le doublon qu'on cherche à empêcher.
   select s.id into v_id
     from public.schools s
    where s.commune_id = p_commune_id
      and public.norm_text(s.name) = public.norm_text(v_name);
 
   if v_id is null then
-    -- Trois propositions par jour : de quoi corriger une faute de
-    -- frappe, pas de quoi remplir la table de bêtises. On réutilise
-    -- usage_counters plutôt que d'inventer un compteur de plus.
     v_quota := public.bump_usage(uid, 'school_proposal', 3);
     if not (v_quota ->> 'allowed')::boolean then
       raise exception 'trop de propositions aujourd''hui, reessaie demain';
     end if;
 
-    insert into public.schools (name, commune_id, type, created_by)
-    values (v_name, p_commune_id, v_type, uid)
+    insert into public.schools (name, commune_id, type, created_by, status, source)
+    values (v_name, p_commune_id, v_type, uid, 'approved', 'user')
     returning schools.id into v_id;
 
     v_neuve := true;
@@ -1690,14 +1670,9 @@ begin
 
   return (
     select jsonb_build_object(
-      'id',          s.id,
-      'name',        s.name,
-      'type',        s.type,
-      'status',      s.status,
-      'commune_id',  s.commune_id,
-      'commune',     c.name,
-      'departement', d.name,
-      'created',     v_neuve
+      'id', s.id, 'name', s.name, 'type', s.type, 'status', s.status,
+      'commune_id', s.commune_id, 'commune', c.name,
+      'departement', d.name, 'created', v_neuve
     )
     from public.schools s
     join public.communes c     on c.id = s.commune_id
@@ -2042,26 +2017,67 @@ end;
 $function$
 ;
 
-CREATE OR REPLACE FUNCTION public.search_schools(p_query text DEFAULT NULL::text, p_commune_id text DEFAULT NULL::text)
- RETURNS TABLE(id uuid, name text, type text, status text, commune_id text, commune text, departement text)
+CREATE OR REPLACE FUNCTION public.school_acronym(p_name text)
+ RETURNS text
+ LANGUAGE sql
+ IMMUTABLE PARALLEL SAFE
+ SET search_path TO ''
+AS $function$
+  select coalesce(string_agg(left(mot, 1), '' order by n), '')
+  from unnest(
+         string_to_array(
+           btrim(regexp_replace(public.norm_text(p_name), '[^a-z0-9]+', ' ', 'g')),
+           ' '
+         )
+       ) with ordinality as t(mot, n)
+  where length(mot) >= 2
+    and mot not in ('de','du','des','la','le','les','et','au','aux','en',
+                    'of','the','sur','sous','pour','par','ak','nan')
+$function$
+;
+
+CREATE OR REPLACE FUNCTION public.search_schools(p_query text DEFAULT NULL::text, p_commune_id text DEFAULT NULL::text, p_offset integer DEFAULT 0, p_limit integer DEFAULT 20)
+ RETURNS TABLE(id uuid, name text, type text, status text, commune_id text, commune text, departement text, total bigint)
  LANGUAGE sql
  STABLE SECURITY DEFINER
  SET search_path TO ''
 AS $function$
-  select s.id, s.name, s.type, s.status, s.commune_id, c.name, d.name
+  with q as (
+    select nullif(btrim(public.norm_text(p_query)), '') as texte
+  ),
+  trouvees as (
+    select s.*, c.name as commune_nom, d.name as departement_nom,
+      case
+        when (select texte from q) is null then 3
+        when public.norm_text(s.name) like (select texte from q) || '%' then 0
+        when public.school_acronym(s.name) = (select texte from q) then 1
+        else 2
+      end as rang
     from public.schools s
     join public.communes c     on c.id = s.commune_id
     join public.departements d on d.id = c.departement_id
-   where (s.status = 'approved' or s.created_by = (select auth.uid()))
-     and (p_commune_id is null or s.commune_id = p_commune_id)
-     and public.norm_text(s.name) like '%' || public.norm_text(p_query) || '%'
-   order by
-     -- Ce qui COMMENCE par la recherche remonte en premier :
-     -- « petion » doit donner le lycée avant « Sainte-Pétionville ».
-     case when public.norm_text(s.name) like public.norm_text(p_query) || '%'
-          then 0 else 1 end,
-     s.name
-   limit 20;
+    where (s.status = 'approved' or s.created_by = (select auth.uid()))
+      and (p_commune_id is null or s.commune_id = p_commune_id)
+      and (
+        (select texte from q) is null
+        -- Le sigle : « ica » retrouve International Christian Academy.
+        or public.school_acronym(s.name) = (select texte from q)
+        or case
+             when length((select texte from q)) < 5
+               -- \m = début de mot : « ica » ne matche plus « africa ».
+               then public.norm_text(s.name) ~ ('\m' || (select texte from q))
+             else public.norm_text(s.name) like '%' || (select texte from q) || '%'
+           end
+      )
+  )
+  select
+    t.id, t.name, t.type, t.status, t.commune_id,
+    t.commune_nom, t.departement_nom,
+    count(*) over ()
+  from trouvees t
+  order by t.rang, t.name
+  offset greatest(coalesce(p_offset, 0), 0)
+  limit least(greatest(coalesce(p_limit, 20), 1), 50);
 $function$
 ;
 

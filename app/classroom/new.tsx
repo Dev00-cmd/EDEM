@@ -60,6 +60,45 @@ export default function NouvelleClasse() {
     setCode(r.joinCode ?? '');
   };
 
+  // ── Le rôle professeur n'est pas accordé ────────────────────
+  //
+  // Le serveur refuse déjà : `create_classroom` vérifie le rôle, et
+  // trois autres chemins ont été essayés sans succès. Mais laisser
+  // remplir tout un formulaire pour finir sur un refus, c'est faire
+  // croire que ça a failli marcher. On le dit d'emblée.
+  if (profile.role !== 'prof') {
+    return (
+      <Screen>
+        <View style={styles.header}>
+          <Pressable onPress={() => router.back()} accessibilityRole="button" hitSlop={10}>
+            <Icon name="arrow-left" size={20} color={colors.textSoft} />
+          </Pressable>
+          <Text style={[type.title, { color: colors.text }]}>{t('classroom.newTitle')}</Text>
+        </View>
+
+        <Card accent={colors.warning} style={{ marginTop: 20 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Icon name="lock" size={16} color={colors.warning} />
+            <Text style={[type.cardTitle, { color: colors.text, flex: 1 }]}>
+              {t('classroom.needRoleTitle')}
+            </Text>
+          </View>
+          <Text style={[type.caption, { color: colors.textSoft, marginTop: 10 }]}>
+            {t('classroom.needRoleBody')}
+          </Text>
+          <Button
+            label={t('teacher.cta')}
+            icon="arrow-right"
+            iconRight
+            full
+            style={{ marginTop: 14 }}
+            onPress={() => router.replace('/teacher-request')}
+          />
+        </Card>
+      </Screen>
+    );
+  }
+
   // ── La classe est créée : on montre le code ─────────────────
   if (code) {
     return (

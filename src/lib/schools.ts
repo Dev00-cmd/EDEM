@@ -17,10 +17,22 @@ export interface School {
   commune_id: string;
   commune: string;
   departement: string;
+  /** Nombre total de résultats, toutes pages confondues. */
+  total: number;
 }
 
-/** Sous ce seuil, la recherche ramènerait toute la commune. */
-export const MIN_QUERY = 3;
+/**
+ * Deux caractères suffisent désormais.
+ *
+ * Une école se désigne souvent par son SIGLE — « ICA » pour
+ * International Christian Academy, « IDEPH », « LAP » pour Lycée
+ * Alexandre Pétion. Le serveur sait les reconnaître ; exiger trois
+ * lettres aurait écarté la moitié d'entre eux.
+ */
+export const MIN_QUERY = 2;
+
+/** Écoles rendues par page. */
+export const PAGE_SCHOOLS = 20;
 
 /**
  * Cherche une école. Insensible aux accents et à la casse : c'est
@@ -33,11 +45,20 @@ export const MIN_QUERY = 3;
 export async function searchSchools(
   query: string,
   communeId?: string | null,
+  offset = 0,
 ): Promise<School[]> {
-  if (query.trim().length < MIN_QUERY) return [];
+  const propre = query.trim();
+  // Sans texte, on RETOURNE LA LISTE de la commune : la plupart du
+  // temps l'élève ne cherche pas, il reconnaît son école dans une
+  // liste. Il fallait taper trois lettres pour voir quoi que ce
+  // soit — donc ne rien voir du tout quand on ne sait pas écrire le
+  // nom exact.
+  if (propre !== '' && propre.length < MIN_QUERY) return [];
   const { data, error } = await supabase.rpc('search_schools', {
-    p_query: query.trim(),
+    p_query: propre === '' ? undefined : propre,
     p_commune_id: communeId ?? undefined,
+    p_offset: offset,
+    p_limit: PAGE_SCHOOLS,
   });
   if (error || !data) return [];
   return data as School[];
@@ -46,12 +67,16 @@ export async function searchSchools(
 /**
  * Ajoute une école absente du référentiel.
  *
- * Elle est créée « en attente » : elle n'apparaîtra aux autres
- * élèves qu'une fois validée, mais celui qui l'a proposée y est
- * rattaché tout de suite. Si l'école existait déjà sous une autre
- * orthographe, le serveur retourne l'existante au lieu d'en créer
- * une deuxième — c'est ce qui empêche « lycee petion » de devenir
- * un établissement distinct.
+ * Elle est disponible IMMÉDIATEMENT, pour elle comme pour les
+ * autres élèves de la commune. Le référentiel ne couvre que 8 584
+ * des quelque 15 000 écoles d'Haïti : le laisser grandir par
+ * l'usage est le seul moyen de le compléter.
+ *
+ * Ce qui empêche le désordre n'est pas une validation manuelle mais
+ * le DÉDOUBLONNAGE : si l'école existe déjà dans la commune, sous
+ * quelque orthographe que ce soit, le serveur rend l'existante au
+ * lieu d'en créer une deuxième. « lycee petion » ne devient donc
+ * jamais un établissement distinct de « Lycée Alexandre Pétion ».
  */
 export async function proposeSchool(
   name: string,

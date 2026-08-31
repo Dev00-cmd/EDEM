@@ -39,7 +39,7 @@ import { RADIUS } from '@/theme/colors';
 import { type } from '@/theme/typography';
 import { SUBJECTS } from '@/data/subjects';
 import { DEPARTEMENTS, communesOf, communeById, departementOf } from '@/data/haiti';
-import { searchSchools, proposeSchool, MIN_QUERY, type School } from '@/lib/schools';
+import { searchSchools, proposeSchool, MIN_QUERY, PAGE_SCHOOLS, type School } from '@/lib/schools';
 
 const GOALS: { id: string; icon: IconName }[] = [
   { id: 'exams', icon: 'award' },
@@ -98,6 +98,7 @@ export default function TuneProfile() {
   const [results, setResults] = useState<School[]>([]);
   const [searching, setSearching] = useState(false);
   const [manual, setManual] = useState(false);
+  const [total, setTotal] = useState(0);
   const [schoolName, setSchoolName] = useState('');
   const [schoolError, setSchoolError] = useState('');
   const [chosen, setChosen] = useState<School | null>(null);
@@ -116,22 +117,38 @@ export default function TuneProfile() {
   // allers-retours payés par lui pour un seul résultat utile.
   useEffect(() => {
     if (timer.current) clearTimeout(timer.current);
-    if (query.trim().length < MIN_QUERY) {
-      setResults([]);
+    const propre = query.trim();
+
+    // Une frappe trop courte ne veut rien dire : on garde ce qui est
+    // affiché plutôt que de vider la liste sous les yeux de l'élève.
+    if (propre !== '' && propre.length < MIN_QUERY) {
       setSearching(false);
       return;
     }
+
     setSearching(true);
-    timer.current = setTimeout(async () => {
-      const found = await searchSchools(query, profile.communeId);
-      setResults(found);
-      setSearching(false);
-    }, 450);
+    // Sans texte, pas d'attente : c'est la liste de la commune, on
+    // la veut tout de suite.
+    timer.current = setTimeout(
+      async () => {
+        const found = await searchSchools(propre, profile.communeId);
+        setResults(found);
+        setTotal(found[0]?.total ?? 0);
+        setSearching(false);
+      },
+      propre === '' ? 0 : 450,
+    );
 
     return () => {
       if (timer.current) clearTimeout(timer.current);
     };
   }, [query, profile.communeId]);
+
+  // « Voir plus » : la liste complète est atteignable, page par page.
+  const plusDEcoles = useCallback(async () => {
+    const suite = await searchSchools(query.trim(), profile.communeId, results.length);
+    setResults((prev) => [...prev, ...suite]);
+  }, [query, profile.communeId, results.length]);
 
   const pickSchool = (school: School) => {
     setChosen(school);
@@ -387,6 +404,12 @@ export default function TuneProfile() {
                 </View>
               )}
 
+              {profile.communeId && query.trim() === '' && total > 0 && (
+                <Text style={[type.caption, { color: colors.textFaint, marginTop: 8 }]}>
+                  {t('tune.schoolCount', { n: String(total) })}
+                </Text>
+              )}
+
               {results.map((s) => (
                 <Pressable
                   key={s.id}
@@ -399,6 +422,21 @@ export default function TuneProfile() {
                   </Text>
                 </Pressable>
               ))}
+
+              {/* La liste entière est atteignable : 464 écoles à
+                  Port-au-Prince ne tiennent pas en une page, et
+                  l'élève ne doit pas rester coincé aux vingt
+                  premières. */}
+              {results.length > 0 && results.length < total && (
+                <Button
+                  label={t('tune.schoolMore', { n: String(total - results.length) })}
+                  variant="ghost"
+                  size="sm"
+                  full
+                  style={{ marginTop: 8 }}
+                  onPress={plusDEcoles}
+                />
+              )}
 
               {query.trim().length >= MIN_QUERY && !searching && results.length === 0 && (
                 <Text style={[type.caption, { color: colors.textFaint, marginTop: 10 }]}>

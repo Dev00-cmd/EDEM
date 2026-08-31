@@ -1191,8 +1191,14 @@ export type Database = {
         }
         Returns: Json
       }
+      school_acronym: { Args: { p_name: string }; Returns: string }
       search_schools: {
-        Args: { p_commune_id?: string; p_query?: string }
+        Args: {
+          p_commune_id?: string
+          p_limit?: number
+          p_offset?: number
+          p_query?: string
+        }
         Returns: {
           commune: string
           commune_id: string
@@ -1200,6 +1206,7 @@ export type Database = {
           id: string
           name: string
           status: string
+          total: number
           type: string
         }[]
       }

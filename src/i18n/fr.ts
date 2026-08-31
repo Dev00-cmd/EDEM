@@ -102,6 +102,8 @@ export const fr = {
   },
 
   tune: {
+    schoolCount: "{n} écoles dans ta commune — cherche, ou fais défiler",
+    schoolMore: "Voir plus ({n} restantes)",
     eyebrow: 'PERSONNALISATION',
     title: 'Personnalise ton tuteur',
     subtitle:
@@ -241,6 +243,8 @@ export const fr = {
   },
 
   classroom: {
+    needRoleTitle: "Il faut être professeur",
+    needRoleBody: "Ouvrir une classe demande le rôle professeur, et il s'accorde à la main : une classe met un adulte en contact avec des élèves mineurs. Fais ta demande, on te rappelle avant de l'accorder.",
     title: 'Classe',
     newTitle: 'Ouvrir une classe',
     nameLabel: 'Nom de la classe',

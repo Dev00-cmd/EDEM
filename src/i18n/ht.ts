@@ -102,6 +102,8 @@ export const ht: Messages = {
   },
 
   tune: {
+    schoolCount: "{n} lekòl nan komin ou — chèche, oswa desann nan lis la",
+    schoolMore: "Wè plis ({n} ki rete)",
     eyebrow: 'PÈSONALIZASYON',
     title: 'Pèsonalize pwofesè ou',
     subtitle:
@@ -241,6 +243,8 @@ export const ht: Messages = {
   },
 
   classroom: {
+    needRoleTitle: "Fòk ou se yon pwofesè",
+    needRoleBody: "Pou louvri yon klas ou bezwen wòl pwofesè a, epi li bay ak men : yon klas mete yon granmoun an kontak ak elèv ki minè. Fè demann ou, n ap rele ou anvan nou bay li.",
     title: 'Klas',
     newTitle: 'Louvri yon klas',
     nameLabel: 'Non klas la',
