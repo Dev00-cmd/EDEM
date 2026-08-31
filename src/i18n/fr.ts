@@ -337,6 +337,9 @@ export const fr = {
     fileOpen: "Ouvrir l'énoncé",
     fileDownload: 'Télécharger',
     fileSaved: 'Sur ton téléphone · ouvrir',
+    fileFailed: 'Le téléchargement a échoué. Vérifie ta connexion.',
+    fileNoViewer:
+      "Le fichier est sur ton téléphone, mais aucune application ne sait l'ouvrir. Installe un lecteur PDF.",
     titleNeeded: 'Donne un titre au devoir',
     instructionsLabel: 'Consignes',
     instructionsPlaceholder: "Ce que l'élève doit faire, et comment le rendre.",
@@ -425,6 +428,7 @@ export const fr = {
     delete: 'Supprimer',
 
     download: 'Télécharger',
+    noViewer: "Fichier téléchargé, mais aucune application ne sait l'ouvrir.",
     clearTitle: 'Vider le fil ?',
     clearBody:
       "Tous les messages disparaissent, pour toi comme pour tes élèves. C'est définitif, et l'action est enregistrée.",

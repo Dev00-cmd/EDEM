@@ -266,12 +266,12 @@ export function localFileFor(path: string): File | null {
  */
 export async function downloadAttachment(
   path: string,
-): Promise<{ ok: boolean; file?: File }> {
+): Promise<{ ok: boolean; file?: File; erreur?: string }> {
   const local = localFileFor(path);
   if (local) return { ok: true, file: local };
 
   const url = await signedUrlFor(path);
-  if (!url) return { ok: false };
+  if (!url) return { ok: false, erreur: 'lien' };
 
   try {
     // Destination explicite : sans elle, le nom serait déduit de
@@ -280,19 +280,56 @@ export async function downloadAttachment(
     if (cible.exists) cible.delete();
     const fichier = await File.downloadFileAsync(url, cible);
     return { ok: true, file: fichier };
-  } catch {
-    return { ok: false };
+  } catch (e) {
+    // On REND la cause au lieu de l'avaler. Un « ça ne marche pas »
+    // sans message coûte un aller-retour entier à celui qui teste.
+    return { ok: false, erreur: e instanceof Error ? e.message : String(e) };
   }
+}
+
+/** Le type MIME déduit de l'extension, pour l'intent Android. */
+function mimeDe(nom: string): string {
+  const ext = nom.split('.').pop()?.toLowerCase() ?? '';
+  if (ext === 'pdf') return 'application/pdf';
+  if (ext === 'png') return 'image/png';
+  if (ext === 'webp') return 'image/webp';
+  if (ext === 'gif') return 'image/gif';
+  if (ext === 'heic') return 'image/heic';
+  return 'image/jpeg';
 }
 
 /**
  * Ouvre un fichier déjà téléchargé avec le lecteur du téléphone.
  *
- * Sur Android il faut passer par `contentUri` : un `file://` qui
- * sort de l'application déclenche une FileUriExposedException
- * depuis Android 7.
+ * DEUX CHEMINS, ET LE PREMIER EST LE BON.
+ *
+ * `expo-sharing` construit l'intent correctement : il passe par le
+ * FileProvider et accorde au lecteur la permission de lire le
+ * fichier. C'est précisément ce que `Linking.openURL` ne fait PAS —
+ * il ouvre bien une `content://`, mais sans
+ * FLAG_GRANT_READ_URI_PERMISSION, et l'application d'en face se voit
+ * refuser la lecture. D'où l'erreur à l'ouverture, alors que le
+ * téléchargement, lui, avait réussi.
+ *
+ * `expo-sharing` est un module NATIF : il n'existe pas dans les APK
+ * construits avant son ajout. On le charge donc à l'exécution, et
+ * on retombe sur `Linking` si le module n'est pas là — sinon une
+ * mise à jour OTA ferait planter au démarrage toutes les
+ * installations existantes.
  */
 export async function openLocalFile(file: File): Promise<boolean> {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const Sharing = require('expo-sharing');
+    if (await Sharing.isAvailableAsync()) {
+      await Sharing.shareAsync(file.uri, { mimeType: mimeDe(file.name) });
+      return true;
+    }
+  } catch {
+    // Module absent de ce binaire, ou partage refusé : on essaie
+    // l'autre voie plutôt que d'abandonner.
+  }
+
   try {
     const uri = Platform.OS === 'android' ? file.contentUri : file.uri;
     await Linking.openURL(uri);

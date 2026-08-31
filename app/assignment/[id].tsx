@@ -453,6 +453,7 @@ function PieceJointe({ path }: { path: string }) {
   // Déjà sur le téléphone ? Le bouton le dit, plutôt que de
   // retélécharger ce qu'on a déjà payé une fois.
   const [garde, setGarde] = useState(() => localFileFor(path));
+  const [souci, setSouci] = useState('');
 
   const nom = fileNameOf(path);
   const estImage = isImagePath(path);
@@ -470,14 +471,22 @@ function PieceJointe({ path }: { path: string }) {
   // on télécharge le matin à l'école où il y a du wifi, on travaille
   // le soir chez soi où il n'y en a pas.
   const telecharger = async () => {
-    if (garde) return void openLocalFile(garde);
+    setSouci('');
+    const deja = garde;
+    if (deja) {
+      if (!(await openLocalFile(deja))) setSouci(t('assignment.fileNoViewer'));
+      return;
+    }
     setChargement(true);
     const r = await downloadAttachment(path);
     setChargement(false);
-    if (r.ok && r.file) {
-      setGarde(r.file);
-      openLocalFile(r.file);
+    if (!r.ok || !r.file) {
+      // La cause s'affiche. « Ça ne marche pas » sans message coûte
+      // un aller-retour entier à celui qui teste.
+      return setSouci(r.erreur ?? t('assignment.fileFailed'));
     }
+    setGarde(r.file);
+    if (!(await openLocalFile(r.file))) setSouci(t('assignment.fileNoViewer'));
   };
 
   return (
@@ -512,8 +521,20 @@ function PieceJointe({ path }: { path: string }) {
         style={{ marginTop: 8 }}
         onPress={telecharger}
       />
-      {lien && estImage ? (
-        <Image source={{ uri: lien }} style={styles.pjImage} resizeMode="contain" />
+      {estImage && (garde || lien) ? (
+        // Une fois téléchargée, l'image vient du fichier local :
+        // elle s'affiche sans réseau et sans redemander d'URL.
+        <Image
+          source={{ uri: garde ? garde.uri : lien! }}
+          style={styles.pjImage}
+          resizeMode="contain"
+        />
+      ) : null}
+
+      {souci !== '' ? (
+        <Text style={[type.caption, { color: colors.danger, marginTop: 8 }]}>
+          {souci}
+        </Text>
       ) : null}
     </Card>
   );

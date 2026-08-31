@@ -412,6 +412,7 @@ function Bulle({
   const { colors } = useTheme();
   const [image, setImage] = useState<string | null>(null);
   const [chargement, setChargement] = useState(false);
+  const [souci, setSouci] = useState('');
 
   const chemin = message.attachment_path;
   const estImage = chemin ? isImagePath(chemin) : false;
@@ -422,10 +423,13 @@ function Bulle({
   const voir = async () => {
     if (!chemin) return;
     setChargement(true);
+    setSouci('');
     if (estImage) setImage(await signedUrlFor(chemin));
     else {
       const r = await downloadAttachment(chemin);
-      if (r.ok && r.file) openLocalFile(r.file);
+      if (r.ok && r.file) {
+        if (!(await openLocalFile(r.file))) setSouci(t('fil.noViewer'));
+      } else setSouci(r.erreur ?? t('fil.err_echec'));
     }
     setChargement(false);
   };
@@ -488,8 +492,11 @@ function Bulle({
                     soir sans réseau ne sont pas le même geste. */}
                 <Pressable
                   onPress={async () => {
+                    setSouci('');
                     const r = await downloadAttachment(chemin);
-                    if (r.ok && r.file) openLocalFile(r.file);
+                    if (r.ok && r.file) {
+                      if (!(await openLocalFile(r.file))) setSouci(t('fil.noViewer'));
+                    } else setSouci(r.erreur ?? t('fil.err_echec'));
                   }}
                   accessibilityRole="button"
                   style={[
@@ -539,6 +546,20 @@ function Bulle({
                 </Text>
               </Pressable>
             )
+          ) : null}
+
+          {/* La cause s'affiche dans la bulle. « Ça ne marche
+              pas » sans message coûte un aller-retour entier à
+              celui qui teste. */}
+          {souci !== '' ? (
+            <Text
+              style={[
+                type.caption,
+                { color: message.mine ? '#FFE0E0' : colors.danger, marginTop: 6 },
+              ]}
+            >
+              {souci}
+            </Text>
           ) : null}
 
           <View style={styles.pied}>

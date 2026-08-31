@@ -337,6 +337,9 @@ export const ht: Messages = {
     fileOpen: 'Louvri konsiy la',
     fileDownload: 'Telechaje',
     fileSaved: 'Sou telefòn ou · louvri',
+    fileFailed: 'Telechajman an pa mache. Tcheke koneksyon ou.',
+    fileNoViewer:
+      'Fichye a sou telefòn ou, men okenn app pa konn louvri l. Enstale yon lektè PDF.',
     titleNeeded: 'Bay devwa a yon tit',
     instructionsLabel: 'Konsiy',
     instructionsPlaceholder: 'Sa elèv la dwe fè, ak kijan pou l remèt li.',
@@ -425,6 +428,7 @@ export const ht: Messages = {
     delete: 'Efase',
 
     download: 'Telechaje',
+    noViewer: 'Fichye a telechaje, men okenn app pa konn louvri l.',
     clearTitle: 'Vide fil la ?',
     clearBody:
       'Tout mesaj yo ap disparèt, pou ou menm jan ak pou elèv ou yo. Se definitif, epi aksyon an anrejistre.',
