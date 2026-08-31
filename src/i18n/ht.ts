@@ -227,6 +227,9 @@ export const ht: Messages = {
     codeLength: 'Kòd la gen 6 karaktè',
     join: 'Antre',
     joined: 'Demann voye bay {teacher} pou « {name} ». Li dwe valide l toujou.',
+    share: 'Pataje',
+    shareMessage:
+      'Antre nan klas mwen « {name} » sou EDEM ak kòd {code}. Enstale app la, ale nan Pwofil → Klas mwen yo, epi mete kòd la.',
     createTitle: 'Sal klas ou yo',
     createSub:
       'Louvri yon sal pou chak matyè oswa chak gwoup, otan ou vle jiska dis. Chak grenn gen kòd pa l, epi ou antre ladan l lè ou vle.',

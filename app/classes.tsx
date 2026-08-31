@@ -18,7 +18,9 @@
 // ═══════════════════════════════════════════════════════════════
 
 import React, { useCallback, useState } from 'react';
-import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  Pressable, RefreshControl, ScrollView, Share, StyleSheet, Text, View,
+} from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Screen } from '@/components/Screen';
 import { Card } from '@/components/Card';
@@ -59,6 +61,17 @@ export default function ClassesScreen() {
       recharger();
     }, [recharger]),
   );
+
+  // Partager plutôt que copier : `Share` est natif à React Native,
+  // donc livrable par mise à jour OTA. Un presse-papier aurait
+  // demandé `expo-clipboard`, un module natif — donc un nouvel APK
+  // à réinstaller par tout le monde, pour un bouton.
+  const partager = (c: Classroom) => {
+    if (!c.join_code) return;
+    Share.share({
+      message: t('classes.shareMessage', { code: c.join_code, name: c.name }),
+    }).catch(() => {});
+  };
 
   const rejoindre = async () => {
     const propre = code.trim().toUpperCase();
@@ -190,6 +203,33 @@ export default function ClassesScreen() {
                   <Icon name="chevron-right" size={16} color={colors.textFaint} />
                 </View>
 
+                {/* Le code, à même la carte. Il n'était visible que
+                    sur l'écran de création — donc une seule fois —
+                    et au fond de la salle. Un professeur qui a trois
+                    salles a trois codes différents à donner, et il
+                    les redonne à chaque élève qui arrive en retard :
+                    ils doivent être sous les yeux, pas à deux
+                    écrans. */}
+                {c.is_teacher && c.join_code ? (
+                  <View style={[styles.codeBoite, { borderColor: colors.border }]}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[type.eyebrow, { color: colors.textFaint }]}>
+                        {t('classroom.codeLabel')}
+                      </Text>
+                      <Text style={[styles.code, { color: colors.accent }]}>
+                        {c.join_code}
+                      </Text>
+                    </View>
+                    <Button
+                      label={t('classes.share')}
+                      icon="share"
+                      variant="ghost"
+                      size="sm"
+                      onPress={() => partager(c)}
+                    />
+                  </View>
+                ) : null}
+
                 {c.current_focus ? (
                   <View style={[styles.focus, { borderColor: colors.border }]}>
                     <Icon name="bookmark" size={12} color={colors.sky} />
@@ -242,6 +282,14 @@ const styles = StyleSheet.create({
     width: 32, height: 32, borderRadius: RADIUS.md,
     alignItems: 'center', justifyContent: 'center',
   },
+  codeBoite: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    borderWidth: 1, borderRadius: RADIUS.md,
+    paddingHorizontal: 12, paddingVertical: 9, marginTop: 10,
+  },
+  // Espacé et gros : ce code se recopie depuis un tableau, à
+  // l'autre bout d'une salle de classe.
+  code: { fontSize: 22, letterSpacing: 4, fontFamily: 'Sora_700Bold' },
   focus: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
     borderTopWidth: 1, marginTop: 10, paddingTop: 9,

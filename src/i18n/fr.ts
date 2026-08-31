@@ -227,6 +227,9 @@ export const fr = {
     codeLength: 'Le code fait 6 caractères',
     join: 'Entrer',
     joined: 'Demande envoyée à {teacher} pour « {name} ». Il doit encore la valider.',
+    share: 'Partager',
+    shareMessage:
+      "Rejoins ma classe « {name} » sur EDEM avec le code {code}. Installe l'app, va dans Profil → Mes classes, et entre le code.",
     createTitle: 'Tes salles de classe',
     createSub:
       "Ouvre une salle par matière ou par groupe, autant que tu veux jusqu'à dix. Chacune a son propre code, et tu y entres quand tu veux.",

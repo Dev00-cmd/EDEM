@@ -92,6 +92,25 @@ try {
   });
   ok(c.s === 200 && !!c.b?.join_code, 'classe ouverte, code rendu', c.b?.join_code);
 
+  console.log('\nUN CODE UNIQUE PAR SALLE, ET L APP LE RECOIT');
+  const codes = [c.b.join_code];
+  for (const n of ['B', 'C', 'D', 'E']) {
+    const r = await prof.rpc('create_classroom', {
+      p_school_id: ecole, p_name: `NS3 ${n}`, p_subject_id: 'math', p_grade_level: niveau,
+    });
+    codes.push(r.b?.join_code);
+  }
+  ok(codes.every((x) => /^[2-9A-HJ-KM-NP-Z]{6}$/.test(x ?? '')),
+     'six caracteres sans 0/O/1/I/L', codes.join(' '));
+  ok(new Set(codes).size === codes.length, 'les cinq codes sont differents');
+
+  // L app lit les codes par my_classrooms : c est la seule voie,
+  // la table est fermee en lecture directe.
+  const liste = await prof.rpc('my_classrooms');
+  const rendus = (liste.b ?? []).map((x) => x.join_code).filter(Boolean);
+  ok(rendus.length === 5, 'my_classrooms rend un code par salle', `${rendus.length}`);
+  ok(codes.every((x) => rendus.includes(x)), 'ce sont exactement les memes');
+
   console.log('\nPLUS RIEN A RELIRE, PLUS RIEN A APPROUVER');
   const file = await sql('select public.teachers_to_review()');
   ok(/does not exist/i.test(JSON.stringify(file)), 'teachers_to_review a disparu');
@@ -102,8 +121,8 @@ try {
 
   console.log('\nDIX CLASSES, LE MEME PLAFOND POUR TOUT LE MONDE');
   ok(st.b?.limite === 10, 'plafond a 10', `${st.b?.limite}`);
-  ok(st.b?.ouvertes === 1, 'une classe ouverte', `${st.b?.ouvertes}`);
-  for (const n of ['B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J']) {
+  ok(st.b?.ouvertes === 5, 'cinq classes ouvertes', `${st.b?.ouvertes}`);
+  for (const n of ['F', 'G', 'H', 'I', 'J']) {
     await prof.rpc('create_classroom', {
       p_school_id: ecole, p_name: `NS3 ${n}`, p_subject_id: 'math', p_grade_level: niveau,
     });
