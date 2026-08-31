@@ -142,3 +142,16 @@ export const setClassroomFocus = (classroomId: string, focus: string, note: stri
 
 export const setClassroomOpen = (classroomId: string, open: boolean) =>
   appel('set_classroom_open', { p_classroom_id: classroomId, p_open: open });
+
+/**
+ * Ferme la salle. Elle disparaît de l'écran du professeur comme de
+ * celui de ses élèves, et personne ne peut plus y entrer.
+ *
+ * En base, elle est archivée et non détruite : les messages, les
+ * remises et les signalements d'une salle où quelque chose s'est mal
+ * passé sont précisément ce qu'il faut pouvoir consulter APRÈS. Un
+ * `delete` en cascade emporterait toutes les preuves, sur commande
+ * du seul adulte de la pièce.
+ */
+export const archiveClassroom = (classroomId: string) =>
+  appel('archive_classroom', { p_classroom_id: classroomId });

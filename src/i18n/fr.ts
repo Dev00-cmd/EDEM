@@ -252,6 +252,10 @@ export const fr = {
   },
 
   classroom: {
+    deleteRoom: 'Supprimer la salle',
+    deleteRoomTitle: 'Supprimer cette salle ?',
+    deleteRoomBody:
+      "« {name} » disparaît pour toi et pour tes élèves. Ils perdent l'accès au fil et aux devoirs. C'est définitif.",
     tooMany:
       'Tu as dix classes ouvertes, le maximum. Archive une classe terminée pour en ouvrir une autre.',
     needRoleTitle: "Il faut être professeur",
@@ -331,6 +335,7 @@ export const fr = {
     fileGallery: 'Galerie',
     fileDoc: 'Document',
     fileOpen: "Ouvrir l'énoncé",
+    fileDownload: 'Télécharger',
     titleNeeded: 'Donne un titre au devoir',
     instructionsLabel: 'Consignes',
     instructionsPlaceholder: "Ce que l'élève doit faire, et comment le rendre.",
@@ -418,6 +423,11 @@ export const fr = {
     deleteOther: 'Il disparaîtra pour toute la classe. La suppression est enregistrée.',
     delete: 'Supprimer',
 
+    download: 'Télécharger',
+    clearTitle: 'Vider le fil ?',
+    clearBody:
+      "Tous les messages disparaissent, pour toi comme pour tes élèves. C'est définitif, et l'action est enregistrée.",
+    clear: 'Vider le fil',
     err_pas_membre: "Tu n'es pas dans cette classe.",
     err_message_vide: 'Écris quelque chose.',
     err_message_trop_long: 'Message trop long (2000 caractères maximum).',

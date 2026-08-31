@@ -11,6 +11,7 @@
 //    4. le tuteur lit le fichier côté serveur : il n'est jamais public
 // ═══════════════════════════════════════════════════════════════
 
+import { Linking } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
@@ -215,6 +216,42 @@ export async function signedUrlFor(path: string): Promise<string | null> {
     .createSignedUrl(path, 60 * 60); // une heure
   return error ? null : data.signedUrl;
 }
+
+/**
+ * Télécharge une pièce jointe sur le téléphone.
+ *
+ * On passe par `Linking` et le navigateur du système, qui dépose le
+ * fichier dans les Téléchargements et sait ouvrir un PDF. Les deux
+ * autres voies coûtaient trop cher pour ce qu'elles apportent :
+ *
+ *  · `expo-media-library` rangerait une image dans la galerie, mais
+ *    c'est un module NATIF — donc un nouvel APK à réinstaller par
+ *    tout le monde, alors que tout le reste passe en OTA ;
+ *  · `FileSystem.StorageAccessFramework` existe déjà, mais force
+ *    l'élève à choisir un dossier à chaque fichier, et n'existe pas
+ *    sur iOS.
+ *
+ * L'URL signée vaut une heure. Elle est demandée au moment du clic,
+ * jamais à l'affichage : rien ne se télécharge tant que personne
+ * n'a demandé.
+ */
+export async function downloadAttachment(path: string): Promise<boolean> {
+  const url = await signedUrlFor(path);
+  if (!url) return false;
+  try {
+    await Linking.openURL(url);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Le nom de fichier seul, pour l'afficher. */
+export const fileNameOf = (path: string) => path.split('/').pop() ?? '';
+
+/** Une image s'affiche dans l'écran ; le reste part au lecteur. */
+export const isImagePath = (path: string) =>
+  /\.(jpe?g|png|webp|gif|heic)$/i.test(path);
 
 /** Supprime une pièce jointe (message effacé, conversation vidée). */
 export async function removeAttachments(paths: string[]): Promise<void> {

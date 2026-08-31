@@ -1227,6 +1227,7 @@ export type Database = {
         }[]
       }
       classroom_summary: { Args: { p_classroom_id: string }; Returns: Json }
+      clear_classroom_chat: { Args: { p_classroom_id: string }; Returns: Json }
       conversation_list: {
         Args: { p_limit?: number }
         Returns: {

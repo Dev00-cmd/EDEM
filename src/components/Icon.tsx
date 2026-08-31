@@ -21,7 +21,7 @@ export type IconName =
   // actions
   | 'search' | 'bell' | 'bookmark' | 'bookmark-filled' | 'settings' | 'logout'
   | 'plus' | 'send' | 'close' | 'menu' | 'more' | 'filter' | 'edit' | 'trash'
-  | 'check' | 'check-circle' | 'refresh' | 'share'
+  | 'check' | 'check-circle' | 'refresh' | 'share' | 'download'
   // flèches
   | 'chevron-right' | 'chevron-left' | 'chevron-down' | 'arrow-left' | 'arrow-right'
   // pédagogie & progression
@@ -174,6 +174,15 @@ const PATHS: Record<IconName, ReactNode> = {
     <>
       <Path d="M20.1 12a8.1 8.1 0 1 1-2.37-5.73" />
       <Path d="M19.8 4.2v4.5h-4.5" />
+    </>
+  ),
+  // Flèche vers un plateau : le geste « ça descend chez moi et ça
+  // y reste », qu'on distingue de `share` qui envoie ailleurs.
+  download: (
+    <>
+      <Line x1="12" y1="3.4" x2="12" y2="14.8" />
+      <Path d="M7.6 10.6 12 15l4.4-4.4" />
+      <Path d="M4.2 16.4v2.6a1.8 1.8 0 0 0 1.8 1.8h12a1.8 1.8 0 0 0 1.8-1.8v-2.6" />
     </>
   ),
   share: (

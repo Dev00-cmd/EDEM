@@ -1180,3 +1180,104 @@ as $$
 
   order by 5 desc, 4, 2;
 $$;
+
+
+-- ═══ clear_chat_and_delete_classroom ═══
+--
+-- Deux gestes de plus pour le professeur, et deux traces de plus au
+-- journal : vider un fil et fermer une salle sont exactement le
+-- genre d'actes dont on veut pouvoir constater qu'ils ont eu lieu.
+alter table public.moderation_events
+  drop constraint if exists moderation_events_event_check;
+
+alter table public.moderation_events
+  add constraint moderation_events_event_check
+  check (event in (
+    'message_bloque', 'message_signale', 'message_masque', 'message_demasque',
+    'message_supprime', 'membre_retire', 'charte_acceptee',
+    'fil_vide', 'salle_supprimee'
+  ));
+
+-- ── Vider le fil ──────────────────────────────────────────────
+--
+-- LE PROFESSEUR SEUL. Si un élève pouvait vider le fil, le premier
+-- usage en serait d'effacer ses propres insultes avant que
+-- quelqu'un ne les signale : la modération de l'étape 8 aurait un
+-- bouton « annuler » posé à côté d'elle.
+--
+-- On marque `deleted_at`, on n'efface pas — la règle depuis l'étape
+-- 7. Le fil quitte tous les écrans, et le journal garde de quoi
+-- comprendre. Une seule ligne de journal pour tout le geste, avec
+-- le compte : une par message noierait le journal le jour où il
+-- sert.
+create function public.clear_classroom_chat(p_classroom_id uuid)
+returns jsonb
+language plpgsql security definer set search_path to ''
+as $$
+declare
+  uid uuid := (select auth.uid());
+  v_n integer;
+begin
+  if not public.is_classroom_teacher(p_classroom_id) then
+    return jsonb_build_object('ok', false, 'error', 'pas_le_droit');
+  end if;
+
+  update public.classroom_messages
+     set deleted_at = now(), deleted_by = uid
+   where classroom_id = p_classroom_id and deleted_at is null;
+  get diagnostics v_n = row_count;
+
+  insert into public.moderation_events (classroom_id, event, actor, detail)
+  values (p_classroom_id, 'fil_vide', uid, v_n || ' message(s)');
+
+  return jsonb_build_object('ok', true, 'supprimes', v_n);
+end;
+$$;
+
+revoke execute on function public.clear_classroom_chat(uuid) from public, anon;
+grant  execute on function public.clear_classroom_chat(uuid) to authenticated;
+
+-- ── Fermer la salle ───────────────────────────────────────────
+--
+-- On archive plutôt qu'on ne supprime, et la différence n'est pas
+-- visible du professeur : la salle disparaît de son écran comme de
+-- celui de ses élèves, et personne ne peut plus y entrer ni y
+-- écrire. Ce qui reste est en base, hors de portée de l'API.
+--
+-- Pourquoi le garder : les messages, les remises et les
+-- signalements d'une salle où quelque chose s'est mal passé sont
+-- précisément ce qu'il faut pouvoir consulter APRÈS. Un `delete` en
+-- cascade emporterait toutes les preuves, sur commande du seul
+-- adulte de la pièce.
+--
+-- La fonction REND un résultat au lieu de lever : l'écran doit
+-- pouvoir dire « déjà supprimée » sans afficher une phrase SQL.
+create or replace function public.archive_classroom(p_classroom_id uuid)
+returns jsonb language plpgsql security definer set search_path to ''
+as $$
+declare
+  uid uuid := (select auth.uid());
+  v_membres integer;
+begin
+  if not public.is_classroom_teacher(p_classroom_id) then
+    return jsonb_build_object('ok', false, 'error', 'pas_le_droit');
+  end if;
+
+  select count(*)::integer into v_membres
+    from public.classroom_members
+   where classroom_id = p_classroom_id and status = 'active';
+
+  update public.classrooms
+     set archived_at = now(), is_open = false
+   where id = p_classroom_id and archived_at is null;
+
+  if not found then
+    return jsonb_build_object('ok', false, 'error', 'deja_supprimee');
+  end if;
+
+  insert into public.moderation_events (classroom_id, event, actor, detail)
+  values (p_classroom_id, 'salle_supprimee', uid, v_membres || ' eleve(s)');
+
+  return jsonb_build_object('ok', true, 'eleves', v_membres);
+end;
+$$;

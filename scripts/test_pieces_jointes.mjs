@@ -130,6 +130,48 @@ try {
   ok(await peutLire(prof, chat), 'le professeur le voit');
   ok(!(await peutLire(intrus, chat)), 'un non-membre non');
 
+  console.log('\nVIDER LE FIL : LE PROFESSEUR SEUL');
+  await eleve.rpc('accept_charter');
+  await eleve.rpc('post_classroom_message', { p_classroom_id: id, p_text: 'Bonjour' });
+  await prof.rpc('post_classroom_message', { p_classroom_id: id, p_text: 'Bonjour a tous' });
+
+  // Si un eleve pouvait vider le fil, le premier usage en serait
+  // d effacer ses propres insultes avant qu on les signale.
+  const parEleve = await eleve.rpc('clear_classroom_chat', { p_classroom_id: id });
+  ok(parEleve.b?.ok === false, 'un eleve ne peut pas vider le fil', parEleve.b?.error);
+  const avant = await eleve.rpc('classroom_messages', { p_classroom_id: id });
+  ok((avant.b ?? []).length === 2, 'et le fil est intact', `${avant.b?.length} message(s)`);
+
+  const vide = await prof.rpc('clear_classroom_chat', { p_classroom_id: id });
+  ok(vide.b?.ok === true && vide.b?.supprimes === 2, 'le professeur le vide', JSON.stringify(vide.b));
+  const apres = await eleve.rpc('classroom_messages', { p_classroom_id: id });
+  ok((apres.b ?? []).length === 0, 'plus rien pour personne', `${apres.b?.length}`);
+
+  const jFil = await sql(
+    `select count(*)::int n from public.moderation_events
+      where classroom_id = '${id}' and event = 'fil_vide'`);
+  ok(jFil[0]?.n === 1, 'et c est journalise');
+
+  console.log('\nSUPPRIMER LA SALLE');
+  const parEleve2 = await eleve.rpc('archive_classroom', { p_classroom_id: id });
+  ok(parEleve2.b?.ok === false, 'un eleve ne peut pas supprimer la salle', parEleve2.b?.error);
+
+  const sup = await prof.rpc('archive_classroom', { p_classroom_id: id });
+  ok(sup.b?.ok === true, 'le professeur la supprime', JSON.stringify(sup.b));
+  const listeE = await eleve.rpc('my_classrooms');
+  ok((listeE.b ?? []).every((c) => c.id !== id), 'elle disparait de l ecran de l eleve');
+  const listeP = await prof.rpc('my_classrooms');
+  ok((listeP.b ?? []).every((c) => c.id !== id), 'et de celui du professeur');
+
+  // Ce qui reste est en base, hors de portee de l API : les preuves
+  // d une salle ou quelque chose s est mal passe ne doivent pas
+  // partir sur commande du seul adulte de la piece.
+  const reste = await sql(
+    `select count(*)::int n from public.classroom_messages where classroom_id = '${id}'`);
+  ok(reste[0]?.n === 2, 'les messages restent consultables en base', `${reste[0]?.n}`);
+  const deuxieme = await prof.rpc('archive_classroom', { p_classroom_id: id });
+  ok(deuxieme.b?.error === 'deja_supprimee', 'la supprimer deux fois ne fait rien');
+
   console.log('\nUN CHEMIN BRICOLE NE DONNE AUCUN DROIT');
   ok(!(await peutLire(intrus, `${prof.uid}/classroom/pas-un-uuid/consigne/x.pdf`)),
      'classe qui n est pas un uuid');

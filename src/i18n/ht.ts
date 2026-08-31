@@ -252,6 +252,10 @@ export const ht: Messages = {
   },
 
   classroom: {
+    deleteRoom: 'Efase sal la',
+    deleteRoomTitle: 'Efase sal sa a ?',
+    deleteRoomBody:
+      '« {name} » ap disparèt pou ou ak pou elèv ou yo. Yo pèdi aksè nan fil la ak nan devwa yo. Se definitif.',
     tooMany:
       'Ou gen dis klas louvri, se maksimòm nan. Achive yon klas ki fini pou ou ka louvri yon lòt.',
     needRoleTitle: "Fòk ou se yon pwofesè",
@@ -331,6 +335,7 @@ export const ht: Messages = {
     fileGallery: 'Galri',
     fileDoc: 'Dokiman',
     fileOpen: 'Louvri konsiy la',
+    fileDownload: 'Telechaje',
     titleNeeded: 'Bay devwa a yon tit',
     instructionsLabel: 'Konsiy',
     instructionsPlaceholder: 'Sa elèv la dwe fè, ak kijan pou l remèt li.',
@@ -418,6 +423,11 @@ export const ht: Messages = {
     deleteOther: 'L ap disparèt pou tout klas la. Efasman an anrejistre.',
     delete: 'Efase',
 
+    download: 'Telechaje',
+    clearTitle: 'Vide fil la ?',
+    clearBody:
+      'Tout mesaj yo ap disparèt, pou ou menm jan ak pou elèv ou yo. Se definitif, epi aksyon an anrejistre.',
+    clear: 'Vide fil la',
     err_pas_membre: 'Ou pa nan klas sa a.',
     err_message_vide: 'Ekri yon bagay.',
     err_message_trop_long: 'Mesaj twò long (2000 karaktè maksimòm).',

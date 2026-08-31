@@ -30,6 +30,7 @@ import { useKeyboard } from '@/theme/useKeyboard';
 import { RADIUS } from '@/theme/colors';
 import { type } from '@/theme/typography';
 import {
+  downloadAttachment, fileNameOf, isImagePath,
   pickFromCamera, pickFromGallery, signedUrlFor, uploadAttachment,
 } from '@/lib/attachments';
 import {
@@ -450,28 +451,34 @@ function PieceJointe({ path }: { path: string }) {
   const [lien, setLien] = useState<string | null>(null);
   const [chargement, setChargement] = useState(false);
 
-  const nom = path.split('/').pop() ?? '';
-  const estImage = /\.(jpe?g|png|webp|gif)$/i.test(nom);
+  const nom = fileNameOf(path);
+  const estImage = isImagePath(path);
 
-  const ouvrir = async () => {
-    if (lien) return Linking.openURL(lien).catch(() => {});
+  // Voir : l'image s'affiche dans l'écran, sans quitter le devoir.
+  const voir = async () => {
+    if (lien) return;
     setChargement(true);
-    const url = await signedUrlFor(path);
+    setLien(await signedUrlFor(path));
     setChargement(false);
-    if (!url) return;
-    setLien(url);
-    // Une image s'affiche dans l'écran ; un PDF part au lecteur du
-    // téléphone, qui sait le faire mieux qu'une WebView.
-    if (!estImage) Linking.openURL(url).catch(() => {});
   };
+
+  // Télécharger : le fichier part dans les Téléchargements du
+  // téléphone, et y reste. Deux gestes différents — regarder une
+  // photo d'énoncé et la garder pour la faire ce soir sans réseau
+  // ne sont pas la même chose.
+  const telecharger = () => downloadAttachment(path);
 
   return (
     <Card style={{ marginTop: 12 }}>
-      <Pressable onPress={ouvrir} accessibilityRole="button" style={styles.pj}>
+      <Pressable
+        onPress={estImage ? voir : telecharger}
+        accessibilityRole="button"
+        style={styles.pj}
+      >
         <Icon name={estImage ? 'image' : 'file'} size={16} color={colors.accent} />
         <View style={{ flex: 1 }}>
           <Text style={[type.captionMedium, { color: colors.text }]} numberOfLines={1}>
-            {t('assignment.fileOpen')}
+            {estImage ? t('assignment.fileOpen') : t('assignment.fileDownload')}
           </Text>
           <Text style={[type.caption, { color: colors.textFaint }]} numberOfLines={1}>
             {chargement ? t('common.loading') : nom}
@@ -479,6 +486,15 @@ function PieceJointe({ path }: { path: string }) {
         </View>
         <Icon name="chevron-right" size={15} color={colors.textFaint} />
       </Pressable>
+
+      <Button
+        label={t('assignment.fileDownload')}
+        icon="download"
+        variant="ghost"
+        size="sm"
+        style={{ marginTop: 8 }}
+        onPress={telecharger}
+      />
       {lien && estImage ? (
         <Image source={{ uri: lien }} style={styles.pjImage} resizeMode="contain" />
       ) : null}

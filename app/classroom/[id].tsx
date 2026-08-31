@@ -29,7 +29,7 @@ import { RADIUS } from '@/theme/colors';
 import { type } from '@/theme/typography';
 import { getSubject } from '@/data/subjects';
 import {
-  approveMember, fetchClassrooms, fetchRoster, removeMember,
+  approveMember, archiveClassroom, fetchClassrooms, fetchRoster, removeMember,
   rotateJoinCode, setClassroomFocus,
   type Classroom, type RosterEntry,
 } from '@/lib/classrooms';
@@ -53,6 +53,7 @@ export default function UneClasse() {
   const [note, setNote] = useState('');
   const [enCours, setEnCours] = useState(false);
   const [aRetirer, setARetirer] = useState<RosterEntry | null>(null);
+  const [aSupprimer, setASupprimer] = useState(false);
   const [devoirs, setDevoirs] = useState<(ClassAssignment | MyAssignment)[]>([]);
   const [aVerifier, setAVerifier] = useState(0);
   // La charte se lit une fois, et vaut pour toutes les classes.
@@ -399,6 +400,20 @@ export default function UneClasse() {
         <Text style={[type.caption, { color: colors.textFaint, marginTop: 18 }]}>
           {t('classroom.privacy')}
         </Text>
+
+        {/* Supprimer la salle. Tout en bas, en fantôme et en rouge :
+            c'est un geste définitif, il ne doit pas se trouver sous
+            le pouce à côté des gestes de tous les jours. */}
+        {prof && (
+          <Button
+            label={t('classroom.deleteRoom')}
+            icon="trash"
+            variant="danger"
+            full
+            style={{ marginTop: 24 }}
+            onPress={() => setASupprimer(true)}
+          />
+        )}
       </ScrollView>
 
       {/* La charte, à la première entrée dans une classe. « Plus
@@ -407,6 +422,20 @@ export default function UneClasse() {
         visible={!charteVue && !prof}
         onAccepted={() => setCharteVue(true)}
         onDecline={() => router.back()}
+      />
+
+      <ConfirmDialog
+        visible={aSupprimer}
+        title={t('classroom.deleteRoomTitle')}
+        message={t('classroom.deleteRoomBody', { name: classe.name })}
+        confirmLabel={t('classroom.deleteRoom')}
+        cancelLabel={t('common.cancel')}
+        destructive
+        onCancel={() => setASupprimer(false)}
+        onConfirm={async () => {
+          setASupprimer(false);
+          if (await archiveClassroom(classe.id)) router.replace('/classes');
+        }}
       />
 
       <ConfirmDialog

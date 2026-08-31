@@ -45,10 +45,11 @@ import { useKeyboard } from '@/theme/useKeyboard';
 import { RADIUS } from '@/theme/colors';
 import { type } from '@/theme/typography';
 import {
+  downloadAttachment, fileNameOf, isImagePath,
   pickDocument, pickFromCamera, pickFromGallery, signedUrlFor, uploadAttachment,
 } from '@/lib/attachments';
 import {
-  PAGE, deleteMessage, fetchMessages, postMessage,
+  PAGE, clearClassroomChat, deleteMessage, fetchMessages, postMessage,
   subscribeToClassroom, unsubscribe, type ChatMessage,
 } from '@/lib/chat';
 import { fetchClassrooms, fetchRoster, type Classroom } from '@/lib/classrooms';
@@ -74,6 +75,7 @@ export default function FilDeClasse() {
   const [erreur, setErreur] = useState('');
   const [aSupprimer, setASupprimer] = useState<ChatMessage | null>(null);
   const [aSignaler, setASignaler] = useState<ChatMessage | null>(null);
+  const [aVider, setAVider] = useState(false);
   const [info, setInfo] = useState('');
   const canal = useRef<RealtimeChannel | null>(null);
 
@@ -255,6 +257,20 @@ export default function FilDeClasse() {
             {t('fil.subtitle')}
           </Text>
         </View>
+
+        {/* Vider le fil : le PROFESSEUR seul, et le serveur le
+            vérifie. Si un élève pouvait le faire, le premier usage
+            en serait d'effacer ses propres insultes avant qu'on les
+            signale. */}
+        {prof && messages.length > 0 && (
+          <Pressable
+            onPress={() => setAVider(true)}
+            accessibilityRole="button"
+            hitSlop={10}
+          >
+            <Icon name="trash" size={18} color={colors.textFaint} />
+          </Pressable>
+        )}
       </View>
 
       <FlatList
@@ -348,6 +364,22 @@ export default function FilDeClasse() {
       />
 
       <ConfirmDialog
+        visible={aVider}
+        title={t('fil.clearTitle')}
+        message={t('fil.clearBody')}
+        confirmLabel={t('fil.clear')}
+        cancelLabel={t('common.cancel')}
+        destructive
+        onCancel={() => setAVider(false)}
+        onConfirm={async () => {
+          setAVider(false);
+          const r = await clearClassroomChat(id);
+          if (r.ok) setMessages([]);
+          else setErreur(t('fil.err_echec'));
+        }}
+      />
+
+      <ConfirmDialog
         visible={aSupprimer !== null}
         title={t('fil.deleteTitle')}
         message={aSupprimer?.mine ? t('fil.deleteMine') : t('fil.deleteOther')}
@@ -381,10 +413,16 @@ function Bulle({
   const [image, setImage] = useState<string | null>(null);
   const [chargement, setChargement] = useState(false);
 
+  const chemin = message.attachment_path;
+  const estImage = chemin ? isImagePath(chemin) : false;
+
+  // Une image s'affiche dans le fil ; un document part directement
+  // au téléphone — on ne prévisualise pas un PDF dans une bulle.
   const voir = async () => {
-    if (!message.attachment_path) return;
+    if (!chemin) return;
+    if (!estImage) return void downloadAttachment(chemin);
     setChargement(true);
-    setImage(await signedUrlFor(message.attachment_path));
+    setImage(await signedUrlFor(chemin));
     setChargement(false);
   };
 
@@ -438,9 +476,35 @@ function Bulle({
             {message.text}
           </Text>
 
-          {message.attachment_path ? (
+          {chemin ? (
             image ? (
-              <Image source={{ uri: image }} style={styles.image} resizeMode="cover" />
+              <>
+                <Image source={{ uri: image }} style={styles.image} resizeMode="cover" />
+                {/* Regarder une photo et la GARDER pour la revoir ce
+                    soir sans réseau ne sont pas le même geste. */}
+                <Pressable
+                  onPress={() => downloadAttachment(chemin)}
+                  accessibilityRole="button"
+                  style={[
+                    styles.vignette,
+                    { borderColor: message.mine ? 'rgba(255,255,255,0.4)' : colors.border },
+                  ]}
+                >
+                  <Icon
+                    name="download"
+                    size={13}
+                    color={message.mine ? '#FFFFFF' : colors.accent}
+                  />
+                  <Text
+                    style={[
+                      type.caption,
+                      { color: message.mine ? 'rgba(255,255,255,0.85)' : colors.accent, flex: 1 },
+                    ]}
+                  >
+                    {t('fil.download')}
+                  </Text>
+                </Pressable>
+              </>
             ) : (
               // Rien ne se télécharge tant qu'on n'a pas demandé.
               <Pressable
@@ -449,7 +513,7 @@ function Bulle({
                 style={[styles.vignette, { borderColor: message.mine ? 'rgba(255,255,255,0.4)' : colors.border }]}
               >
                 <Icon
-                  name="image"
+                  name={estImage ? 'image' : 'download'}
                   size={14}
                   color={message.mine ? '#FFFFFF' : colors.accent}
                 />
@@ -460,7 +524,11 @@ function Bulle({
                   ]}
                   numberOfLines={1}
                 >
-                  {chargement ? t('common.loading') : t('fil.seeImage')}
+                  {chargement
+                    ? t('common.loading')
+                    : estImage
+                      ? t('fil.seeImage')
+                      : fileNameOf(chemin)}
                 </Text>
               </Pressable>
             )

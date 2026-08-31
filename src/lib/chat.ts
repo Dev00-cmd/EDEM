@@ -78,6 +78,25 @@ export async function postMessage(
   return data as { ok: boolean; error?: PostError; id?: string };
 }
 
+/**
+ * Vide le fil. Réservé au professeur — le serveur le vérifie.
+ *
+ * Si un élève pouvait le faire, le premier usage en serait
+ * d'effacer ses propres insultes avant qu'on les signale : la
+ * modération aurait un bouton « annuler » à côté d'elle.
+ *
+ * Les messages sont marqués supprimés, pas effacés. Ils quittent
+ * tous les écrans, et le journal garde de quoi comprendre.
+ */
+export async function clearClassroomChat(
+  classroomId: string,
+): Promise<{ ok: boolean; supprimes?: number }> {
+  const { data } = await supabase.rpc('clear_classroom_chat', {
+    p_classroom_id: classroomId,
+  });
+  return (data as { ok: boolean; supprimes?: number } | null) ?? { ok: false };
+}
+
 export async function deleteMessage(messageId: string): Promise<boolean> {
   const { data } = await supabase.rpc('delete_classroom_message', {
     p_message_id: messageId,
