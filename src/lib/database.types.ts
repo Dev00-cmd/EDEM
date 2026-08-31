@@ -1533,6 +1533,42 @@ export type Database = {
         }
         Returns: Json
       }
+      teacher_assignments: {
+        Args: never
+        Returns: {
+          a_corriger: number
+          classroom: string
+          classroom_id: string
+          due_at: string
+          id: string
+          kind: string
+          membres: number
+          moyenne: number
+          published: boolean
+          rendus: number
+          subject_id: string
+          title: string
+        }[]
+      }
+      teacher_overview: {
+        Args: never
+        Returns: {
+          a_corriger: number
+          classroom_id: string
+          current_focus: string
+          devoirs: number
+          en_attente: number
+          en_difficulte: number
+          grade_level: string
+          inactifs_7j: number
+          join_code: string
+          maitrise: number
+          membres: number
+          name: string
+          school: string
+          subject_id: string
+        }[]
+      }
       teacher_requests_to_review: {
         Args: { p_status?: string }
         Returns: {

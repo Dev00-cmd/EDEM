@@ -54,6 +54,10 @@ export const STORAGE_KEYS = {
   // local à l'appareil : c'est une préférence d'affichage, pas une
   // donnée de l'élève, et elle n'a rien à faire en base.
   TUNE_SKIPPED: '@tipwof/tune-skipped',
+  // Un professeur qui regarde l'app « comme un élève ». Locale à
+  // l'appareil pour la même raison : c'est un point de vue, pas un
+  // rôle. Le rôle, lui, vit en base et le serveur seul en décide.
+  VUE_ELEVE: '@tipwof/vue-eleve',
 };
 
 // ═══════════════════════════════════════════════════════════════

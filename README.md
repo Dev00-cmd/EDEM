@@ -20,6 +20,7 @@ et sait **lire la photo d'un devoir** pour l'expliquer pas à pas.
 2. [Démarrage rapide](#2-démarrage-rapide-5-minutes)
 3. [Comment tout est branché](#3-comment-tout-est-branché)
 4. [Où se trouve quoi](#4-où-se-trouve-quoi)
+4bis. [Deux interfaces, un seul compte](#4bis-deux-interfaces-un-seul-compte)
 5. [Le design](#5-le-design)
 6. [Adaptation à tous les écrans](#6-adaptation-à-tous-les-écrans)
 7. [Comptes élèves](#7-comptes-élèves)
@@ -52,7 +53,8 @@ et sait **lire la photo d'un devoir** pour l'expliquer pas à pas.
 | 👩‍🏫 | **Rôle professeur** | Obtenu en se déclarant — nom, école, matières, moyen de joindre — et accordé dans la seconde. Aucune file d'attente, aucune validation. Un compte prof reste un compte élève, avec des droits en plus |
 | 🚪 | **Classes sur invitation** | Le prof ouvre une classe, distribue un code à 6 caractères, puis **valide chaque élève**. Écrire « Lycée X, NS3 » dans son profil n'ouvre aucune porte |
 | 📝 | **Devoirs et quiz assignés** | Texte, photo du cahier, ou quiz généré pour chaque élève. Le prof note et commente |
-| 📊 | **Tableau de bord du prof** | La maîtrise moyenne de sa classe notion par notion, et qui est sous 40 % — sans avoir corrigé une seule copie |
+| 🏫 | **Interface professeur** | Ses salles, son suivi de classe et ses devoirs, dans une barre d'onglets à lui. Même compte et même connexion que l'élève — [§4bis](#4bis-deux-interfaces-un-seul-compte) |
+| 📊 | **Suivi de classe** | La maîtrise moyenne de sa classe notion par notion, et qui est sous 40 % — sans avoir corrigé une seule copie. C'est un onglet, plus un écran enfoui |
 | 💬 | **Fil de classe** | Un chat en temps réel, uniquement à l'intérieur d'une classe où un professeur est présent. Pas de messages privés |
 | 🛡️ | **Modération** | Filtre en français et en créole, bouton signaler en deux touches, le prof modère sa classe, et chaque geste est journalisé — [§10](#10-protection-des-mineurs-et-modération) |
 | 🔄 | **Mise à jour intégrée** | Bouton dans le Profil : cherche, télécharge et applique une mise à jour sans passer par un store |
@@ -161,14 +163,22 @@ EDEM/
 │   ├── dashboard/[id].tsx      📊 Tableau de bord du prof, notion par notion
 │   ├── fil/[id].tsx            💬 Le fil de la classe, en temps réel
 │   ├── moderation/[id].tsx     🛡️ La pile de modération du professeur
-│   └── (tabs)/
-│       ├── _layout.tsx         La barre d'onglets du bas
-│       ├── index.tsx           🏠 Accueil — question rapide, plan du jour
-│       ├── path.tsx            📈 Parcours & statistiques
-│       ├── chat.tsx            ✦ Tuteur IA — le cœur de l'app
-│       ├── quiz.tsx            🏆 Quiz — 3 niveaux, chrono par matière
-│       ├── board.tsx           🥇 Classement de tous les élèves
-│       └── profile.tsx         👤 Profil, réglages & mises à jour
+│   ├── (tabs)/                 L'INTERFACE ÉLÈVE
+│   │   ├── _layout.tsx         Ses onglets
+│   │   ├── index.tsx           🏠 Accueil — question rapide, plan du jour
+│   │   ├── path.tsx            📈 Parcours & statistiques
+│   │   ├── chat.tsx            ✦ Tuteur IA — le cœur de l'app
+│   │   ├── quiz.tsx            🏆 Quiz — 3 niveaux, chrono par matière
+│   │   ├── board.tsx           🥇 Classement de tous les élèves
+│   │   └── profile.tsx         👤 Profil, réglages & mises à jour
+│   │
+│   └── (prof)/                 L'INTERFACE PROFESSEUR
+│       ├── _layout.tsx         Ses onglets — ni Quiz ni Classement
+│       ├── index.tsx           🏫 Ses salles, codes et demandes en attente
+│       ├── suivi.tsx           📊 OÙ EN EST SA CLASSE, notion par notion
+│       ├── devoirs.tsx         📚 Toutes classes, file de correction
+│       ├── tuteur.tsx          ✦ M. Thomas (le même écran que l'élève)
+│       └── compte.tsx          👤 Profil (le même) + bascule « voir comme élève »
 │
 ├── src/
 │   ├── ai/
@@ -247,6 +257,53 @@ EDEM/
 ```
 
 > 📌 **Pourquoi la fonction serveur tient en un seul fichier ?** Parce qu'elle se déploie par copier-coller dans le dashboard Supabase. Chaque fichier supplémentaire est une occasion d'en oublier un et de casser le tuteur — c'est déjà arrivé.
+
+---
+
+## 4bis. Deux interfaces, un seul compte
+
+L'application affiche deux choses très différentes selon `profiles.role`. **Ce n'est pas deux applications, ni deux comptes, ni deux connexions.**
+
+```
+                    UNE SEULE CONNEXION
+                            │
+                  profiles.role, décidé en base
+                            │
+        ┌───────────────────┴───────────────────┐
+        ▼                                       ▼
+   (tabs)  ÉLÈVE                          (prof)  PROFESSEUR
+   Accueil · Parcours                     Mes salles · Suivi
+   M. Thomas · Quiz                       Devoirs · M. Thomas
+   Classement · Profil                    Profil
+        ▲                                       │
+        └───────── « voir comme élève » ────────┘
+```
+
+### Pourquoi pas deux comptes séparés
+
+C'était l'idée de départ. Trois raisons de ne pas l'avoir retenue :
+
+1. **Ça n'aurait rien protégé de plus.** Le rôle vit dans `profiles.role`, garanti par un trigger, et **44 vérifications `is_classroom_teacher`** gardent les données. Deux écrans de connexion devant la même table `auth.users`, c'est du décor — la sécurité est ailleurs, et elle est déjà là.
+2. **Beaucoup de professeurs sont aussi des élèves**, en formation ou simplement pour faire préparer une explication par M. Thomas. Un compte prof **reste** un compte élève : il garde son profil, ses XP et son tuteur. La bascule dans son profil lui rend les onglets de l'élève.
+3. **Deux mots de passe dans un pays où l'accès e-mail est peu fiable** — c'est déjà la raison pour laquelle l'inscription ne demande aucune vérification par courriel ([§7](#7-comptes-élèves)).
+
+### Ce que le professeur voit, et pourquoi
+
+| Onglet | Ce qu'il répond |
+|---|---|
+| **Mes salles** | Le code à donner, qui attend une validation, ce qu'il y a à corriger |
+| **Suivi** | *Où en est ma classe ?* — maîtrise par notion, **élèves sous 40 % nommés**. Aucune saisie : tout vient de `topic_mastery`, qui se remplit au fil des quiz |
+| **Devoirs** | Toutes classes confondues, **ce qui attend une correction d'abord** |
+| **M. Thomas** | Le même tuteur — un prof s'en sert pour préparer |
+| **Profil** | Les mêmes réglages, plus la bascule vers la vue élève |
+
+Pas de **Quiz**, pas de **Classement**, pas de **Parcours** : ce sont la progression et les XP d'un élève. Ils restent accessibles par la bascule.
+
+> 📊 **Le Suivi est la fonctionnalité qui décide un professeur à recommander EDEM ou à l'interdire dans sa classe** — bien plus que la messagerie. Il existait en base depuis les devoirs, et n'était atteignable qu'en quatre touches au fond d'une classe. C'est maintenant un onglet.
+
+### Ce que ça a coûté côté serveur
+
+Presque rien : deux fonctions d'agrégation, `teacher_overview()` et `teacher_assignments()`. Tout le reste existait déjà par classe. Elles évitent surtout de **boucler côté client** — dix appels pour dix classes, sur un forfait payé à l'unité.
 
 ---
 

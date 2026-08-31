@@ -31,6 +31,9 @@ export const ht: Messages = {
     quiz: 'Kwiz',
     board: 'Klasman',
     profile: 'Pwofil',
+    suivi: 'Swivi',
+    devoirs: 'Devwa',
+    classes: 'Klas mwen yo',
   },
 
   login: {
@@ -181,6 +184,56 @@ export const ht: Messages = {
     champ_school_id: 'lekòl ou',
     champ_commune_id: 'komin ou',
     cardOpen: 'Kontinye',
+  },
+
+  prof: {
+    eyebrow: 'ESPAS PWOFESÈ',
+    hello: 'Bonjou {name}',
+    aFaire: '{attente} demann ap tann · {copies} kopi pou korije.',
+    rienAFaire: 'Anyen p ap tann ou. Klas ou yo ap mache.',
+    mesSalles: 'SAL MWEN YO',
+    aucuneSalle: 'Ou poko gen sal. Louvri youn, w ap gen yon kòd pou bay elèv ou yo.',
+    nEleves: '{n} elèv',
+    badgeAttente: '{n} ap tann',
+    badgeCorriger: '{n} pou korije',
+    badgeDifficulte: '{n} an difikilte',
+    badgeMaitrise: '{n}% metriz',
+
+    vueTitre: 'JAN M AP GADE L',
+    vueVoirEleve: 'Gade app la tankou yon elèv',
+    vueVoirSub: 'Chemen ou, kwiz ou yo ak klasman an. Kont ou pa chanje.',
+    vueRevenirProf: 'Tounen nan espas pwofesè a',
+    vueRevenirSub: 'Klas ou yo, swivi ou ak devwa ou yo.',
+  },
+
+  suivi: {
+    eyebrow: 'SWIVI',
+    title: 'Kote klas ou rive',
+    sub: 'Mezire nan kwiz yo, san ou pa gen yon kopi pou korije. Nosyon ki pi fèb yo an premye.',
+    moyenne: 'Mwayèn metriz',
+    endifficulte: 'An difikilte',
+    inactifs: 'Pa aktif 7 j',
+    aTravailler: 'POU TRAVAY',
+    acquis: 'PLIS OSWA MWENS AKI',
+    mesureSur: 'Mezire sou {n} elèv',
+    toutLeProgramme: 'Wè tout pwogram nan',
+    videTitre: 'Poko gen anyen pou montre',
+    videCorps: 'Swivi a ranpli pou kont li lè elèv ou yo fè kwiz. Ba yo yon kwiz, tounen demen.',
+  },
+
+  devoirs: {
+    eyebrow: 'DEVWA',
+    title: 'Sa ou bay',
+    aCorriger: '{n} kopi ap tann korije ou.',
+    rienACorriger: 'Okenn kopi p ap tann.',
+    nouveau: 'Bay yon devwa',
+    aucun: 'Ou poko bay devwa.',
+    rendus: '{n}/{total} remèt',
+    moyenne: 'mwayèn {n}%',
+    pour: 'pou {date}',
+    echue: 'te dwe {date}',
+    brouillon: 'Bouyon — pa pibliye',
+    badgeCorriger: '{n} pou korije',
   },
 
   teacher: {

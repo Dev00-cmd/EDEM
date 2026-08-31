@@ -96,6 +96,54 @@ export const fetchClassAssignments = async (classroomId: string): Promise<ClassA
 export const fetchSubmissions = async (assignmentId: string): Promise<SubmissionRow[]> =>
   (await rpc<SubmissionRow[]>('assignment_submissions', { p_assignment_id: assignmentId })) ?? [];
 
+/**
+ * L'accueil du professeur : une ligne par classe, avec d'abord ce
+ * qui APPELLE UNE ACTION — demandes en attente, copies à corriger,
+ * élèves en difficulté.
+ *
+ * Une seule requête pour toutes les classes. Boucler côté client
+ * ferait dix appels pour dix classes, sur un forfait payé à l'unité.
+ */
+export interface TeacherClass {
+  classroom_id: string;
+  name: string;
+  subject_id: string;
+  grade_level: string;
+  school: string;
+  join_code: string;
+  membres: number;
+  en_attente: number;
+  a_corriger: number;
+  devoirs: number;
+  current_focus: string | null;
+  /** Null tant que rien n'est mesuré : « 0 % » serait un mensonge. */
+  maitrise: number | null;
+  en_difficulte: number;
+  inactifs_7j: number;
+}
+
+/** Un devoir vu depuis l'accueil, toutes classes confondues. */
+export interface TeacherAssignment {
+  id: string;
+  classroom_id: string;
+  classroom: string;
+  subject_id: string;
+  kind: AssignmentKind;
+  title: string;
+  due_at: string | null;
+  published: boolean;
+  membres: number;
+  rendus: number;
+  a_corriger: number;
+  moyenne: number | null;
+}
+
+export const fetchTeacherOverview = async (): Promise<TeacherClass[]> =>
+  (await rpc<TeacherClass[]>('teacher_overview')) ?? [];
+
+export const fetchTeacherAssignments = async (): Promise<TeacherAssignment[]> =>
+  (await rpc<TeacherAssignment[]>('teacher_assignments')) ?? [];
+
 export const fetchDashboard = async (classroomId: string): Promise<DashboardRow[]> =>
   (await rpc<DashboardRow[]>('classroom_dashboard', { p_classroom_id: classroomId })) ?? [];
 

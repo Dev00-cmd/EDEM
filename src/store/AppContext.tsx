@@ -251,6 +251,15 @@ interface AppState {
   /** « Plus tard ». On ne le repropose pas sur cet appareil. */
   dismissTune: () => void;
 
+  // ── Le point de vue, pour un compte professeur ──────────────
+  /**
+   * Un professeur regarde l'app comme un élève. Ce n'est PAS un
+   * changement de rôle : le rôle vit en base et le serveur seul en
+   * décide. Ici on ne change que ce qui s'affiche.
+   */
+  vueEleve: boolean;
+  basculerVue: (eleve: boolean) => void;
+
   /**
    * Accepte la charte de la classe. Écrit par une fonction
    * SECURITY DEFINER : `charter_accepted_at` ne figure pas dans
@@ -320,6 +329,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [completion, setCompletion] = useState<Completion>(DEFAULT_COMPLETION);
   /** « Plus tard » sur l'écran de personnalisation, par appareil. */
   const [tuneDismissed, setTuneDismissed] = useState(false);
+  // Un professeur peut regarder l'app comme un élève : son compte
+  // EST resté un compte d'élève, avec ses XP et son tuteur.
+  const [vueEleve, setVueEleve] = useState(false);
 
   // Évite d'écrire le cache pendant le tout premier chargement.
   const hydrated = useRef(false);
@@ -456,17 +468,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
     let alive = true;
     (async () => {
       // 1) cache d'abord — l'app s'ouvre sans attendre le réseau
-      const [cp, cpr, ct, skipped] = await Promise.all([
+      const [cp, cpr, ct, skipped, vue] = await Promise.all([
         readCache(cacheKey(STORAGE_KEYS.PROFILE, userId), DEFAULT_PROFILE),
         readCache(cacheKey(STORAGE_KEYS.PROGRESS, userId), DEFAULT_PROGRESS),
         readCache(cacheKey(STORAGE_KEYS.CHAT, userId), [] as Conversation[]),
         readCache(cacheKey(STORAGE_KEYS.TUNE_SKIPPED, userId), false),
+        readCache(cacheKey(STORAGE_KEYS.VUE_ELEVE, userId), false),
       ]);
       if (!alive) return;
       setProfile(cp);
       setProgress(cpr);
       setConversations(Array.isArray(ct) ? ct : []);
       setTuneDismissed(skipped === true);
+      setVueEleve(vue === true);
       setReady(true);
       hydrated.current = true;
 
@@ -860,6 +874,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
       profile.communeId, profile.goal, profile.examYear, profile.studyMinutes,
       profile.name, profile.favorites.length, profile.weakSubjects.length]);
 
+  const basculerVue = useCallback(
+    (eleve: boolean) => {
+      setVueEleve(eleve);
+      if (userId) writeCache(cacheKey(STORAGE_KEYS.VUE_ELEVE, userId), eleve);
+    },
+    [userId],
+  );
+
   const dismissTune = useCallback(() => {
     setTuneDismissed(true);
     if (userId) writeCache(cacheKey(STORAGE_KEYS.TUNE_SKIPPED, userId), true);
@@ -910,6 +932,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     refreshCompletion,
     shouldTune,
     dismissTune,
+    vueEleve,
+    basculerVue,
     acceptCharter,
   };
 

@@ -22,15 +22,24 @@ import { UpdateGate } from '@/components/UpdateGate';
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
 /**
- * Aiguillage : décide où l'élève doit se trouver.
+ * Aiguillage : décide où l'utilisateur doit se trouver.
  *
  *   pas de compte        → /login
  *   compte sans profil   → /onboarding
- *   compte + profil      → les onglets
+ *   professeur           → /(prof)   ses classes, son suivi
+ *   élève                → /(tabs)   son parcours, son tuteur
+ *
+ * UN SEUL COMPTE, DEUX INTERFACES. Le rôle vit en base et le
+ * serveur seul en décide ; ici on ne choisit que ce qui s'affiche.
+ * Deux comptes séparés n'auraient rien protégé de plus — la
+ * sécurité tient aux policies, pas à l'écran de connexion — et
+ * auraient coûté deux mots de passe à des gens dont l'accès e-mail
+ * est déjà peu fiable. Beaucoup de professeurs sont par ailleurs
+ * des élèves, et gardent ici leur profil, leurs XP et leur tuteur.
  */
 function Navigator() {
   const { session, ready: authReady } = useAuth();
-  const { ready: appReady, profile } = useApp();
+  const { ready: appReady, profile, vueEleve } = useApp();
   const { colors, isDark } = useTheme();
 
   const segments = useSegments();
@@ -53,8 +62,20 @@ function Navigator() {
       if (!inOnboarding) router.replace('/onboarding');
       return;
     }
-    if (inAuthScreen || inOnboarding) router.replace('/(tabs)');
-  }, [ready, session, profile.onboarded, segments, router]);
+
+    // Un professeur qui a demandé à voir l'app « comme un élève »
+    // reste du côté élève : c'est un point de vue, pas un rôle.
+    const cotePro = profile.role === 'prof' && !vueEleve;
+    const racine = cotePro ? '/(prof)' : '/(tabs)';
+
+    if (inAuthScreen || inOnboarding) return router.replace(racine);
+
+    // On ne déplace que si l'utilisateur est du mauvais côté : sans
+    // ce garde, chaque navigation interne renverrait à la racine et
+    // l'app se figerait sur le premier onglet.
+    if (cotePro && group === '(tabs)') router.replace('/(prof)');
+    if (!cotePro && group === '(prof)') router.replace('/(tabs)');
+  }, [ready, session, profile.onboarded, profile.role, vueEleve, segments, router]);
 
   const onLayout = useCallback(() => {
     if (ready) SplashScreen.hideAsync().catch(() => {});
@@ -91,6 +112,7 @@ function Navigator() {
         <Stack.Screen name="fil/[id]" />
         <Stack.Screen name="moderation/[id]" />
         <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="(prof)" />
       </Stack>
 
       {/* Au-dessus de tout : applique les mises à jour toute seule

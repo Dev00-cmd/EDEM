@@ -43,7 +43,8 @@ function Section({ label, children }: { label: string; children: React.ReactNode
 }
 
 export default function ProfileScreen() {
-  const { t, profile, progress, level, levelProgress, updateProfile, resetAll, completion } =
+  const { t, profile, progress, level, levelProgress, updateProfile, resetAll, completion,
+    vueEleve, basculerVue } =
     useApp();
   const { user, signOut } = useAuth();
   const router = useRouter();
@@ -330,6 +331,35 @@ export default function ProfileScreen() {
           </View>
         </Card>
       </Section>
+
+      {/* ── Le point de vue, pour un compte professeur ───────
+          Son compte EST resté un compte d'élève : il garde son
+          profil, ses XP et M. Thomas. La bascule lui rend les
+          onglets de l'élève, et le chemin du retour. Ce n'est pas
+          un changement de rôle — le rôle vit en base, et le serveur
+          seul en décide. */}
+      {profile.role === 'prof' && (
+        <Section label={t('prof.vueTitre')}>
+          <Card onPress={() => basculerVue(!vueEleve)}>
+            <View style={styles.settingLeft}>
+              <Icon
+                name={vueEleve ? 'user' : 'landmark'}
+                size={18}
+                color={colors.accent}
+              />
+              <View style={{ flex: 1 }}>
+                <Text style={[type.bodyMedium, { color: colors.text }]}>
+                  {vueEleve ? t('prof.vueRevenirProf') : t('prof.vueVoirEleve')}
+                </Text>
+                <Text style={[type.caption, { color: colors.textFaint, marginTop: 2 }]}>
+                  {vueEleve ? t('prof.vueRevenirSub') : t('prof.vueVoirSub')}
+                </Text>
+              </View>
+              <Icon name="chevron-right" size={16} color={colors.textFaint} />
+            </View>
+          </Card>
+        </Section>
+      )}
 
       {/* ── Professeur ──────────────────────────────────────── */}
       {/* Sans point d'entrée, la demande de rôle serait

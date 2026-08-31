@@ -141,6 +141,27 @@ try {
   ok(alias.b?.ok === true && alias.b?.role === 'prof',
      'request_teacher_role redirige vers la declaration', JSON.stringify(alias.b));
 
+  console.log('\nL INTERFACE PROFESSEUR');
+  const vue = await prof.rpc('teacher_overview');
+  ok(Array.isArray(vue.b) && vue.b.length === 10,
+     'teacher_overview rend les dix salles en UNE requete',
+     `${vue.b?.length}`);
+  const une = (vue.b ?? [])[0];
+  ok(!!une?.join_code && une?.membres === 0 && une?.en_attente === 0,
+     'avec le code, les membres et les demandes en attente');
+  ok(une?.maitrise === null,
+     'et la maitrise est null tant que rien n est mesure — pas 0 %',
+     JSON.stringify(une?.maitrise));
+
+  const dev = await prof.rpc('teacher_assignments');
+  ok(Array.isArray(dev.b), 'teacher_assignments repond', `${dev.b?.length} devoir(s)`);
+
+  // Les deux fonctions filtrent sur teacher_id : elles ne sont pas
+  // simplement cachees a l ecran, elles ne rendent rien.
+  const vueEleve = await vieux.rpc('teacher_overview');
+  ok(Array.isArray(vueEleve.b) && vueEleve.b.length === 0,
+     'un compte sans classe n en voit aucune', `${vueEleve.b?.length}`);
+
   console.log('\nCE QUI N A PAS BOUGE');
   const p = await tiers.patch(`profiles?id=eq.${tiers.uid}`, { role: 'prof' });
   const apres = (await sql(`select role from public.profiles where id='${tiers.uid}'`))[0]?.role;

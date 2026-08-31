@@ -31,6 +31,9 @@ export const fr = {
     quiz: 'Quiz',
     board: 'Classement',
     profile: 'Profil',
+    suivi: 'Suivi',
+    devoirs: 'Devoirs',
+    classes: 'Mes classes',
   },
 
   login: {
@@ -181,6 +184,56 @@ export const fr = {
     champ_school_id: 'ton école',
     champ_commune_id: 'ta commune',
     cardOpen: 'Continuer',
+  },
+
+  prof: {
+    eyebrow: 'ESPACE PROFESSEUR',
+    hello: 'Bonjour {name}',
+    aFaire: '{attente} demande(s) en attente · {copies} copie(s) à corriger.',
+    rienAFaire: 'Rien ne t’attend. Tes classes tournent.',
+    mesSalles: 'MES SALLES',
+    aucuneSalle: 'Tu n’as pas encore de salle. Ouvres-en une, tu auras un code à donner à tes élèves.',
+    nEleves: '{n} élèves',
+    badgeAttente: '{n} en attente',
+    badgeCorriger: '{n} à corriger',
+    badgeDifficulte: '{n} en difficulté',
+    badgeMaitrise: '{n}% de maîtrise',
+
+    vueTitre: 'MON POINT DE VUE',
+    vueVoirEleve: 'Voir l’app comme un élève',
+    vueVoirSub: 'Ton parcours, tes quiz et le classement. Ton compte ne change pas.',
+    vueRevenirProf: 'Revenir à l’espace professeur',
+    vueRevenirSub: 'Tes classes, ton suivi et tes devoirs.',
+  },
+
+  suivi: {
+    eyebrow: 'SUIVI',
+    title: 'Où en est ta classe',
+    sub: 'Mesuré au fil des quiz, sans que tu aies une copie à corriger. Les notions les plus faibles d’abord.',
+    moyenne: 'Maîtrise moyenne',
+    endifficulte: 'En difficulté',
+    inactifs: 'Inactifs 7 j',
+    aTravailler: 'À TRAVAILLER',
+    acquis: 'PLUTÔT ACQUIS',
+    mesureSur: 'Mesuré sur {n} élève(s)',
+    toutLeProgramme: 'Voir tout le programme',
+    videTitre: 'Rien à montrer encore',
+    videCorps: 'Le suivi se remplit tout seul quand tes élèves passent des quiz. Donne-leur un quiz, reviens demain.',
+  },
+
+  devoirs: {
+    eyebrow: 'DEVOIRS',
+    title: 'Ce que tu as donné',
+    aCorriger: '{n} copie(s) attendent ta correction.',
+    rienACorriger: 'Aucune copie en attente.',
+    nouveau: 'Donner un devoir',
+    aucun: 'Tu n’as pas encore donné de devoir.',
+    rendus: '{n}/{total} rendus',
+    moyenne: 'moyenne {n}%',
+    pour: 'pour le {date}',
+    echue: 'échu le {date}',
+    brouillon: 'Brouillon — non publié',
+    badgeCorriger: '{n} à corriger',
   },
 
   teacher: {
