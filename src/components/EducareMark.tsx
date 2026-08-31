@@ -1,7 +1,7 @@
 import React from 'react';
 import { Image, StyleSheet, View } from 'react-native';
 import { useTheme } from '@/theme/ThemeContext';
-import { RADIUS } from '@/theme/colors';
+import { RADIUS } from '@/theme/theme';
 
 /**
  * Le logo d'EDUCARE, la structure derrière Ti Pwof.

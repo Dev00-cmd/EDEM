@@ -30,7 +30,7 @@ import { Icon } from '@/components/Icon';
 import { useApp } from '@/store/AppContext';
 import { useTheme } from '@/theme/ThemeContext';
 import { useKeyboard } from '@/theme/useKeyboard';
-import { RADIUS } from '@/theme/colors';
+import { RADIUS } from '@/theme/theme';
 import { type } from '@/theme/typography';
 import { getSubject } from '@/data/subjects';
 import { fetchClassrooms, joinClassroom, type Classroom } from '@/lib/classrooms';
@@ -193,10 +193,10 @@ export default function ClassesScreen() {
             const matiere = getSubject(c.subject_id);
             const attente = c.my_status === 'pending';
             return (
-              <Card key={c.id} style={{ marginBottom: 10 }} onPress={() => router.push(`/classroom/${c.id}`)}>
+              <Card key={c.id} style={{ marginBottom: 2 }} onPress={() => router.push(`/classroom/${c.id}`)}>
                 <View style={styles.row}>
                   <View style={[styles.pastille, { backgroundColor: matiere.color }]}>
-                    <Icon name={matiere.icon} size={15} color="#FFFFFF" />
+                    <Icon name={matiere.icon} size={15} color={colors.accentText} />
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={[type.cardTitle, { color: colors.text }]}>{c.name}</Text>

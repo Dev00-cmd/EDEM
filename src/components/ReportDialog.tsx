@@ -15,7 +15,7 @@ import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Icon } from './Icon';
 import { useApp } from '@/store/AppContext';
 import { useTheme } from '@/theme/ThemeContext';
-import { RADIUS } from '@/theme/colors';
+import { RADIUS } from '@/theme/theme';
 import { useResponsive } from '@/theme/responsive';
 import { type } from '@/theme/typography';
 import { REPORT_REASONS, type ReportReason } from '@/lib/moderation';
@@ -40,7 +40,7 @@ export function ReportDialog({ visible, onPick, onCancel }: Props) {
       statusBarTranslucent
     >
       <Pressable
-        style={styles.backdrop}
+        style={[styles.backdrop, { backgroundColor: colors.scrim }]}
         onPress={onCancel}
         accessibilityRole="button"
         accessibilityLabel={t('common.cancel')}
@@ -116,7 +116,6 @@ export function ReportDialog({ visible, onPick, onCancel }: Props) {
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(5,12,24,0.62)',
     alignItems: 'center',
     justifyContent: 'center',
     padding: 24,

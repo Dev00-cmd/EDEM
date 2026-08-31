@@ -8,8 +8,8 @@
     "icon": "./assets/icon.png",
     "scheme": "tipwof",
     "userInterfaceStyle": "automatic",
-    "backgroundColor": "#0D1B2A",
-    "primaryColor": "#2563EB",
+    "backgroundColor": "#0E1621",
+    "primaryColor": "#2E7DF7",
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.tipwof.app"
@@ -45,7 +45,7 @@
           "image": "./assets/splash-icon.png",
           "imageWidth": 180,
           "resizeMode": "contain",
-          "backgroundColor": "#0D1B2A"
+          "backgroundColor": "#0E1621"
         }
       ]
     ],

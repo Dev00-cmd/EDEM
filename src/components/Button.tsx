@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { Icon, type IconName } from './Icon';
 import { useTheme } from '@/theme/ThemeContext';
-import { RADIUS } from '@/theme/colors';
+import { RADIUS } from '@/theme/theme';
 import { FONT_CAP } from '@/theme/responsive';
 import { type } from '@/theme/typography';
 
@@ -32,7 +32,7 @@ interface ButtonProps {
   style?: StyleProp<ViewStyle>;
 }
 
-const HEIGHTS: Record<Size, number> = { sm: 38, md: 48, lg: 56 };
+const HEIGHTS: Record<Size, number> = { sm: 36, md: 46, lg: 52 };
 
 /**
  * Bouton de l'app.
@@ -74,7 +74,7 @@ export function Button({
     soft: { bg: colors.accentSoft, fg: colors.accent },
     ghost: { bg: 'transparent', fg: colors.textSoft },
     outline: { bg: 'transparent', fg: colors.text, border: colors.borderStrong },
-    danger: { bg: colors.danger, fg: '#FFFFFF' },
+    danger: { bg: colors.danger, fg: colors.accentText },
   };
 
   const { bg, fg, border } = palette[variant];
@@ -99,19 +99,15 @@ export function Button({
             height: HEIGHTS[size],
             paddingHorizontal: size === 'sm' ? 14 : 20,
             backgroundColor: bg,
-            borderWidth: border ? 1.5 : 0,
+            borderWidth: border ? 1 : 0,
             borderColor: border,
             opacity: inert ? 0.5 : pressed ? 0.9 : 1,
           },
-          // Seul le bouton principal porte une ombre : elle signale
-          // « c'est ici qu'on appuie ».
-          variant === 'primary' && !inert && {
-            shadowColor: colors.accent,
-            shadowOpacity: 0.32,
-            shadowRadius: 14,
-            shadowOffset: { width: 0, height: 6 },
-            elevation: 5,
-          },
+          // L'ancien bouton principal portait une ombre BLEUE, pour
+          // dire « c'est ici qu'on appuie ». Sur un fond nuit, une
+          // lueur colorée bave et salit ; et l'aplat d'accent, seule
+          // couleur saturée de l'écran, se signale déjà tout seul.
+          // Les ombres ne subsistent que sous les barres qui flottent.
         ]}
       >
         {loading ? (

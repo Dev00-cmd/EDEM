@@ -1,13 +1,30 @@
 // ═══════════════════════════════════════════════════════════════
-//  TYPOGRAPHIE — Sora
+//  TYPOGRAPHIE — quatre tailles, pas une de plus
 //
-//  Une seule famille, quatre graisses. Sora a des formes
-//  géométriques et une belle personnalité en gros titre : c'est
-//  elle qui donne à l'app son air « conçu », pas générique.
+//  L'ancienne échelle avait dix tailles entre 10,5 et 30, des
+//  interlettrages négatifs sur les titres et un sur-titre en
+//  capitales espacées. C'était une typographie d'affiche.
 //
-//  On n'utilise JAMAIS fontWeight directement : sur Android,
-//  fontWeight ne fonctionne pas avec les polices chargées.
-//  On choisit la famille (Sora_700Bold) — c'est la graisse.
+//  Celle-ci en a QUATRE, et c'est tout ce qu'une liste dense
+//  demande :
+//
+//    17 / 600   titre d'écran
+//    15 / 500   titre de ligne
+//    13 / 400   texte courant
+//    11 / 400   métadonnée
+//
+//  Ni capitales forcées, ni lettrage espacé : les deux ralentissent
+//  la lecture, et le second fait de la place là où il n'y en a pas
+//  sur un écran de 320 dp.
+//
+//  LA FAMILLE RESTE SORA. Passer à Inter demandait un paquet de
+//  polices supplémentaire — donc plusieurs centaines de kilo-octets
+//  à télécharger, sur des forfaits payés au mégaoctet, pour une
+//  différence que personne ne verrait à 13 px. Sora en graisses 400
+//  à 600 tient exactement le rôle demandé.
+//
+//  On n'utilise JAMAIS fontWeight : sur Android il reste sans effet
+//  sur une police chargée. C'est la FAMILLE qui porte la graisse.
 // ═══════════════════════════════════════════════════════════════
 
 import { StyleSheet } from 'react-native';
@@ -20,84 +37,86 @@ export const FONTS = {
   extrabold: 'Sora_800ExtraBold',
 } as const;
 
-/**
- * Échelle typographique de l'app.
- * Les gros titres sont serrés (letterSpacing négatif) — c'est ce
- * qui donne le côté net et affirmé des maquettes.
- */
+/** Les quatre tailles, et leur interlignage. */
+export const SIZE = {
+  screen: 17,
+  row: 15,
+  body: 13,
+  meta: 11,
+} as const;
+
 export const type = StyleSheet.create({
-  // Titres d'écran — « Mes notes », « Agenda »
+  // ── 17 / 600 — titre d'écran ──────────────────────────────
   display: {
-    fontFamily: FONTS.extrabold,
-    fontSize: 30,
-    letterSpacing: -0.9,
-    lineHeight: 36,
+    fontFamily: FONTS.semibold,
+    fontSize: SIZE.screen,
+    lineHeight: 22,
   },
   title: {
-    fontFamily: FONTS.bold,
-    fontSize: 24,
-    letterSpacing: -0.6,
-    lineHeight: 30,
-  },
-  // Titres de section — « Aujourd'hui »
-  section: {
-    fontFamily: FONTS.bold,
-    fontSize: 18,
-    letterSpacing: -0.4,
-    lineHeight: 24,
-  },
-  // Titre de carte
-  cardTitle: {
     fontFamily: FONTS.semibold,
-    fontSize: 15.5,
-    letterSpacing: -0.2,
-    lineHeight: 21,
+    fontSize: SIZE.screen,
+    lineHeight: 22,
   },
-  // Corps de texte
+
+  // ── 15 / 500 — titre de ligne, titre de section ───────────
+  section: {
+    fontFamily: FONTS.medium,
+    fontSize: SIZE.row,
+    lineHeight: 20,
+  },
+  cardTitle: {
+    fontFamily: FONTS.medium,
+    fontSize: SIZE.row,
+    lineHeight: 20,
+  },
+
+  // ── 13 / 400 — texte courant ──────────────────────────────
   body: {
     fontFamily: FONTS.regular,
-    fontSize: 14.5,
-    lineHeight: 21,
+    fontSize: SIZE.body,
+    lineHeight: 18,
   },
   bodyMedium: {
     fontFamily: FONTS.medium,
-    fontSize: 14.5,
-    lineHeight: 21,
+    fontSize: SIZE.body,
+    lineHeight: 18,
   },
-  // Texte secondaire, méta, dates
+
+  // ── 11 / 400 — métadonnée, date, légende ──────────────────
   caption: {
     fontFamily: FONTS.regular,
-    fontSize: 12.5,
-    lineHeight: 17,
+    fontSize: SIZE.meta,
+    lineHeight: 15,
   },
   captionMedium: {
     fontFamily: FONTS.medium,
-    fontSize: 12.5,
-    lineHeight: 17,
+    fontSize: SIZE.meta,
+    lineHeight: 15,
   },
-  // Étiquettes de la barre d'onglets
+
+  // ── Cas particuliers ──────────────────────────────────────
+  /** Étiquette d'onglet : l'endroit le plus contraint de l'app. */
   tabLabel: {
     fontFamily: FONTS.medium,
-    fontSize: 10.5,
-    letterSpacing: 0.1,
+    fontSize: 10,
   },
-  // Sur-titre en capitales — « PALETTE DE COULEURS »
+  /**
+   * Intitulé de groupe dans une liste — « Réglages », « Compte ».
+   * Il était en capitales espacées ; c'est maintenant une simple
+   * ligne de texte secondaire, comme dans Telegram.
+   */
   eyebrow: {
-    fontFamily: FONTS.semibold,
-    fontSize: 11,
-    letterSpacing: 1.4,
-    textTransform: 'uppercase',
+    fontFamily: FONTS.medium,
+    fontSize: SIZE.body,
   },
-  // Étiquette de bouton
   button: {
-    fontFamily: FONTS.semibold,
-    fontSize: 15,
-    letterSpacing: -0.1,
+    fontFamily: FONTS.medium,
+    fontSize: SIZE.row,
   },
-  // Chiffres mis en avant (XP, score, niveau)
+  /** Le seul chiffre autorisé à dépasser 17. */
   stat: {
-    fontFamily: FONTS.extrabold,
-    fontSize: 22,
-    letterSpacing: -0.6,
+    fontFamily: FONTS.semibold,
+    fontSize: 20,
+    lineHeight: 25,
   },
 });

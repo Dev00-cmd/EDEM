@@ -42,9 +42,12 @@ function Attachment({ attachment }: { attachment: NonNullable<ChatMsg['attachmen
 
   if (!isImage) {
     return (
-      <View style={[styles.fileChip, { backgroundColor: 'rgba(255,255,255,0.16)' }]}>
-        <Icon name="file" size={15} color="#FFFFFF" />
-        <Text style={[type.caption, { color: '#FFFFFF', flex: 1 }]} numberOfLines={1}>
+      <View style={[styles.fileChip, { backgroundColor: colors.glassBorder }]}>
+        <Icon name="file" size={15} color={colors.onBubbleOut} />
+        <Text
+          style={[type.caption, { color: colors.onBubbleOut, flex: 1 }]}
+          numberOfLines={1}
+        >
           {attachment.name}
         </Text>
       </View>
@@ -87,11 +90,15 @@ export function ChatBubble({ msg }: { msg: ChatMsg }) {
     return (
       <Animated.View style={[styles.rowEnd, animStyle]}>
         <View
-          style={[styles.bubble, styles.userBubble, { backgroundColor: colors.accent }]}
+          style={[
+            styles.bubble,
+            styles.userBubble,
+            { backgroundColor: colors.bubbleOut },
+          ]}
         >
           {msg.attachment && <Attachment attachment={msg.attachment} />}
           {msg.text.length > 0 && (
-            <RichText color="#FFFFFF" boldColor="#FFFFFF">
+            <RichText color={colors.onBubbleOut} boldColor={colors.onBubbleOut}>
               {msg.text}
             </RichText>
           )}
@@ -107,10 +114,10 @@ export function ChatBubble({ msg }: { msg: ChatMsg }) {
         style={[
           styles.bubble,
           styles.tutorBubble,
-          { backgroundColor: colors.surface, borderColor: colors.border },
+          { backgroundColor: colors.bubbleIn, borderColor: colors.glassBorder },
         ]}
       >
-        <RichText color={colors.text} boldColor={colors.accent}>
+        <RichText color={colors.onBubbleIn} boldColor={colors.accent}>
           {msg.text}
         </RichText>
       </View>
@@ -149,7 +156,7 @@ export function TypingBubble({ label }: { label?: string }) {
           styles.bubble,
           styles.tutorBubble,
           styles.typing,
-          { backgroundColor: colors.surface, borderColor: colors.border },
+          { backgroundColor: colors.bubbleIn, borderColor: colors.glassBorder },
         ]}
       >
         {[d1, d2, d3].map((d, i) => (
@@ -177,11 +184,15 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     gap: 8,
   },
+  // Les deux bulles sont TRANSLUCIDES, jamais des aplats opaques :
+  // le fond de la conversation transparaît légèrement au travers,
+  // ce qui les rattache à la page au lieu de les poser dessus.
+  // Le coin coupé du côté de l'émetteur est la seule dissymétrie.
   bubble: {
     maxWidth: '82%',
-    borderRadius: 18,
-    paddingHorizontal: 15,
-    paddingVertical: 11,
+    borderRadius: 16,
+    paddingHorizontal: 13,
+    paddingVertical: 9,
   },
   userBubble: { borderBottomRightRadius: 6 },
   tutorBubble: { borderBottomLeftRadius: 6, borderWidth: 1 },
@@ -189,7 +200,7 @@ const styles = StyleSheet.create({
   imageWrap: {
     width: 200,
     height: 150,
-    borderRadius: 12,
+    borderRadius: 10,
     overflow: 'hidden',
     marginBottom: 8,
     alignItems: 'center',
@@ -207,7 +218,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     maxWidth: 220,
   },
-  text: { fontFamily: FONTS.regular, fontSize: 14.8, lineHeight: 22 },
+  text: { fontFamily: FONTS.regular, fontSize: 13, lineHeight: 19 },
   typing: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingVertical: 15 },
   dot: { width: 7, height: 7, borderRadius: 4 },
 });

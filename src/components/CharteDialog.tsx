@@ -18,7 +18,7 @@ import { Icon } from './Icon';
 import { Button } from './Button';
 import { useApp } from '@/store/AppContext';
 import { useTheme } from '@/theme/ThemeContext';
-import { RADIUS } from '@/theme/colors';
+import { RADIUS } from '@/theme/theme';
 import { useResponsive } from '@/theme/responsive';
 import { type } from '@/theme/typography';
 
@@ -53,7 +53,7 @@ export function CharteDialog({ visible, onAccepted, onDecline }: Props) {
       onRequestClose={onDecline}
       statusBarTranslucent
     >
-      <View style={styles.backdrop}>
+      <View style={[styles.backdrop, { backgroundColor: colors.scrim }]}>
         <View
           style={[
             styles.card,
@@ -127,7 +127,6 @@ export function CharteDialog({ visible, onAccepted, onDecline }: Props) {
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(5,12,24,0.62)',
     alignItems: 'center',
     justifyContent: 'center',
     padding: 24,

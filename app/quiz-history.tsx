@@ -13,7 +13,7 @@ import { Card, EmptyState } from '@/components/Card';
 import { Icon } from '@/components/Icon';
 import { useApp } from '@/store/AppContext';
 import { useTheme } from '@/theme/ThemeContext';
-import { RADIUS } from '@/theme/colors';
+import { RADIUS } from '@/theme/theme';
 import { type } from '@/theme/typography';
 import { QuizHistoryRow } from '@/components/QuizHistoryRow';
 import { fetchQuizHistory, type QuizHistoryEntry } from '@/lib/quizHistory';
@@ -95,7 +95,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
     marginTop: 4,
-    marginBottom: 10,
+    marginBottom: 2,
   },
   backBtn: {
     width: 38,

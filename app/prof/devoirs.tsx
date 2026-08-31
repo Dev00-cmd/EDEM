@@ -25,7 +25,7 @@ import { Icon } from '@/components/Icon';
 import { ProgressBar } from '@/components/Stats';
 import { useApp } from '@/store/AppContext';
 import { useTheme } from '@/theme/ThemeContext';
-import { RADIUS } from '@/theme/colors';
+import { RADIUS, TABS_CLEARANCE } from '@/theme/theme';
 import { type } from '@/theme/typography';
 import { fetchTeacherAssignments, type TeacherAssignment } from '@/lib/assignments';
 
@@ -95,7 +95,7 @@ export default function Devoirs() {
               return (
                 <Card
                   key={d.id}
-                  style={{ marginBottom: 10 }}
+                  style={{ marginBottom: 2 }}
                   onPress={() => router.push(`/assignment/${d.id}`)}
                 >
                   <View style={styles.row}>
@@ -166,7 +166,7 @@ function Pastille({ label, tint }: { label: string; tint: string }) {
 }
 
 const styles = StyleSheet.create({
-  scroll: { flexGrow: 1, paddingHorizontal: 22, paddingTop: 14, paddingBottom: 40 },
+  scroll: { flexGrow: 1, paddingHorizontal: 22, paddingTop: 14, paddingBottom: TABS_CLEARANCE },
   row: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   badges: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 10 },
   badge: {

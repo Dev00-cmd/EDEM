@@ -22,7 +22,7 @@ import { Icon } from './Icon';
 import { LogoMark } from './LogoMark';
 import { useApp } from '@/store/AppContext';
 import { useTheme } from '@/theme/ThemeContext';
-import { RADIUS } from '@/theme/colors';
+import { RADIUS, SEPARATOR_INSET } from '@/theme/theme';
 import { FONTS, type } from '@/theme/typography';
 import { APP_NAME, APP_TAGLINE_FR, APP_TAGLINE_HT, APP_VERSION } from '@/config/app';
 import type { Lang } from '@/i18n';
@@ -38,8 +38,8 @@ export function Section({
 }) {
   const { colors } = useTheme();
   return (
-    <View style={{ marginTop: 24 }}>
-      <Text style={[type.eyebrow, { color: colors.textFaint, marginBottom: 11 }]}>
+    <View style={{ marginTop: 22 }}>
+      <Text style={[type.eyebrow, { color: colors.textFaint, marginBottom: 8, marginLeft: 4 }]}>
         {label}
       </Text>
       {children}
@@ -84,7 +84,8 @@ export function ReglagesCommuns() {
         <View
           style={[
             styles.settingRow,
-            { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border },
+            styles.separated,
+            { borderTopColor: colors.border },
           ]}
         >
           <View style={styles.settingLeft}>
@@ -255,20 +256,31 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingVertical: 13,
     gap: 10,
+  },
+  /**
+   * Le filet ne part pas du bord de la carte : il commence là où
+   * commence le TEXTE, après l'icône. C'est ce décalage qui fait
+   * lire une suite de réglages comme une liste, et non comme des
+   * blocs empilés — et c'est la raison pour laquelle il est posé
+   * en marge plutôt qu'en bordure pleine largeur.
+   */
+  separated: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    marginLeft: SEPARATOR_INSET,
   },
   settingLeft: { flexDirection: 'row', alignItems: 'center', gap: 11, flexShrink: 1 },
   settingChips: { flexDirection: 'row', gap: 6, flexShrink: 0 },
   updateRow: { flexDirection: 'row', alignItems: 'center', gap: 13 },
   updateIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: RADIUS.md,
+    width: 36,
+    height: 36,
+    borderRadius: RADIUS.sm,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  updateMeta: { borderTopWidth: StyleSheet.hairlineWidth, marginTop: 14, paddingTop: 10, gap: 2 },
+  updateMeta: { borderTopWidth: StyleSheet.hairlineWidth, marginTop: 12, paddingTop: 10, gap: 2 },
   aboutHead: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   avatarLetter: { fontFamily: FONTS.extrabold, fontSize: 32 },
 });

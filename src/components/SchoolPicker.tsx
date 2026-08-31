@@ -27,7 +27,7 @@ import { Input } from './Input';
 import { Icon } from './Icon';
 import { useApp } from '@/store/AppContext';
 import { useTheme } from '@/theme/ThemeContext';
-import { RADIUS } from '@/theme/colors';
+import { RADIUS } from '@/theme/theme';
 import { type } from '@/theme/typography';
 import { MIN_QUERY, searchSchools, type School } from '@/lib/schools';
 

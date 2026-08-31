@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { Icon, type IconName } from './Icon';
 import { useTheme } from '@/theme/ThemeContext';
-import { RADIUS } from '@/theme/colors';
+import { RADIUS } from '@/theme/theme';
 import { FONTS, type } from '@/theme/typography';
 
 interface InputProps extends Omit<TextInputProps, 'style'> {
@@ -37,11 +37,15 @@ export const Input = forwardRef<TextInput, InputProps>(function Input(
   const [focused, setFocused] = useState(false);
   const [hidden, setHidden] = useState(true);
 
+  // Au repos le champ n'a pas de contour : c'est son fond, un cran
+  // au-dessus de la page, qui dit « on écrit ici ». Le trait
+  // n'apparaît que quand il porte une information — la saisie en
+  // cours, ou l'erreur.
   const borderColor = error
     ? colors.danger
     : focused
       ? colors.accent
-      : colors.border;
+      : 'transparent';
 
   return (
     <View>
@@ -57,7 +61,7 @@ export const Input = forwardRef<TextInput, InputProps>(function Input(
           {
             backgroundColor: colors.surfaceAlt,
             borderColor,
-            borderWidth: focused || error ? 1.6 : 1,
+            borderWidth: focused || error ? 1.5 : 1,
           },
         ]}
       >
@@ -115,13 +119,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    height: 52,
+    height: 48,
     borderRadius: RADIUS.md,
     paddingHorizontal: 14,
   },
   input: {
     flex: 1,
-    fontFamily: FONTS.medium,
+    fontFamily: FONTS.regular,
     fontSize: 15,
     // Annule le padding vertical par défaut d'Android, qui
     // décentre le texte dans un champ de hauteur fixe.

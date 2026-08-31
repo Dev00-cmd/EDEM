@@ -8,7 +8,7 @@ import { Icon } from '@/components/Icon';
 import { ProgressBar, MasteryRing, Sparkline, StatTile } from '@/components/Stats';
 import { useApp } from '@/store/AppContext';
 import { useTheme } from '@/theme/ThemeContext';
-import { RADIUS } from '@/theme/colors';
+import { RADIUS } from '@/theme/theme';
 import { useResponsive, MAX_CONTENT_WIDTH } from '@/theme/responsive';
 import { FONTS, type } from '@/theme/typography';
 import { buildPlan, coachNote, isItemDone, masteryOf, planSubjects } from '@/ai/plan';
@@ -178,7 +178,7 @@ export default function PathScreen() {
               <View key={subjectId} style={styles.subjectBlock}>
                 <View style={styles.subjectHead}>
                   <View style={[styles.subjectIcon, { backgroundColor: subject.color }]}>
-                    <Icon name={subject.icon} size={16} color="#FFFFFF" />
+                    <Icon name={subject.icon} size={16} color={colors.accentText} />
                   </View>
                   <Text style={[type.cardTitle, { color: colors.text, flex: 1 }]}>
                     {subject.name[lang]}
@@ -243,7 +243,7 @@ export default function PathScreen() {
                           ]}
                         >
                           {done ? (
-                            <Icon name="check" size={12} color="#FFFFFF" strokeWidth={2.6} />
+                            <Icon name="check" size={12} color={colors.accentText} strokeWidth={2.6} />
                           ) : (
                             <View
                               style={[styles.innerDot, { backgroundColor: subject.color }]}
@@ -291,7 +291,7 @@ const styles = StyleSheet.create({
   coachHead: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   coachProgress: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 14 },
 
-  section: { marginTop: 26, marginBottom: 14 },
+  section: { marginTop: 22, marginBottom: 10 },
 
   chartHead: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 },
   axis: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 },

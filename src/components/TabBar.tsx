@@ -9,15 +9,26 @@
 //
 //  Elle ne connaît aucun onglet : elle lit le nom de la route dans
 //  deux tables. Ajouter un onglet, c'est ajouter deux lignes.
+//
+//  ─── CE QUI A CHANGÉ D'APPARENCE ───────────────────────────────
+//  Elle était posée à plat contre le bord, opaque, avec un trait
+//  de séparation au-dessus. Elle FLOTTE désormais : détachée de
+//  10 px sur les côtés, 12 px au-dessus de la zone sûre, en verre
+//  flouté. Le contenu défile DESSOUS, et c'est ce défilement vu au
+//  travers qui fait l'effet — pas le flou, qui sur un fond
+//  immobile ne se distingue pas d'un gris.
 // ═══════════════════════════════════════════════════════════════
 
 import React from 'react';
-import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon, type IconName } from './Icon';
 import { useApp } from '@/store/AppContext';
 import { useTheme } from '@/theme/ThemeContext';
 import { FONT_CAP } from '@/theme/responsive';
+import { BLUR, FLOAT, RADIUS, SHADOW } from '@/theme/theme';
+import { useGlass } from '@/theme/useGlass';
 import { useKeyboard } from '@/theme/useKeyboard';
 import { type } from '@/theme/typography';
 
@@ -56,9 +67,11 @@ const LABEL_KEYS: Record<string, string> = {
 };
 
 /**
- * Posée à plat en bas, comme dans les maquettes. L'onglet actif est
- * bleu et porte un point sous son étiquette — deux signaux plutôt
- * qu'un, pour rester lisible sans distinguer les couleurs.
+ * L'onglet actif est une PASTILLE PLEINE en accent, pas seulement
+ * une icône colorée. C'est important au-delà du style : une couleur
+ * seule n'est pas lisible pour un daltonien, une forme remplie
+ * l'est. C'est le même rôle que tenait le point sous l'étiquette,
+ * en plus visible — le point est donc éteint.
  */
 export function TabBar({
   state,
@@ -75,6 +88,7 @@ export function TabBar({
   const { t } = useApp();
   const insets = useSafeAreaInsets();
   const keyboard = useKeyboard();
+  const glass = useGlass();
 
   // Clavier ouvert : la barre s'efface. Elle volerait de la place à
   // ce que l'élève écrit, et l'écran de conversation calcule son
@@ -85,19 +99,25 @@ export function TabBar({
     route === 'index' ? homeLabelKey : (LABEL_KEYS[route] ?? 'tabs.home');
 
   return (
-    <View
+    <BlurView
+      intensity={glass ? BLUR.intensity : 0}
+      tint={colors.isDark ? BLUR.tint : BLUR.tintLight}
       style={[
         styles.bar,
+        SHADOW.float,
         {
-          backgroundColor: colors.surface,
-          borderTopColor: colors.border,
-          paddingBottom: Math.max(insets.bottom, Platform.OS === 'ios' ? 20 : 10),
+          bottom: Math.max(insets.bottom, 8) + FLOAT.bottom,
+          // Sous le flou, un fond très dilué donne sa densité au
+          // verre. Réglage d'accessibilité actif : il devient opaque.
+          backgroundColor: glass ? colors.glass : colors.surface,
+          borderColor: colors.glassBorder,
+          borderTopColor: colors.glassHighlight,
         },
       ]}
     >
       {state.routes.map((route, index) => {
         const focused = state.index === index;
-        const color = focused ? colors.accent : colors.textFaint;
+        const color = focused ? colors.accentText : colors.textSoft;
 
         const onPress = () => {
           const event = navigation.emit({
@@ -112,7 +132,13 @@ export function TabBar({
           <Pressable
             key={route.key}
             onPress={onPress}
-            style={styles.tab}
+            style={[
+              styles.tab,
+              focused && {
+                backgroundColor: colors.accent,
+                borderTopColor: colors.glassHighlight,
+              },
+            ]}
             accessibilityRole="tab"
             accessibilityState={{ selected: focused }}
             accessibilityLabel={t(libelle(route.name))}
@@ -132,29 +158,42 @@ export function TabBar({
             >
               {t(libelle(route.name))}
             </Text>
-            <View
-              style={[
-                styles.dot,
-                { backgroundColor: focused ? colors.accent : 'transparent' },
-              ]}
-            />
+            {/* Le point sous l'étiquette : la pastille pleine le
+                remplace, et deux marqueurs pour un même état font du
+                bruit. Éteint plutôt que retiré — le retirer aurait
+                touché à la structure. */}
+            <View style={styles.dot} />
           </Pressable>
         );
       })}
-    </View>
+    </BlurView>
   );
 }
 
-// Repris à l'identique de l'ancienne barre : l'élève ne doit voir
-// aucune différence, c'est un déplacement de code, pas une retouche.
 const styles = StyleSheet.create({
   bar: {
+    position: 'absolute',
+    left: FLOAT.side,
+    right: FLOAT.side,
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
+    borderRadius: FLOAT.radius,
+    borderWidth: 1,
+    // Le liseré clair de l'arête supérieure : c'est ce détail, et
+    // pas le flou, qui fait lire la barre comme du verre.
     borderTopWidth: 1,
-    paddingTop: 11,
-    paddingHorizontal: 6,
+    padding: 6,
+    overflow: 'hidden',
   },
-  tab: { flex: 1, alignItems: 'center', gap: 5 },
-  dot: { width: 4, height: 4, borderRadius: 2 },
+  tab: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 3,
+    paddingTop: 7,
+    paddingBottom: 6,
+    borderRadius: RADIUS.xl,
+    borderTopWidth: 1,
+    borderTopColor: 'transparent',
+  },
+  dot: { width: 4, height: 0 },
 });

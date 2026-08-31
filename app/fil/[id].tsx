@@ -29,6 +29,7 @@ import React, { useCallback, useRef, useState } from 'react';
 import {
   FlatList, Image, Modal, Pressable, StyleSheet, Text, View,
 } from 'react-native';
+import { BlurView } from 'expo-blur';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import { Screen } from '@/components/Screen';
@@ -42,7 +43,8 @@ import { useApp } from '@/store/AppContext';
 import { useAuth } from '@/store/AuthContext';
 import { useTheme } from '@/theme/ThemeContext';
 import { useKeyboard } from '@/theme/useKeyboard';
-import { RADIUS } from '@/theme/colors';
+import { BLUR, ON_ACCENT, RADIUS } from '@/theme/theme';
+import { useGlass } from '@/theme/useGlass';
 import { type } from '@/theme/typography';
 import {
   downloadAttachment, fileNameOf, isImagePath, openLocalFile,
@@ -71,6 +73,7 @@ export default function FilDeClasse() {
   const [texte, setTexte] = useState('');
   const [piece, setPiece] = useState<{ path: string; name: string } | null>(null);
   const [envoi, setEnvoi] = useState(false);
+  const glass = useGlass();
   const [encore, setEncore] = useState(true);
   const [erreur, setErreur] = useState('');
   const [aSupprimer, setASupprimer] = useState<ChatMessage | null>(null);
@@ -290,7 +293,18 @@ export default function FilDeClasse() {
 
   return (
     <Screen scroll={false} padded={false} edges={['top', 'bottom']}>
-      <View style={styles.header}>
+      <BlurView
+        intensity={glass ? BLUR.intensity : 0}
+        tint={colors.isDark ? BLUR.tint : BLUR.tintLight}
+        style={[
+          styles.header,
+          {
+            backgroundColor: glass ? colors.glass : colors.surface,
+            borderColor: colors.glassBorder,
+            borderTopColor: colors.glassHighlight,
+          },
+        ]}
+      >
         <Pressable onPress={() => router.back()} accessibilityRole="button" hitSlop={10}>
           <Icon name="arrow-left" size={20} color={colors.textSoft} />
         </Pressable>
@@ -316,7 +330,7 @@ export default function FilDeClasse() {
             <Icon name="trash" size={18} color={colors.textFaint} />
           </Pressable>
         )}
-      </View>
+      </BlurView>
 
       <FlatList
         data={messages}
@@ -527,7 +541,11 @@ function MessageActions({
       onRequestClose={onCancel}
       statusBarTranslucent
     >
-      <Pressable style={styles.fond} onPress={onCancel} accessibilityRole="button">
+      <Pressable
+        style={[styles.fond, { backgroundColor: colors.scrim }]}
+        onPress={onCancel}
+        accessibilityRole="button"
+      >
         <Pressable
           style={[styles.feuille, { backgroundColor: colors.surface, borderColor: colors.border }]}
           onPress={(e) => e.stopPropagation()}
@@ -597,8 +615,8 @@ function Bulle({
           style={[
             styles.contenu,
             {
-              backgroundColor: message.mine ? colors.accent : colors.surface,
-              borderColor: message.mine ? colors.accent : colors.border,
+              backgroundColor: message.mine ? colors.bubbleOut : colors.bubbleIn,
+              borderColor: colors.glassBorder,
             },
           ]}
         >
@@ -632,7 +650,7 @@ function Bulle({
             </View>
           )}
 
-          <Text style={[type.body, { color: message.mine ? '#FFFFFF' : colors.text }]}>
+          <Text style={[type.body, { color: message.mine ? colors.onBubbleOut : colors.onBubbleIn }]}>
             {message.text}
           </Text>
 
@@ -653,18 +671,18 @@ function Bulle({
                   accessibilityRole="button"
                   style={[
                     styles.vignette,
-                    { borderColor: message.mine ? 'rgba(255,255,255,0.4)' : colors.border },
+                    { borderColor: message.mine ? colors.glassBorder : colors.border },
                   ]}
                 >
                   <Icon
                     name="download"
                     size={13}
-                    color={message.mine ? '#FFFFFF' : colors.accent}
+                    color={message.mine ? colors.onBubbleOut : colors.accent}
                   />
                   <Text
                     style={[
                       type.caption,
-                      { color: message.mine ? 'rgba(255,255,255,0.85)' : colors.accent, flex: 1 },
+                      { color: message.mine ? colors.onBubbleOut : colors.accent, flex: 1 },
                     ]}
                   >
                     {t('fil.download')}
@@ -676,17 +694,17 @@ function Bulle({
               <Pressable
                 onPress={voir}
                 accessibilityRole="button"
-                style={[styles.vignette, { borderColor: message.mine ? 'rgba(255,255,255,0.4)' : colors.border }]}
+                style={[styles.vignette, { borderColor: message.mine ? colors.glassBorder : colors.border }]}
               >
                 <Icon
                   name={estImage ? 'image' : 'download'}
                   size={14}
-                  color={message.mine ? '#FFFFFF' : colors.accent}
+                  color={message.mine ? colors.onBubbleOut : colors.accent}
                 />
                 <Text
                   style={[
                     type.caption,
-                    { color: message.mine ? 'rgba(255,255,255,0.85)' : colors.accent, flex: 1 },
+                    { color: message.mine ? colors.onBubbleOut : colors.accent, flex: 1 },
                   ]}
                   numberOfLines={1}
                 >
@@ -707,7 +725,7 @@ function Bulle({
             <Text
               style={[
                 type.caption,
-                { color: message.mine ? '#FFE0E0' : colors.danger, marginTop: 6 },
+                { color: message.mine ? colors.onBubbleOut : colors.danger, marginTop: 6 },
               ]}
             >
               {souci}
@@ -718,7 +736,7 @@ function Bulle({
             <Text
               style={[
                 type.caption,
-                { color: message.mine ? 'rgba(255,255,255,0.6)' : colors.textFaint },
+                { color: message.mine ? colors.accentTextSoft : colors.textFaint },
               ]}
             >
               {heure}
@@ -749,7 +767,7 @@ function Bulle({
 }
 
 const styles = StyleSheet.create({
-  fond: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
+  fond: { flex: 1, justifyContent: 'flex-end' },
   feuille: {
     borderTopWidth: 1, borderLeftWidth: 1, borderRightWidth: 1,
     borderTopLeftRadius: RADIUS.lg, borderTopRightRadius: RADIUS.lg,
@@ -762,6 +780,7 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
     paddingHorizontal: 20, paddingTop: 8, paddingBottom: 10,
+    borderBottomWidth: 1, borderTopWidth: 1, borderTopColor: 'transparent',
   },
   liste: { paddingHorizontal: 16, paddingVertical: 10, gap: 8 },
   bulle: { alignItems: 'flex-start' },
@@ -772,7 +791,9 @@ const styles = StyleSheet.create({
   },
   auteur: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 3 },
   badge: { borderRadius: RADIUS.pill, paddingHorizontal: 6, paddingVertical: 1 },
-  badgeTexte: { color: '#FFFFFF', fontSize: 9, fontWeight: '700' },
+  // fontWeight reste ici : ce texte n'utilise pas Sora, il tombe
+  // sur la police système, la seule où fontWeight fonctionne.
+  badgeTexte: { color: ON_ACCENT, fontSize: 9, fontWeight: '700' },
   vignette: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
     borderWidth: 1, borderRadius: RADIUS.md,

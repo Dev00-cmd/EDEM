@@ -10,6 +10,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { BlurView } from 'expo-blur';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Screen } from '@/components/Screen';
@@ -31,7 +32,8 @@ import {
 } from '@/lib/attachments';
 import { useTheme } from '@/theme/ThemeContext';
 import { useKeyboard, useKeyboardShift } from '@/theme/useKeyboard';
-import { RADIUS } from '@/theme/colors';
+import { BLUR, FLOAT, RADIUS } from '@/theme/theme';
+import { useGlass } from '@/theme/useGlass';
 import { FONTS, type } from '@/theme/typography';
 import { askTutor } from '@/ai/tutor';
 import { studentContextOf, dailyPlan, planSubjects } from '@/ai/plan';
@@ -316,13 +318,25 @@ export default function ChatScreen() {
   }, [messages.length, typing, kb.shift, scrollToEnd]);
 
   const [askingClear, setAskingClear] = useState(false);
+  const glass = useGlass();
 
   const canSend = !typing && !attachBusy && (input.trim().length > 0 || !!pending);
 
   return (
     <Screen scroll={false} padded={false}>
       {/* ── En-tête ─────────────────────────────────────────── */}
-      <View style={styles.header}>
+      <BlurView
+        intensity={glass ? BLUR.intensity : 0}
+        tint={colors.isDark ? BLUR.tint : BLUR.tintLight}
+        style={[
+          styles.header,
+          {
+            backgroundColor: glass ? colors.glass : colors.surface,
+            borderColor: colors.glassBorder,
+            borderTopColor: colors.glassHighlight,
+          },
+        ]}
+      >
         <LogoMark size={38} />
         <View style={styles.flex}>
           {/* Le titre de la conversation prend la place du nom de
@@ -380,7 +394,7 @@ export default function ChatScreen() {
             <Icon name="trash" size={19} color={colors.textFaint} />
           </Pressable>
         )}
-      </View>
+      </BlurView>
 
       {/* ── Filtre par matière ──────────────────────────────── */}
       <View style={styles.chipsRow}>
@@ -498,7 +512,12 @@ export default function ChatScreen() {
       <View
         ref={kb.ref}
         style={{
-          paddingBottom: kb.visible ? kb.shift : Math.max(insets.bottom, 6),
+          // Clavier fermé, la barre d'onglets flotte au-dessus : on
+          // lui laisse toute sa hauteur, sinon elle recouvre le champ.
+          // Clavier ouvert, elle s'efface — `kb.shift` suffit.
+          paddingBottom: kb.visible
+            ? kb.shift
+            : Math.max(insets.bottom, 8) + FLOAT.bottom + FLOAT.tabsHeight,
         }}
       >
         {/* Erreur de pièce jointe */}
@@ -590,14 +609,15 @@ export default function ChatScreen() {
         )}
 
         <View style={styles.inputBar}>
-          <View
+          <BlurView
+            intensity={glass ? BLUR.intensity : 0}
+            tint={colors.isDark ? BLUR.tint : BLUR.tintLight}
             style={[
               styles.inputWrap,
               {
-                backgroundColor: colors.surface,
-                borderColor: colors.border,
-                shadowColor: colors.shadow,
-                shadowOpacity: colors.shadowOpacity,
+                backgroundColor: glass ? colors.glass : colors.surface,
+                borderColor: colors.glassBorder,
+                borderTopColor: colors.glassHighlight,
               },
             ]}
           >
@@ -635,9 +655,9 @@ export default function ChatScreen() {
                 { backgroundColor: colors.accent, opacity: canSend ? 1 : 0.35 },
               ]}
             >
-              <Icon name="send" size={18} color="#FFFFFF" />
+              <Icon name="send" size={18} color={colors.accentText} />
             </Pressable>
-          </View>
+          </BlurView>
         </View>
       </View>
 
@@ -662,12 +682,20 @@ export default function ChatScreen() {
 const styles = StyleSheet.create({
   flex: { flex: 1 },
 
+  // L'en-tête reste DANS le flux plutôt que posé par-dessus la
+  // liste : le rendre flottant obligeait à figer sa hauteur, et une
+  // police système à 130 % l'aurait fait recouvrir le premier
+  // message. Il porte le verre et son liseré, pas le survol.
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
     paddingHorizontal: 16,
-    paddingBottom: 8,
+    paddingTop: 4,
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderTopWidth: 1,
+    borderTopColor: 'transparent',
   },
   headerBtn: { padding: 4 },
   statusRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 1 },
@@ -676,7 +704,7 @@ const styles = StyleSheet.create({
   chipsRow: { height: 42 },
   chips: { paddingHorizontal: 16, gap: 8, alignItems: 'center' },
 
-  list: { paddingHorizontal: 16, paddingTop: 10, paddingBottom: 16, flexGrow: 1 },
+  list: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 16, flexGrow: 1 },
 
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 30 },
   greeting: { textAlign: 'center', marginTop: 18, maxWidth: 330 },
@@ -685,7 +713,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     marginTop: 16,
-    borderWidth: 1,
     borderRadius: RADIUS.pill,
     paddingHorizontal: 13,
     paddingVertical: 8,
@@ -703,7 +730,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    borderWidth: 1,
     borderRadius: RADIUS.md,
     paddingVertical: 13,
     paddingHorizontal: 13,
@@ -727,7 +753,6 @@ const styles = StyleSheet.create({
     marginBottom: 6,
     padding: 8,
     borderRadius: RADIUS.md,
-    borderWidth: 1,
   },
   pendingThumb: { width: 42, height: 42, borderRadius: 9 },
   pendingFile: { alignItems: 'center', justifyContent: 'center' },
@@ -736,7 +761,6 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     marginBottom: 6,
     borderRadius: RADIUS.md,
-    borderWidth: 1,
     overflow: 'hidden',
   },
   sheetRow: {
@@ -749,24 +773,25 @@ const styles = StyleSheet.create({
   sheetIcon: {
     width: 34,
     height: 34,
-    borderRadius: 11,
+    borderRadius: RADIUS.sm,
     alignItems: 'center',
     justifyContent: 'center',
   },
 
-  inputBar: { paddingHorizontal: 16, paddingTop: 6, paddingBottom: 10 },
+  // Détachée des bords comme la barre d'onglets, et du même rayon :
+  // les deux barres du bas de l'écran doivent se répondre.
+  inputBar: { paddingHorizontal: FLOAT.side, paddingTop: 6, paddingBottom: 6 },
   inputWrap: {
     flexDirection: 'row',
     alignItems: 'flex-end',
     gap: 6,
-    borderRadius: RADIUS.xl,
-    borderWidth: 1.5,
+    borderRadius: FLOAT.radius,
+    borderWidth: 1,
+    borderTopWidth: 1,
     paddingLeft: 8,
     paddingRight: 6,
     paddingVertical: 6,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 4,
+    overflow: 'hidden',
   },
   attachBtn: {
     width: 36,

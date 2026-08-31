@@ -5,6 +5,10 @@
 import type { Lang } from '@/i18n';
 import type { IconName } from '@/components/Icon';
 
+// Le dégradé par matière a disparu du type : plus aucune surface
+// de l'app n'en affiche. Le laisser déclaré aurait invité à le
+// rebrancher, et un dégradé est exactement ce que cette interface
+// ne veut plus — « aucun dégradé décoratif ».
 export interface Subject {
   id: string;
   icon: IconName; // icône du jeu Ti Pwof
@@ -17,7 +21,6 @@ export interface Subject {
    * calcul et serait trop généreux ailleurs.
    */
   seconds: number;
-  grad: [string, string]; // dégradé propre à la matière
   color: string;
   name: Record<Lang, string>;
   desc: Record<Lang, string>;
@@ -28,8 +31,7 @@ export const SUBJECTS: Subject[] = [
     id: 'math',
     seconds: 90,
     icon: 'calculator',
-    color: '#3B82F6',
-    grad: ['#60A5FA', '#1D4ED8'],
+    color: '#3E8AE8',
     name: { fr: 'Mathématiques', ht: 'Matematik' },
     desc: { fr: 'Calculs, équations, géométrie', ht: 'Kalkil, ekwasyon, jeyometri' },
   },
@@ -37,8 +39,7 @@ export const SUBJECTS: Subject[] = [
     id: 'histoire',
     seconds: 45,
     icon: 'landmark',
-    color: '#F59E0B',
-    grad: ['#FBBF24', '#D97706'],
+    color: '#D6A22E',
     name: { fr: 'Histoire', ht: 'Istwa' },
     desc: { fr: "L'histoire d'Haïti et du monde", ht: 'Istwa Ayiti ak mond lan' },
   },
@@ -46,8 +47,7 @@ export const SUBJECTS: Subject[] = [
     id: 'svt',
     seconds: 45,
     icon: 'leaf',
-    color: '#10B981',
-    grad: ['#34D399', '#059669'],
+    color: '#4FBF87',
     name: { fr: 'SVT', ht: 'SVT (Byoloji)' },
     desc: { fr: 'Le vivant, le corps, la nature', ht: 'Lavi, kò moun, lanati' },
   },
@@ -55,8 +55,7 @@ export const SUBJECTS: Subject[] = [
     id: 'francais',
     seconds: 60,
     icon: 'book',
-    color: '#8B5CF6',
-    grad: ['#A78BFA', '#7C3AED'],
+    color: '#8B5CD6',
     name: { fr: 'Français', ht: 'Franse' },
     desc: { fr: 'Grammaire, conjugaison, lecture', ht: 'Gramè, konjigezon, lekti' },
   },
@@ -64,8 +63,7 @@ export const SUBJECTS: Subject[] = [
     id: 'physique',
     seconds: 90,
     icon: 'atom',
-    color: '#06B6D4',
-    grad: ['#22D3EE', '#0891B2'],
+    color: '#3E8AE8',
     name: { fr: 'Physique', ht: 'Fizik' },
     desc: { fr: 'Forces, énergie, électricité', ht: 'Fòs, enèji, elektrisite' },
   },
@@ -73,8 +71,7 @@ export const SUBJECTS: Subject[] = [
     id: 'anglais',
     seconds: 45,
     icon: 'language',
-    color: '#EC4899',
-    grad: ['#F472B6', '#DB2777'],
+    color: '#E5484D',
     name: { fr: 'Anglais', ht: 'Anglè' },
     desc: { fr: 'English made easy', ht: 'Pale anglè fasil' },
   },
@@ -82,8 +79,7 @@ export const SUBJECTS: Subject[] = [
     id: 'chimie',
     seconds: 75,
     icon: 'flask',
-    color: '#F97316',
-    grad: ['#FB923C', '#EA580C'],
+    color: '#D6A22E',
     name: { fr: 'Chimie', ht: 'Chimi' },
     desc: { fr: 'Atomes, molécules, réactions', ht: 'Atòm, molekil, reyaksyon' },
   },
@@ -91,8 +87,7 @@ export const SUBJECTS: Subject[] = [
     id: 'creole',
     seconds: 45,
     icon: 'tutor',
-    color: '#EF4444',
-    grad: ['#F87171', '#DC2626'],
+    color: '#E5484D',
     name: { fr: 'Créole', ht: 'Kreyòl' },
     desc: { fr: 'Notre langue, bien écrite', ht: 'Lang nou, byen ekri' },
   },
@@ -100,8 +95,7 @@ export const SUBJECTS: Subject[] = [
     id: 'geo',
     seconds: 45,
     icon: 'globe',
-    color: '#14B8A6',
-    grad: ['#2DD4BF', '#0D9488'],
+    color: '#4FBF87',
     name: { fr: 'Géographie', ht: 'Jewografi' },
     desc: { fr: 'La Terre, les pays, les séismes', ht: 'Latè, peyi yo, tranblemanntè' },
   },
@@ -109,8 +103,7 @@ export const SUBJECTS: Subject[] = [
     id: 'info',
     seconds: 45,
     icon: 'laptop',
-    color: '#6366F1',
-    grad: ['#818CF8', '#4F46E5'],
+    color: '#8B5CD6',
     name: { fr: 'Informatique', ht: 'Enfòmatik' },
     desc: { fr: "L'ordinateur pas à pas", ht: 'Òdinatè a pa etap' },
   },

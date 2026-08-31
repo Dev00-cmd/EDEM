@@ -33,7 +33,7 @@ import {
 import { useApp } from '@/store/AppContext';
 import { useAuth } from '@/store/AuthContext';
 import { useTheme } from '@/theme/ThemeContext';
-import { RADIUS } from '@/theme/colors';
+import { RADIUS } from '@/theme/theme';
 import { FONTS, type } from '@/theme/typography';
 import { getSubject } from '@/data/subjects';
 import { fetchTeacherOverview, type TeacherClass } from '@/lib/assignments';
@@ -79,7 +79,7 @@ export default function CompteProf() {
       {/* ── Qui il est ─────────────────────────────────────── */}
       <View style={styles.identite}>
         <View style={[styles.avatar, { backgroundColor: colors.accent }]}>
-          <Text style={[styles.avatarLettre, { color: '#FFFFFF' }]}>
+          <Text style={[styles.avatarLettre, { color: colors.accentText }]}>
             {(profile.name.trim()[0] ?? '‧').toUpperCase()}
           </Text>
         </View>

@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { Icon, type IconName } from './Icon';
 import { useTheme } from '@/theme/ThemeContext';
-import { RADIUS } from '@/theme/colors';
+import { RADIUS } from '@/theme/theme';
 import { type } from '@/theme/typography';
 
 interface CardProps {
@@ -25,21 +25,33 @@ interface CardProps {
 }
 
 /**
- * Carte de base. Surface plane, bordure fine, coins généreux.
- * L'ombre est discrète : c'est la bordure qui découpe, pas le flou.
+ * La surface de base.
+ *
+ * Elle était une CARTE : bordure, coins de 18, ombre portée sur
+ * 16 px et `elevation: 3`. Empilées par cinq sur un écran de
+ * 320 dp, ces cartes mangeaient la moitié de la hauteur en marges
+ * et en flou, pour un contenu qui tient en deux lignes.
+ *
+ * C'est maintenant un APLAT : la surface se détache du fond par sa
+ * seule couleur, comme une ligne de liste. Plus d'ombre — sur un
+ * fond sombre, une ombre noire derrière un panneau sombre ne se
+ * voit pas ; elle ne faisait que coûter une couche de rendu à des
+ * téléphones qui n'en ont pas à revendre. Les seules ombres qui
+ * restent dans l'app sont sous ce qui FLOTTE vraiment : les barres
+ * de verre.
  */
 export function Card({ children, style, flush, accent, night, onPress }: CardProps) {
   const { colors } = useTheme();
 
-  const body = (
+  const body = (pressed: boolean) => (
     <View
       style={[
         styles.card,
         {
-          backgroundColor: night ? colors.night : colors.surface,
-          borderColor: night ? 'transparent' : colors.border,
-          shadowColor: colors.shadow,
-          shadowOpacity: colors.shadowOpacity,
+          // `night` désignait un encart plus sombre que la page. La
+          // page EST sombre désormais : le rôle pointe sur la même
+          // surface, et l'encart cesse d'être un trou noir.
+          backgroundColor: pressed ? colors.surfaceHigh : night ? colors.night : colors.surface,
         },
         style,
       ]}
@@ -49,15 +61,14 @@ export function Card({ children, style, flush, accent, night, onPress }: CardPro
     </View>
   );
 
-  if (!onPress) return body;
+  if (!onPress) return body(false);
 
   return (
-    <Pressable
-      onPress={onPress}
-      accessibilityRole="button"
-      style={({ pressed }) => [pressed && styles.pressed]}
-    >
-      {body}
+    <Pressable onPress={onPress} accessibilityRole="button">
+      {/* L'appui teinte la surface au lieu de la faire rétrécir :
+          un aplat qui change de valeur se lit mieux qu'une mise à
+          l'échelle de 0,5 % que personne ne perçoit. */}
+      {({ pressed }) => body(pressed)}
     </Pressable>
   );
 }
@@ -76,8 +87,9 @@ interface SectionHeaderProps {
 }
 
 /**
- * En-tête de section : « — AUJOURD'HUI » avec son lien à droite.
- * Le tiret bleu est le motif récurrent qui rythme les écrans.
+ * En-tête de section. Le titre passe en texte secondaire : dans une
+ * liste dense, l'intitulé d'un groupe est un repère, pas une
+ * annonce — c'est le contenu qui doit ressortir, pas l'étiquette.
  */
 export function SectionHeader({
   title,
@@ -94,7 +106,7 @@ export function SectionHeader({
       <View style={styles.sectionLeft}>
         {dash && <View style={[styles.dash, { backgroundColor: colors.accent }]} />}
         <View style={styles.flex}>
-          <Text style={[type.section, { color: colors.text }]}>{title}</Text>
+          <Text style={[type.section, { color: colors.textSoft }]}>{title}</Text>
           {subtitle && (
             <Text style={[type.caption, { color: colors.textFaint, marginTop: 1 }]}>
               {subtitle}
@@ -148,16 +160,11 @@ export function EmptyState({ icon, title, message }: EmptyStateProps) {
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: RADIUS.lg,
-    borderWidth: 1,
+    borderRadius: RADIUS.md,
     overflow: 'hidden',
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 3,
   },
-  padding: { padding: 16 },
-  accentBar: { position: 'absolute', left: 0, top: 0, bottom: 0, width: 3.5 },
-  pressed: { opacity: 0.85, transform: [{ scale: 0.995 }] },
+  padding: { padding: 14 },
+  accentBar: { position: 'absolute', left: 0, top: 0, bottom: 0, width: 3 },
 
   sectionHead: {
     flexDirection: 'row',
@@ -166,14 +173,14 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   sectionLeft: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 },
-  dash: { width: 16, height: 2.5, borderRadius: 2 },
+  dash: { width: 14, height: 2, borderRadius: 1 },
   flex: { flex: 1 },
 
   empty: { alignItems: 'center', paddingVertical: 36, paddingHorizontal: 24 },
   emptyIcon: {
     width: 60,
     height: 60,
-    borderRadius: 20,
+    borderRadius: RADIUS.lg,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 14,

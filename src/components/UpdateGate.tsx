@@ -44,7 +44,7 @@ import { Icon } from './Icon';
 import { LogoMark } from './LogoMark';
 import { useApp } from '@/store/AppContext';
 import { useTheme } from '@/theme/ThemeContext';
-import { RADIUS } from '@/theme/colors';
+import { ON_ACCENT, ON_ACCENT_SOFT, RADIUS } from '@/theme/theme';
 import { type } from '@/theme/typography';
 
 /**
@@ -190,7 +190,7 @@ function Gate() {
         accessibilityLabel={t('update.ready')}
         style={[styles.banner, { backgroundColor: colors.accent }]}
       >
-        <Icon name="refresh" size={17} color="#FFFFFF" />
+        <Icon name="refresh" size={17} color={colors.accentText} />
 
         <View style={styles.flex}>
           <Text style={[type.captionMedium, styles.title]}>
@@ -205,7 +205,7 @@ function Gate() {
           accessibilityRole="button"
           accessibilityLabel={t('common.close')}
         >
-          <Icon name="close" size={16} color="rgba(255,255,255,0.8)" />
+          <Icon name="close" size={16} color={colors.accentTextSoft} />
         </Pressable>
       </Pressable>
     </View>
@@ -244,6 +244,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
   },
   flex: { flex: 1 },
-  title: { color: '#FFFFFF' },
-  sub: { color: 'rgba(255,255,255,0.85)', marginTop: 1 },
+  title: { color: ON_ACCENT },
+  sub: { color: ON_ACCENT_SOFT, marginTop: 1 },
 });

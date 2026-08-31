@@ -27,7 +27,7 @@ import { Icon } from '@/components/Icon';
 import { ProgressBar } from '@/components/Stats';
 import { useApp } from '@/store/AppContext';
 import { useTheme } from '@/theme/ThemeContext';
-import { RADIUS } from '@/theme/colors';
+import { RADIUS, TABS_CLEARANCE } from '@/theme/theme';
 import { type } from '@/theme/typography';
 import {
   fetchDashboard, fetchTeacherOverview,
@@ -235,7 +235,7 @@ function Chiffre({ valeur, label }: { valeur: string; label: string }) {
 }
 
 const styles = StyleSheet.create({
-  scroll: { flexGrow: 1, paddingHorizontal: 22, paddingTop: 14, paddingBottom: 40 },
+  scroll: { flexGrow: 1, paddingHorizontal: 22, paddingTop: 14, paddingBottom: TABS_CLEARANCE },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 16 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   resume: {

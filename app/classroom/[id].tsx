@@ -25,7 +25,7 @@ import { CharteDialog } from '@/components/CharteDialog';
 import { useApp } from '@/store/AppContext';
 import { useTheme } from '@/theme/ThemeContext';
 import { useKeyboard } from '@/theme/useKeyboard';
-import { RADIUS } from '@/theme/colors';
+import { RADIUS } from '@/theme/theme';
 import { type } from '@/theme/typography';
 import { getSubject } from '@/data/subjects';
 import {
@@ -122,7 +122,7 @@ export default function UneClasse() {
 
         <View style={[styles.row, { marginTop: 12 }]}>
           <View style={[styles.pastille, { backgroundColor: matiere.color }]}>
-            <Icon name={matiere.icon} size={15} color="#FFFFFF" />
+            <Icon name={matiere.icon} size={15} color={colors.accentText} />
           </View>
           <Text style={[type.caption, { color: colors.textSoft, flex: 1 }]}>
             {matiere.name[lang]} · {classe.grade_level} · {classe.school}
@@ -190,7 +190,7 @@ export default function UneClasse() {
             </Text>
             <Card night>
               <Text style={[styles.code, { color: colors.onNight }]}>{classe.join_code}</Text>
-              <Text style={[type.caption, { color: 'rgba(255,255,255,0.7)', marginTop: 8 }]}>
+              <Text style={[type.caption, { color: colors.accentTextSoft, marginTop: 8 }]}>
                 {t('classroom.codeHint')}
               </Text>
               <Button

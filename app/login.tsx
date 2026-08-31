@@ -15,7 +15,7 @@ import { useAuth } from '@/store/AuthContext';
 import { useKeyboard } from '@/theme/useKeyboard';
 import { useApp } from '@/store/AppContext';
 import { useTheme } from '@/theme/ThemeContext';
-import { RADIUS } from '@/theme/colors';
+import { RADIUS } from '@/theme/theme';
 import { type } from '@/theme/typography';
 import { APP_NAME, APP_TAGLINE_FR, APP_TAGLINE_HT } from '@/config/app';
 import type { Lang } from '@/i18n';

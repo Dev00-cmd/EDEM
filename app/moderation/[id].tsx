@@ -29,7 +29,7 @@ import { Icon } from '@/components/Icon';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { useApp } from '@/store/AppContext';
 import { useTheme } from '@/theme/ThemeContext';
-import { RADIUS } from '@/theme/colors';
+import { RADIUS } from '@/theme/theme';
 import { type } from '@/theme/typography';
 import { fetchClassrooms, removeMember, type Classroom } from '@/lib/classrooms';
 import {

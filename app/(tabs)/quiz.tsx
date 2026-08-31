@@ -10,7 +10,7 @@ import { RichText } from '@/components/MathText';
 import { ProgressBar } from '@/components/Stats';
 import { useApp } from '@/store/AppContext';
 import { useTheme } from '@/theme/ThemeContext';
-import { RADIUS } from '@/theme/colors';
+import { RADIUS } from '@/theme/theme';
 import { FONTS, type } from '@/theme/typography';
 import { generateQuiz } from '@/ai/tutor';
 import { studentContextOf } from '@/ai/plan';
@@ -168,7 +168,7 @@ export default function QuizScreen() {
                 <Text
                   style={[
                     type.captionMedium,
-                    { color: active ? '#FFFFFF' : colors.text },
+                    { color: active ? colors.accentText : colors.text },
                   ]}
                   numberOfLines={1}
                 >
@@ -178,7 +178,7 @@ export default function QuizScreen() {
                   style={[
                     type.caption,
                     {
-                      color: active ? 'rgba(255,255,255,0.85)' : colors.textFaint,
+                      color: active ? colors.accentTextSoft : colors.textFaint,
                       marginTop: 2,
                     },
                   ]}
@@ -223,7 +223,7 @@ export default function QuizScreen() {
             <Card key={s.id} style={styles.subjectCard} onPress={() => startQuiz(s.id, difficulty)}>
               <View style={styles.subjectRow}>
                 <View style={[styles.subjectIcon, { backgroundColor: s.color }]}>
-                  <Icon name={s.icon} size={18} color="#FFFFFF" />
+                  <Icon name={s.icon} size={18} color={colors.accentText} />
                 </View>
                 <View style={styles.flex}>
                   <Text style={[type.cardTitle, { color: colors.text }]}>
@@ -253,7 +253,7 @@ export default function QuizScreen() {
       <Screen scroll={false}>
         <View style={styles.centered}>
           <View style={[styles.bigIcon, { backgroundColor: subject.color }]}>
-            <Icon name={subject.icon} size={32} color="#FFFFFF" />
+            <Icon name={subject.icon} size={32} color={colors.accentText} />
           </View>
           <Text
             style={[type.section, { color: colors.text, marginTop: 18, textAlign: 'center' }]}
@@ -276,7 +276,7 @@ export default function QuizScreen() {
       <Screen scroll={false}>
         <View style={styles.centered}>
           <View style={[styles.bigIcon, { backgroundColor: colors.danger }]}>
-            <Icon name="alert" size={30} color="#FFFFFF" />
+            <Icon name="alert" size={30} color={colors.accentText} />
           </View>
           <Text style={[type.section, { color: colors.text, marginTop: 18 }]}>
             {t('quiz.genErrorTitle')}
@@ -322,7 +322,7 @@ export default function QuizScreen() {
           <View
             style={[
               styles.resultBadge,
-              { backgroundColor: perfect ? colors.sky : 'rgba(255,255,255,0.10)' },
+              { backgroundColor: perfect ? colors.sky : colors.glassBorder },
             ]}
           >
             <Icon
@@ -350,7 +350,7 @@ export default function QuizScreen() {
             </View>
           )}
 
-          <View style={styles.xpPill}>
+          <View style={[styles.xpPill, { backgroundColor: colors.surfaceAlt }]}>
             <Icon name="star" size={14} color={colors.sky} />
             <Text style={[type.captionMedium, { color: colors.onNight }]}>
               +{xpGained} {t('quiz.xpEarned')}
@@ -531,9 +531,9 @@ export default function QuizScreen() {
                 ]}
               >
                 {isCorrectPick ? (
-                  <Icon name="check" size={14} color="#FFFFFF" strokeWidth={2.6} />
+                  <Icon name="check" size={14} color={colors.accentText} strokeWidth={2.6} />
                 ) : isWrongPick ? (
-                  <Icon name="close" size={14} color="#FFFFFF" strokeWidth={2.6} />
+                  <Icon name="close" size={14} color={colors.accentText} strokeWidth={2.6} />
                 ) : (
                   <Text
                     style={{ fontFamily: FONTS.bold, fontSize: 13, color: colors.textSoft }}
@@ -724,7 +724,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 6,
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.08)',
     borderRadius: RADIUS.pill,
     paddingHorizontal: 14,
     paddingVertical: 8,

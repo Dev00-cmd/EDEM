@@ -6,7 +6,7 @@ import { Icon } from '@/components/Icon';
 import { useApp } from '@/store/AppContext';
 import { useTheme } from '@/theme/ThemeContext';
 import { supabase } from '@/lib/supabase';
-import { RADIUS } from '@/theme/colors';
+import { ON_ACCENT, RADIUS } from '@/theme/theme';
 import { FONTS, type } from '@/theme/typography';
 
 interface Row {
@@ -157,7 +157,7 @@ export default function BoardScreen() {
                   style={{
                     fontFamily: FONTS.bold,
                     fontSize: 14,
-                    color: r.is_me ? '#FFFFFF' : colors.textSoft,
+                    color: r.is_me ? colors.accentText : colors.textSoft,
                   }}
                 >
                   {(r.name.trim()[0] ?? '·').toUpperCase()}
@@ -219,7 +219,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 8,
   },
-  meRank: { fontFamily: FONTS.extrabold, fontSize: 16, color: '#FFFFFF' },
+  meRank: { fontFamily: FONTS.extrabold, fontSize: 16, color: ON_ACCENT },
 
   row: {
     flexDirection: 'row',

@@ -24,7 +24,7 @@ import { useApp } from '@/store/AppContext';
 import { useAuth } from '@/store/AuthContext';
 import { useTheme } from '@/theme/ThemeContext';
 import { useKeyboard } from '@/theme/useKeyboard';
-import { RADIUS } from '@/theme/colors';
+import { RADIUS } from '@/theme/theme';
 import { type } from '@/theme/typography';
 import { topicsFor } from '@/data/curriculum';
 import { DIFFICULTIES, type Difficulty } from '@/config/app';
@@ -162,15 +162,15 @@ export default function NouveauDevoir() {
                 <Icon
                   name={k === 'devoir' ? 'file' : 'quiz'}
                   size={18}
-                  color={actif ? '#FFFFFF' : colors.textSoft}
+                  color={actif ? colors.accentText : colors.textSoft}
                 />
-                <Text style={[type.captionMedium, { color: actif ? '#FFFFFF' : colors.text }]}>
+                <Text style={[type.captionMedium, { color: actif ? colors.accentText : colors.text }]}>
                   {t(`assignment.kind_${k}`)}
                 </Text>
                 <Text
                   style={[
                     type.caption,
-                    { color: actif ? 'rgba(255,255,255,0.75)' : colors.textFaint },
+                    { color: actif ? colors.accentTextSoft : colors.textFaint },
                   ]}
                 >
                   {t(`assignment.kind_${k}_sub`)}

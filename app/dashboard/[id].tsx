@@ -23,7 +23,7 @@ import { Card } from '@/components/Card';
 import { Icon } from '@/components/Icon';
 import { useApp } from '@/store/AppContext';
 import { useTheme } from '@/theme/ThemeContext';
-import { RADIUS } from '@/theme/colors';
+import { RADIUS } from '@/theme/theme';
 import { type } from '@/theme/typography';
 import {
   fetchDashboard, fetchSummary,

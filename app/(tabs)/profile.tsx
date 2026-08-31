@@ -13,7 +13,7 @@ import { StatTile, ProgressBar } from '@/components/Stats';
 import { useApp } from '@/store/AppContext';
 import { useAuth } from '@/store/AuthContext';
 import { useTheme } from '@/theme/ThemeContext';
-import { RADIUS } from '@/theme/colors';
+import { ON_ACCENT, RADIUS } from '@/theme/theme';
 import { FONTS, type } from '@/theme/typography';
 import { SCHOOL_SECTIONS, levelNeedsSection } from '@/data/haiti';
 import { LEVELS } from '@/data/levels';
@@ -100,7 +100,7 @@ export default function ProfileScreen() {
       <Card night style={{ marginTop: 4 }}>
         <View style={styles.identity}>
           <View style={[styles.avatar, { backgroundColor: colors.accent }]}>
-            <Text style={[styles.avatarLetter, { color: '#FFFFFF' }]}>
+            <Text style={[styles.avatarLetter, { color: colors.accentText }]}>
               {(profile.name.trim()[0] ?? '‧').toUpperCase()}
             </Text>
           </View>
@@ -113,7 +113,7 @@ export default function ProfileScreen() {
                 autoFocus
                 onBlur={() => setEditingName(false)}
                 onSubmitEditing={() => setEditingName(false)}
-                style={styles.nameInput}
+                style={[styles.nameInput, { backgroundColor: colors.surfaceAlt }]}
                 maxLength={20}
               />
               <Pressable
@@ -569,8 +569,7 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   nameInput: {
-    backgroundColor: 'rgba(255,255,255,0.12)',
-    color: '#FFFFFF',
+    color: ON_ACCENT,
     borderRadius: RADIUS.md,
     paddingHorizontal: 14,
     paddingVertical: 9,

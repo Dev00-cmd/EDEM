@@ -35,7 +35,7 @@ import { Icon, type IconName } from '@/components/Icon';
 import { useApp } from '@/store/AppContext';
 import { useTheme } from '@/theme/ThemeContext';
 import { useKeyboard } from '@/theme/useKeyboard';
-import { RADIUS } from '@/theme/colors';
+import { RADIUS } from '@/theme/theme';
 import { type } from '@/theme/typography';
 import { SUBJECTS } from '@/data/subjects';
 import {
@@ -225,7 +225,7 @@ export default function TuneProfile() {
       <Screen>
         <View style={styles.done}>
           <View style={[styles.doneIcon, { backgroundColor: colors.accent }]}>
-            <Icon name="check-circle" size={34} color="#FFFFFF" />
+            <Icon name="check-circle" size={34} color={colors.accentText} />
           </View>
           <Text style={[type.display, { color: colors.text, textAlign: 'center' }]}>
             {t('tune.doneTitle')}
@@ -547,9 +547,9 @@ export default function TuneProfile() {
                     },
                   ]}
                 >
-                  <Icon name={g.icon} size={18} color={selected ? '#FFFFFF' : colors.textSoft} />
+                  <Icon name={g.icon} size={18} color={selected ? colors.accentText : colors.textSoft} />
                   <Text
-                    style={[type.captionMedium, { color: selected ? '#FFFFFF' : colors.text }]}
+                    style={[type.captionMedium, { color: selected ? colors.accentText : colors.text }]}
                   >
                     {t(`onboarding.goal_${g.id}`)}
                   </Text>

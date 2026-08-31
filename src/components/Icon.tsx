@@ -13,6 +13,7 @@
 
 import React, { type ReactNode } from 'react';
 import { View } from 'react-native';
+import { DARK } from '@/theme/theme';
 import Svg, { Circle, Path, Rect, Line } from 'react-native-svg';
 
 export type IconName =
@@ -465,7 +466,7 @@ interface IconProps {
 export function Icon({
   name,
   size = 22,
-  color = '#0D1B2A',
+  color = DARK.textPrimary,
   badge,
   badgeColor,
   strokeWidth = 1.75,
@@ -496,7 +497,7 @@ export function Icon({
             width: size * 0.3,
             height: size * 0.3,
             borderRadius: size * 0.15,
-            backgroundColor: badgeColor ?? '#2563EB',
+            backgroundColor: badgeColor ?? DARK.accent,
           }}
         />
       )}

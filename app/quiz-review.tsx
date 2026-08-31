@@ -16,7 +16,7 @@ import { Icon } from '@/components/Icon';
 import { RichText } from '@/components/MathText';
 import { useApp } from '@/store/AppContext';
 import { useTheme } from '@/theme/ThemeContext';
-import { RADIUS } from '@/theme/colors';
+import { RADIUS } from '@/theme/theme';
 import { FONTS, type } from '@/theme/typography';
 import { getSubject } from '@/data/subjects';
 import { fetchQuizReview, formatDate, type QuizReview } from '@/lib/quizHistory';
@@ -99,7 +99,7 @@ export default function QuizReviewScreen() {
       <Card night style={styles.block}>
         <View style={styles.summaryRow}>
           <View style={[styles.subjectIcon, { backgroundColor: subject.color }]}>
-            <Icon name={subject.icon} size={18} color="#FFFFFF" />
+            <Icon name={subject.icon} size={18} color={colors.accentText} />
           </View>
           <View style={styles.flex}>
             <Text style={[type.cardTitle, { color: colors.onNight }]}>
@@ -144,7 +144,7 @@ export default function QuizReviewScreen() {
                 <Icon
                   name={juste ? 'check' : sansReponse ? 'clock' : 'close'}
                   size={12}
-                  color="#FFFFFF"
+                  color={colors.accentText}
                   strokeWidth={2.6}
                 />
               </View>

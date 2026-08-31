@@ -33,7 +33,7 @@ import { Icon } from '@/components/Icon';
 import { useApp } from '@/store/AppContext';
 import { useTheme } from '@/theme/ThemeContext';
 import { useKeyboard } from '@/theme/useKeyboard';
-import { RADIUS } from '@/theme/colors';
+import { RADIUS } from '@/theme/theme';
 import { FONTS, type } from '@/theme/typography';
 import { useRouter } from 'expo-router';
 import { LEVELS } from '@/data/levels';
@@ -236,21 +236,21 @@ export default function Onboarding() {
                       <Text
                         style={[
                           type.cardTitle,
-                          { color: selected ? '#FFFFFF' : colors.text },
+                          { color: selected ? colors.accentText : colors.text },
                         ]}
                       >
                         {t(`onboarding.${l === 'fr' ? 'french' : 'creole'}`)}
                       </Text>
                       <View style={styles.langCheckRow}>
                         {selected && (
-                          <Icon name="check-circle" size={15} color="#FFFFFF" />
+                          <Icon name="check-circle" size={15} color={colors.accentText} />
                         )}
                         <Text
                           style={[
                             type.caption,
                             {
                               color: selected
-                                ? 'rgba(255,255,255,0.75)'
+                                ? colors.accentTextSoft
                                 : colors.textFaint,
                             },
                           ]}
@@ -302,13 +302,13 @@ export default function Onboarding() {
                       <Icon
                         name={prof ? 'landmark' : 'user'}
                         size={22}
-                        color={selected ? '#FFFFFF' : colors.accent}
+                        color={selected ? colors.accentText : colors.accent}
                       />
                       <View style={styles.flex}>
                         <Text
                           style={[
                             type.cardTitle,
-                            { color: selected ? '#FFFFFF' : colors.text },
+                            { color: selected ? colors.accentText : colors.text },
                           ]}
                         >
                           {t(prof ? 'onboarding.iAmTeacher' : 'onboarding.iAmStudent')}
@@ -317,7 +317,7 @@ export default function Onboarding() {
                           style={[
                             type.caption,
                             {
-                              color: selected ? 'rgba(255,255,255,0.8)' : colors.textFaint,
+                              color: selected ? colors.accentTextSoft : colors.textFaint,
                               marginTop: 3,
                             },
                           ]}
@@ -325,7 +325,7 @@ export default function Onboarding() {
                           {t(prof ? 'onboarding.iAmTeacherSub' : 'onboarding.iAmStudentSub')}
                         </Text>
                       </View>
-                      {selected && <Icon name="check-circle" size={18} color="#FFFFFF" />}
+                      {selected && <Icon name="check-circle" size={18} color={colors.accentText} />}
                     </Pressable>
                   );
                 })}

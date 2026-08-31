@@ -142,7 +142,7 @@ export default function NouvelleClasse() {
         <Card night style={{ marginTop: 20, alignItems: 'center' }}>
           <Text style={[type.eyebrow, { color: colors.sky }]}>{t('classroom.codeLabel')}</Text>
           <Text style={[styles.code, { color: colors.onNight }]}>{code}</Text>
-          <Text style={[type.caption, { color: 'rgba(255,255,255,0.7)', textAlign: 'center', marginTop: 10 }]}>
+          <Text style={[type.caption, { color: colors.accentTextSoft, textAlign: 'center', marginTop: 10 }]}>
             {t('classroom.codeHint')}
           </Text>
         </Card>

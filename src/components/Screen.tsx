@@ -7,9 +7,12 @@ import {
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
-import { SafeAreaView, type Edge } from 'react-native-safe-area-context';
+import { BlurView } from 'expo-blur';
+import { SafeAreaView, useSafeAreaInsets, type Edge } from 'react-native-safe-area-context';
 import { useTheme } from '@/theme/ThemeContext';
 import { useResponsive, MAX_CONTENT_WIDTH } from '@/theme/responsive';
+import { BLUR, FLOAT } from '@/theme/theme';
+import { useGlass } from '@/theme/useGlass';
 
 interface ScreenProps {
   children: ReactNode;
@@ -21,7 +24,11 @@ interface ScreenProps {
   /** Ajoute le « tirer pour rafraîchir ». */
   onRefresh?: () => void;
   refreshing?: boolean;
-  /** Espace réservé sous le contenu pour la barre d'onglets. */
+  /**
+   * Espace réservé sous le contenu pour la barre d'onglets.
+   * Par défaut : sa hauteur réelle, zone sûre comprise — elle
+   * flotte par-dessus le contenu et masquerait la dernière ligne.
+   */
   bottomInset?: number;
 }
 
@@ -32,6 +39,18 @@ interface ScreenProps {
  * gérer : le fond thémé, la zone sûre (encoches, barre système),
  * et l'adaptation à la taille de l'écran — marges resserrées sur
  * petit téléphone, colonne centrée et bornée sur tablette.
+ *
+ * ─── LE VERRE DU HAUT ────────────────────────────────────────────
+ * Quand c'est LUI qui tient le défilement, la marge d'encoche passe
+ * du conteneur au contenu, et une bande de verre est posée par
+ * dessus. Le résultat : le texte glisse SOUS la barre d'état au
+ * lieu de s'arrêter dessous.
+ *
+ * Quand l'écran apporte son propre ScrollView (`scroll={false}` —
+ * la conversation, les devoirs, les classes), la zone sûre reste
+ * gérée comme avant et aucune bande n'est posée. Déplacer la marge
+ * dans un défilement qu'on ne contrôle pas aurait glissé le premier
+ * élément de ces écrans sous l'encoche.
  */
 export function Screen({
   children,
@@ -42,10 +61,18 @@ export function Screen({
   contentStyle,
   onRefresh,
   refreshing,
-  bottomInset = 104,
+  bottomInset,
 }: ScreenProps) {
   const { colors } = useTheme();
   const { gutter, isTablet } = useResponsive();
+  const insets = useSafeAreaInsets();
+  const glass = useGlass();
+
+  // La zone sûre varie du simple au double entre un téléphone à
+  // trois boutons et un à navigation gestuelle : une réserve figée
+  // laissait la dernière ligne sous la barre sur la moitié du parc.
+  const reserve =
+    bottomInset ?? Math.max(insets.bottom, 8) + FLOAT.bottom + FLOAT.tabsHeight + 16;
 
   const inner = (
     <View
@@ -62,33 +89,68 @@ export function Screen({
     </View>
   );
 
+  if (!scroll) {
+    return (
+      <SafeAreaView
+        edges={edges}
+        style={[styles.flex, { backgroundColor: colors.bg }, style]}
+      >
+        {inner}
+      </SafeAreaView>
+    );
+  }
+
+  // La marge d'encoche descend dans le contenu : c'est ce qui laisse
+  // le texte passer sous la bande de verre au défilement.
+  const topEdge = edges.includes('top');
+
   return (
     <SafeAreaView
-      edges={edges}
+      edges={edges.filter((e) => e !== 'top')}
       style={[styles.flex, { backgroundColor: colors.bg }, style]}
     >
-      {scroll ? (
-        <ScrollView
-          style={styles.flex}
-          contentContainerStyle={{ paddingBottom: bottomInset, flexGrow: 1 }}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-          refreshControl={
-            onRefresh ? (
-              <RefreshControl
-                refreshing={!!refreshing}
-                onRefresh={onRefresh}
-                tintColor={colors.accent}
-                colors={[colors.accent]}
-                progressBackgroundColor={colors.surface}
-              />
-            ) : undefined
-          }
-        >
-          {inner}
-        </ScrollView>
-      ) : (
-        inner
+      <ScrollView
+        style={styles.flex}
+        contentContainerStyle={{
+          paddingTop: topEdge ? insets.top : 0,
+          paddingBottom: reserve,
+          flexGrow: 1,
+        }}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        refreshControl={
+          onRefresh ? (
+            <RefreshControl
+              refreshing={!!refreshing}
+              onRefresh={onRefresh}
+              tintColor={colors.accent}
+              colors={[colors.accent]}
+              progressBackgroundColor={colors.surface}
+              progressViewOffset={topEdge ? insets.top : 0}
+            />
+          ) : undefined
+        }
+      >
+        {inner}
+      </ScrollView>
+
+      {/* La bande de verre de la barre d'état. Collée au bord haut :
+          pas de liseré clair ici, il tomberait sous l'encoche et ne
+          se verrait pas. C'est le filet du BAS qui la détache. */}
+      {topEdge && insets.top > 0 && (
+        <BlurView
+          intensity={glass ? BLUR.intensity : 0}
+          tint={colors.isDark ? BLUR.tint : BLUR.tintLight}
+          style={[
+            styles.topGlass,
+            {
+              height: insets.top,
+              backgroundColor: glass ? colors.glass : colors.bg,
+              borderBottomColor: colors.glassBorder,
+            },
+          ]}
+          pointerEvents="none"
+        />
       )}
     </SafeAreaView>
   );
@@ -96,4 +158,11 @@ export function Screen({
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
+  topGlass: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    borderBottomWidth: 1,
+  },
 });

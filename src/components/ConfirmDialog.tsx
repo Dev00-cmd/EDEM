@@ -3,7 +3,7 @@ import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Icon, type IconName } from './Icon';
 import { Button } from './Button';
 import { useTheme } from '@/theme/ThemeContext';
-import { RADIUS } from '@/theme/colors';
+import { RADIUS } from '@/theme/theme';
 import { useResponsive } from '@/theme/responsive';
 import { type } from '@/theme/typography';
 
@@ -61,7 +61,7 @@ export function ConfirmDialog({
     >
       {/* Le fond sombre ferme aussi la boîte : geste attendu partout. */}
       <Pressable
-        style={styles.backdrop}
+        style={[styles.backdrop, { backgroundColor: colors.scrim }]}
         onPress={onCancel}
         accessibilityRole="button"
         accessibilityLabel={cancelLabel}
@@ -114,7 +114,6 @@ export function ConfirmDialog({
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(5,12,24,0.62)',
     alignItems: 'center',
     justifyContent: 'center',
     padding: 24,

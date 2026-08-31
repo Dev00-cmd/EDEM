@@ -25,7 +25,7 @@ import { Button } from '@/components/Button';
 import { Icon } from '@/components/Icon';
 import { useApp } from '@/store/AppContext';
 import { useTheme } from '@/theme/ThemeContext';
-import { RADIUS } from '@/theme/colors';
+import { RADIUS, TABS_CLEARANCE } from '@/theme/theme';
 import { type } from '@/theme/typography';
 import { getSubject } from '@/data/subjects';
 import { fetchTeacherOverview, type TeacherClass } from '@/lib/assignments';
@@ -104,12 +104,12 @@ export default function AccueilProf() {
             return (
               <Card
                 key={c.classroom_id}
-                style={{ marginBottom: 10 }}
+                style={{ marginBottom: 2 }}
                 onPress={() => router.push(`/classroom/${c.classroom_id}`)}
               >
                 <View style={styles.row}>
                   <View style={[styles.pastille, { backgroundColor: matiere.color }]}>
-                    <Icon name={matiere.icon} size={15} color="#FFFFFF" />
+                    <Icon name={matiere.icon} size={15} color={colors.accentText} />
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={[type.cardTitle, { color: colors.text }]}>{c.name}</Text>
@@ -178,7 +178,7 @@ function Pastille({ label, tint }: { label: string; tint: string }) {
 }
 
 const styles = StyleSheet.create({
-  scroll: { flexGrow: 1, paddingHorizontal: 22, paddingTop: 14, paddingBottom: 40 },
+  scroll: { flexGrow: 1, paddingHorizontal: 22, paddingTop: 14, paddingBottom: TABS_CLEARANCE },
   row: { flexDirection: 'row', alignItems: 'center', gap: 11 },
   pastille: {
     width: 32, height: 32, borderRadius: RADIUS.md,

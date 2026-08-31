@@ -19,7 +19,7 @@ import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { Icon } from '@/components/Icon';
 import { useApp, type Conversation } from '@/store/AppContext';
 import { useTheme } from '@/theme/ThemeContext';
-import { RADIUS } from '@/theme/colors';
+import { RADIUS } from '@/theme/theme';
 import { type } from '@/theme/typography';
 import { getSubject } from '@/data/subjects';
 import { formatDate } from '@/lib/quizHistory';
@@ -101,7 +101,7 @@ export default function ChatHistoryScreen() {
             <Card key={c.id} style={styles.card} onPress={() => open(c.id)}>
               <View style={styles.row}>
                 <View style={[styles.icon, { backgroundColor: subject.color }]}>
-                  <Icon name={subject.icon} size={16} color="#FFFFFF" />
+                  <Icon name={subject.icon} size={16} color={colors.accentText} />
                 </View>
 
                 <View style={styles.flex}>
@@ -165,7 +165,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
     marginTop: 4,
-    marginBottom: 10,
+    marginBottom: 2,
   },
   backBtn: {
     width: 38,

@@ -8,7 +8,7 @@ import { EducareMark } from '@/components/EducareMark';
 import { StatTile, ProgressBar } from '@/components/Stats';
 import { useApp } from '@/store/AppContext';
 import { useTheme } from '@/theme/ThemeContext';
-import { RADIUS } from '@/theme/colors';
+import { RADIUS } from '@/theme/theme';
 import { useResponsive } from '@/theme/responsive';
 import { FONTS, type } from '@/theme/typography';
 import { dailyPlan } from '@/ai/plan';
@@ -116,7 +116,7 @@ export default function HomeScreen() {
             <Text style={[type.eyebrow, { color: colors.sky, flex: 1 }]}>
               {t('home.heroEyebrow')}
             </Text>
-            <View style={[styles.streak, { backgroundColor: 'rgba(56,189,248,0.16)' }]}>
+            <View style={[styles.streak, { backgroundColor: colors.accentSoft }]}>
               <Icon name="flame" size={13} color={colors.sky} />
               <Text style={{ fontFamily: FONTS.bold, fontSize: 12, color: colors.sky }}>
                 {progress.streak}
@@ -135,16 +135,16 @@ export default function HomeScreen() {
           <View
             style={[
               styles.askBox,
-              { backgroundColor: colors.onNight, marginRight: -heroArt * 0.36 },
+              { backgroundColor: colors.surfaceAlt, marginRight: -heroArt * 0.36 },
             ]}
           >
             <TextInput
               value={question}
               onChangeText={setQuestion}
               placeholder={t('home.askPlaceholder')}
-              placeholderTextColor="#8496AC"
+              placeholderTextColor={colors.textFaint}
               multiline
-              style={[styles.askInput, { color: colors.nightDeep }]}
+              style={[styles.askInput, { color: colors.text }]}
               onSubmitEditing={() => ask(question)}
             />
             <Pressable
@@ -153,7 +153,7 @@ export default function HomeScreen() {
               accessibilityLabel={t('home.askPlaceholder')}
               style={[styles.sendBtn, { backgroundColor: colors.accent }]}
             >
-              <Icon name="send" size={18} color="#FFFFFF" />
+              <Icon name="send" size={18} color={colors.accentText} />
             </Pressable>
           </View>
         </View>
@@ -253,7 +253,7 @@ export default function HomeScreen() {
       {/* ── Astuce du jour ──────────────────────────────────── */}
       <Card night style={styles.tipCard}>
         <View style={styles.tipRow}>
-          <View style={[styles.tipIcon, { backgroundColor: 'rgba(56,189,248,0.18)' }]}>
+          <View style={[styles.tipIcon, { backgroundColor: colors.accentSoft }]}>
             <Icon name="bulb" size={18} color={colors.sky} />
           </View>
           <View style={styles.flex}>
@@ -290,7 +290,7 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
 
-  hero: { borderRadius: RADIUS.xl, overflow: 'hidden' },
+  hero: { borderRadius: RADIUS.lg, overflow: 'hidden' },
   heroImg: { position: 'absolute', top: -24, opacity: 0.9 },
   heroBody: { padding: 20 },
   heroTop: { flexDirection: 'row', alignItems: 'center', gap: 7 },
@@ -307,7 +307,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-end',
     gap: 8,
-    borderRadius: RADIUS.lg,
+    borderRadius: RADIUS.md,
     paddingLeft: 15,
     paddingRight: 7,
     paddingVertical: 7,
@@ -322,8 +322,8 @@ const styles = StyleSheet.create({
     paddingTop: 4,
   },
   sendBtn: {
-    width: 38,
-    height: 38,
+    width: 36,
+    height: 36,
     borderRadius: RADIUS.sm,
     alignItems: 'center',
     justifyContent: 'center',
@@ -331,13 +331,16 @@ const styles = StyleSheet.create({
 
   statsRow: { flexDirection: 'row', marginTop: 16 },
 
-  section: { marginTop: 26, marginBottom: 14 },
+  section: { marginTop: 22, marginBottom: 10 },
 
-  planCard: { marginBottom: 10 },
+  // 2 px entre deux lignes : c'est le fond de la page qui passe au
+  // travers, et il tient lieu de filet de séparation. Dix pixels de
+  // marge faisaient de chaque étape une carte isolée.
+  planCard: { marginBottom: 2 },
   planRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingLeft: 4 },
   planIcon: {
-    width: 42,
-    height: 42,
+    width: 40,
+    height: 40,
     borderRadius: RADIUS.sm,
     alignItems: 'center',
     justifyContent: 'center',

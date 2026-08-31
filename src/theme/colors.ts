@@ -1,65 +1,92 @@
 // ═══════════════════════════════════════════════════════════════
-//  PALETTE TI PWOF — « nuit bleue »
+//  LES RÔLES DE COULEUR
 //
-//  Bleu nuit profond + bleu électrique, sur papier très clair.
-//  Deux thèmes cohérents : les mêmes rôles, deux ambiances.
+//  Ce fichier ne DÉFINIT plus aucune couleur : il distribue les
+//  jetons de `theme.ts` sur les rôles que lisent les écrans
+//  (`colors.surface`, `colors.textSoft`…).
 //
-//  Règle : un composant ne code JAMAIS une couleur en dur.
-//  Il lit un rôle (colors.accent, colors.surface…) et le thème
-//  décide. C'est ce qui garde clair et sombre parfaitement alignés.
+//  Deux niveaux plutôt qu'un seul, exprès. Les jetons disent CE
+//  QUE VAUT une couleur, les rôles disent À QUOI elle sert. Un
+//  écran qui demanderait `TOKENS.textSecondary` choisirait une
+//  valeur ; en demandant `colors.textSoft` il choisit une
+//  intention, et le thème clair suit tout seul.
 // ═══════════════════════════════════════════════════════════════
 
+import { DARK, LIGHT, RADIUS, SPACING, type Tokens } from './theme';
+
+export { RADIUS, SPACING };
 export type ThemeMode = 'system' | 'light' | 'dark';
 
-/** Couleurs de marque — identiques dans les deux thèmes. */
+/**
+ * Les couleurs de la MARQUE — volontairement figées.
+ *
+ * Elles ne servent qu'au logo, et le logo partage son tracé ET ses
+ * couleurs avec `scripts/make_icons.py`, qui produit l'icône posée
+ * sur l'écran d'accueil du téléphone. Cette icône est native : une
+ * mise à jour OTA ne peut pas la changer. Repeindre le logo ici
+ * l'aurait donc désaccordé de l'icône, sur tous les téléphones,
+ * sans moyen de rattrapage.
+ */
 export const BRAND = {
-  ink: '#0D1B2A', // nuit la plus profonde
-  navy: '#132640', // nuit
-  navyLift: '#1B3355', // nuit relevée (survol, séparateurs)
-  blueDeep: '#1E3A8A', // bleu profond
-  blue: '#2563EB', // bleu électrique — action principale
-  sky: '#38BDF8', // cyan lumineux — accent secondaire
-  mist: '#E0F2FE', // brume bleutée
-  paper: '#F5F7FA', // papier
-  white: '#FFFFFF',
-} as const;
-
-/** Couleurs d'accent pour catégoriser (matières, notes, agenda). */
-export const ACCENTS = {
+  ink: '#0D1B2A',
+  navy: '#132640',
+  navyLift: '#1B3355',
+  blueDeep: '#1E3A8A',
   blue: '#2563EB',
   sky: '#38BDF8',
-  violet: '#7C3AED',
-  emerald: '#10B981',
-  amber: '#F59E0B',
-  rose: '#F43F5E',
+  mist: '#E0F2FE',
+  paper: '#F5F7FA',
+  white: '#FFFFFF',
 } as const;
-
-export type AccentName = keyof typeof ACCENTS;
 
 export interface Palette {
   isDark: boolean;
 
   // ── Fonds ───────────────────────────────────────────────────
   bg: string; // fond de l'écran
-  surface: string; // carte
-  surfaceAlt: string; // carte secondaire / champ de saisie
-  surfaceHigh: string; // élément survolé ou sélectionné
-  border: string; // bordure fine
+  surface: string; // ligne de liste, panneau
+  surfaceAlt: string; // champ de saisie, pastille au repos
+  surfaceHigh: string; // élément sélectionné
+  border: string; // le filet de séparation
   borderStrong: string; // bordure marquée
 
+  // ── Verre ───────────────────────────────────────────────────
+  /** Fond des barres flottantes, sous le flou. */
+  glass: string;
+  /** Contour complet d'une surface de verre. */
+  glassBorder: string;
+  /** Liseré clair de l'arête supérieure — c'est LUI qui fait l'effet. */
+  glassHighlight: string;
+
   // ── Texte ───────────────────────────────────────────────────
-  text: string; // titre, texte principal
-  textSoft: string; // texte secondaire
-  textFaint: string; // légende, méta
+  text: string;
+  textSoft: string;
+  textFaint: string;
 
-  // ── Accents ─────────────────────────────────────────────────
-  accent: string; // bleu électrique (action principale)
-  accentPressed: string; // état pressé
-  accentSoft: string; // fond teinté bleu (pastille, badge)
-  accentText: string; // texte posé sur l'accent
-  sky: string; // cyan lumineux
+  // ── Accent (un seul, pour l'interactif et l'actif) ──────────
+  accent: string;
+  accentPressed: string;
+  accentSoft: string;
+  accentText: string;
+  /** Texte de second rang posé sur un aplat d'accent. */
+  accentTextSoft: string;
+  /**
+   * Ancien second accent (cyan). Il pointe désormais sur l'accent
+   * unique : deux couleurs d'action se disputaient le regard, et
+   * sur un écran vu en plein soleil c'est une de trop.
+   */
+  sky: string;
 
-  // ── Panneau nuit (héro, encarts sombres dans les 2 thèmes) ──
+  // ── Bulles de conversation ──────────────────────────────────
+  bubbleOut: string;
+  bubbleIn: string;
+  onBubbleOut: string;
+  onBubbleIn: string;
+
+  // ── Panneaux jadis « nuit » ─────────────────────────────────
+  // Le fond est maintenant nuit lui-même : ces rôles ne créent
+  // plus un contraste, ils désignent simplement une surface un
+  // cran au-dessus.
   night: string;
   nightDeep: string;
   onNight: string;
@@ -70,103 +97,63 @@ export interface Palette {
   warning: string;
   danger: string;
 
-  // ── Ombres ──────────────────────────────────────────────────
+  /** Voile derrière une boîte de dialogue. */
+  scrim: string;
+
+  // ── Ombres (noires, jamais teintées) ────────────────────────
   shadow: string;
   shadowOpacity: number;
 }
 
-// ═══════════════════════════════════════════════════════════════
-//  THÈME CLAIR — papier froid, cartes blanches, bleu franc
-// ═══════════════════════════════════════════════════════════════
-export const lightColors: Palette = {
-  isDark: false,
+/** Distribue un jeu de jetons sur les rôles. Un seul câblage, deux thèmes. */
+const build = (k: Tokens, isDark: boolean): Palette => ({
+  isDark,
 
-  bg: BRAND.paper,
-  surface: BRAND.white,
-  surfaceAlt: '#EEF3F9',
-  surfaceHigh: BRAND.mist,
-  border: '#E2E9F2',
-  borderStrong: '#CBD8E8',
+  bg: k.background,
+  surface: k.surface,
+  surfaceAlt: k.elevated,
+  surfaceHigh: k.elevated,
+  border: k.separator,
+  borderStrong: k.glassBorder,
 
-  text: BRAND.ink,
-  textSoft: '#4A5B72',
-  textFaint: '#8496AC',
+  glass: k.glass,
+  glassBorder: k.glassBorder,
+  glassHighlight: k.glassHighlight,
 
-  accent: BRAND.blue,
-  accentPressed: BRAND.blueDeep,
-  accentSoft: 'rgba(37,99,235,0.10)',
-  accentText: BRAND.white,
-  sky: '#0EA5E9', // cyan assombri pour rester lisible sur blanc
+  text: k.textPrimary,
+  textSoft: k.textSecondary,
+  textFaint: k.textSecondary,
 
-  night: BRAND.navy,
-  nightDeep: BRAND.ink,
-  onNight: BRAND.paper,
-  onNightSoft: 'rgba(245,247,250,0.70)',
+  accent: k.accent,
+  accentPressed: k.accentPressed,
+  accentSoft: k.accentSoft,
+  accentText: k.onAccent,
+  accentTextSoft: k.onAccentSoft,
+  sky: k.accent,
 
-  success: '#059669',
-  warning: '#D97706',
-  danger: '#E11D48',
+  bubbleOut: k.bubbleOut,
+  bubbleIn: k.bubbleIn,
+  // Sombre : bulle bleu nuit. Clair : bulle bleu plein. Blanc dans les deux.
+  onBubbleOut: '#FFFFFF',
+  onBubbleIn: k.textPrimary,
 
-  shadow: '#0D1B2A',
-  shadowOpacity: 0.08,
-};
+  night: k.surface,
+  nightDeep: k.background,
+  onNight: k.textPrimary,
+  onNightSoft: k.textSecondary,
 
-// ═══════════════════════════════════════════════════════════════
-//  THÈME SOMBRE — celui des maquettes : nuit bleue, bleu vif
-// ═══════════════════════════════════════════════════════════════
-export const darkColors: Palette = {
-  isDark: true,
+  success: k.success,
+  warning: k.warning,
+  danger: k.danger,
 
-  bg: BRAND.ink,
-  surface: BRAND.navy,
-  surfaceAlt: '#0F2036',
-  surfaceHigh: BRAND.navyLift,
-  border: 'rgba(255,255,255,0.07)',
-  borderStrong: 'rgba(255,255,255,0.14)',
-
-  text: '#EAF1F9',
-  textSoft: '#A3B4CA',
-  textFaint: '#6F819A',
-
-  accent: BRAND.blue,
-  accentPressed: '#1D4ED8',
-  accentSoft: 'rgba(37,99,235,0.18)',
-  accentText: BRAND.white,
-  sky: BRAND.sky,
-
-  night: BRAND.navy,
-  nightDeep: '#0A1524',
-  onNight: '#EAF1F9',
-  onNightSoft: 'rgba(234,241,249,0.68)',
-
-  success: '#34D399',
-  warning: '#FBBF24',
-  danger: '#FB7185',
+  scrim: k.scrim,
 
   shadow: '#000000',
-  shadowOpacity: 0.45,
-};
+  shadowOpacity: isDark ? 0.5 : 0.14,
+});
+
+export const darkColors: Palette = build(DARK, true);
+export const lightColors: Palette = build(LIGHT, false);
 
 export const getColors = (isDark: boolean): Palette =>
   isDark ? darkColors : lightColors;
-
-// ═══════════════════════════════════════════════════════════════
-//  Rythme d'espacement et rayons — cohérence de tout le design
-// ═══════════════════════════════════════════════════════════════
-export const SPACING = {
-  xs: 4,
-  sm: 8,
-  md: 12,
-  lg: 16,
-  xl: 20,
-  xxl: 28,
-  xxxl: 40,
-} as const;
-
-export const RADIUS = {
-  sm: 10,
-  md: 14,
-  lg: 18,
-  xl: 24,
-  pill: 999,
-} as const;

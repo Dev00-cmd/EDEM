@@ -2,7 +2,7 @@ import React from 'react';
 import { Pressable, StyleSheet, Text } from 'react-native';
 import { Icon, type IconName } from './Icon';
 import { useTheme } from '@/theme/ThemeContext';
-import { RADIUS } from '@/theme/colors';
+import { RADIUS } from '@/theme/theme';
 import { FONT_CAP } from '@/theme/responsive';
 import { type } from '@/theme/typography';
 
@@ -17,17 +17,18 @@ interface ChipProps {
 }
 
 /**
- * Pastille sélectionnable. Sélectionnée : fond bleu plein.
- * Au repos : surface neutre bordée — le contraste entre les deux
- * états doit rester évident même en plein soleil.
+ * Pastille sélectionnable. Sélectionnée : accent plein.
+ * Au repos : un aplat neutre SANS bordure — le contour de 1,5 px
+ * dessinait autant de traits qu'il y avait de pastilles, et une
+ * rangée de matières finissait en grillage. C'est la valeur du
+ * fond qui distingue les deux états, et elle tient en plein soleil.
  */
 export function Chip({ label, selected, onPress, icon, small, tint }: ChipProps) {
   const { colors } = useTheme();
   const accent = tint ?? colors.accent;
 
-  const bg = selected ? accent : colors.surface;
-  const fg = selected ? '#FFFFFF' : colors.textSoft;
-  const border = selected ? accent : colors.border;
+  const bg = selected ? accent : colors.surfaceAlt;
+  const fg = selected ? colors.accentText : colors.textSoft;
 
   return (
     <Pressable
@@ -38,7 +39,7 @@ export function Chip({ label, selected, onPress, icon, small, tint }: ChipProps)
       style={({ pressed }) => [
         styles.chip,
         small && styles.small,
-        { backgroundColor: bg, borderColor: border, opacity: pressed ? 0.85 : 1 },
+        { backgroundColor: bg, opacity: pressed ? 0.85 : 1 },
       ]}
     >
       {icon && <Icon name={icon} size={small ? 13 : 15} color={fg} />}
@@ -58,12 +59,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    paddingVertical: 9,
-    paddingHorizontal: 14,
+    paddingVertical: 8,
+    paddingHorizontal: 13,
     borderRadius: RADIUS.pill,
-    borderWidth: 1.5,
   },
   small: { paddingVertical: 6, paddingHorizontal: 11 },
-  label: { fontSize: 13.5 },
-  labelSm: { fontSize: 12 },
+  label: { fontSize: 13 },
+  labelSm: { fontSize: 11 },
 });

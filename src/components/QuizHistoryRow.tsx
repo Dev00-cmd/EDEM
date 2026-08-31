@@ -10,7 +10,7 @@ import { Card } from './Card';
 import { Icon } from './Icon';
 import { useApp } from '@/store/AppContext';
 import { useTheme } from '@/theme/ThemeContext';
-import { RADIUS } from '@/theme/colors';
+import { RADIUS } from '@/theme/theme';
 import { FONTS, type } from '@/theme/typography';
 import { getSubject } from '@/data/subjects';
 import { formatDate, type QuizHistoryEntry } from '@/lib/quizHistory';
@@ -39,7 +39,7 @@ export function QuizHistoryRow({
     <Card style={styles.card} onPress={onPress}>
       <View style={styles.row}>
         <View style={[styles.icon, { backgroundColor: subject.color }]}>
-          <Icon name={subject.icon} size={17} color="#FFFFFF" />
+          <Icon name={subject.icon} size={17} color={colors.accentText} />
         </View>
 
         <View style={styles.flex}>
