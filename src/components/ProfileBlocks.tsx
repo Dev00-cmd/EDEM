@@ -251,10 +251,31 @@ export function BlocAPropos() {
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
+  /**
+   * LE DÉFAUT QUE CE `flexWrap` CORRIGE.
+   *
+   * La ligne « Thème » porte TROIS pastilles — Clair, Sombre, Auto.
+   * Elles ne pouvaient pas rétrécir (`flexShrink: 0`), et le libellé
+   * à leur gauche n'était pas tronquable : les pastilles passaient
+   * donc PAR-DESSUS le mot « Thème », qu'on lisait à moitié sous
+   * « Clair ».
+   *
+   * Ce n'était pas un cas limite. C'était l'affichage normal, en
+   * français, sur un téléphone ordinaire — et le créole, plus long
+   * (« Otomatik »), l'aggravait encore, comme une police système
+   * agrandie.
+   *
+   * Le groupe de pastilles passe donc à la ligne quand il ne tient
+   * pas. Rétrécir les pastilles aurait coupé leur texte ; tronquer
+   * le libellé aurait donné « Thè… ». Passer à la ligne ne perd
+   * rien, et la ligne « Langue », qui n'a que deux pastilles, ne
+   * bouge pas d'un pixel.
+   */
   settingRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    flexWrap: 'wrap',
     paddingHorizontal: 16,
     paddingVertical: 13,
     gap: 10,
@@ -271,7 +292,17 @@ const styles = StyleSheet.create({
     marginLeft: SEPARATOR_INSET,
   },
   settingLeft: { flexDirection: 'row', alignItems: 'center', gap: 11, flexShrink: 1 },
-  settingChips: { flexDirection: 'row', gap: 6, flexShrink: 0 },
+  // `flexGrow` cale les pastilles à droite dans les deux cas : sur
+  // la même ligne que le libellé quand elles tiennent, et alignées
+  // sur le même bord droit quand elles sont passées dessous.
+  settingChips: {
+    flexDirection: 'row',
+    gap: 6,
+    flexShrink: 0,
+    flexGrow: 1,
+    flexWrap: 'wrap',
+    justifyContent: 'flex-end',
+  },
   updateRow: { flexDirection: 'row', alignItems: 'center', gap: 13 },
   updateIcon: {
     width: 36,

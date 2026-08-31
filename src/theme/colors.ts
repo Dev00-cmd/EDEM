@@ -18,25 +18,36 @@ export { RADIUS, SPACING };
 export type ThemeMode = 'system' | 'light' | 'dark';
 
 /**
- * Les couleurs de la MARQUE — volontairement figées.
+ * Les couleurs de la MARQUE — deux, et elles ne servent qu'au logo.
  *
- * Elles ne servent qu'au logo, et le logo partage son tracé ET ses
- * couleurs avec `scripts/make_icons.py`, qui produit l'icône posée
- * sur l'écran d'accueil du téléphone. Cette icône est native : une
- * mise à jour OTA ne peut pas la changer. Repeindre le logo ici
- * l'aurait donc désaccordé de l'icône, sur tous les téléphones,
- * sans moyen de rattrapage.
+ * Le logo partage son tracé ET ses couleurs avec
+ * `scripts/make_icons.py`, qui produit l'icône posée sur l'écran
+ * d'accueil du téléphone. Les deux doivent bouger ENSEMBLE : si tu
+ * touches à l'un, relance l'autre.
+ *
+ * Et sache ce que ça implique : cette icône est NATIVE. Aucune mise
+ * à jour OTA ne la repeint. Après un changement de marque, le logo
+ * dans l'app est le nouveau dès la mise à jour, mais l'icône sur
+ * l'écran d'accueil reste l'ancienne jusqu'au prochain APK.
+ *
+ * L'ancienne palette en comptait neuf, dont sept que plus personne
+ * n'utilisait depuis que l'interface lit des rôles. Elles ne sont
+ * pas remplacées, elles sont retirées : une couleur de marque
+ * orpheline finit toujours par être reprise ailleurs « parce
+ * qu'elle est là », et l'accent unique en meurt.
  */
 export const BRAND = {
-  ink: '#0D1B2A',
-  navy: '#132640',
-  navyLift: '#1B3355',
-  blueDeep: '#1E3A8A',
-  blue: '#2563EB',
-  sky: '#38BDF8',
-  mist: '#E0F2FE',
-  paper: '#F5F7FA',
-  white: '#FFFFFF',
+  /**
+   * Le fond de la tuile, et le E évidé dedans.
+   *
+   * C'est exactement le `background` du thème sombre : sur l'écran
+   * de démarrage, dont le fond porte la même valeur, le E se fond
+   * dans la page au lieu de s'y détacher d'un ton — la marque y
+   * paraît découpée dans l'écran, pas collée dessus.
+   */
+  ink: '#0E1621',
+  /** Le D. */
+  blue: '#3B82F6',
 } as const;
 
 export interface Palette {

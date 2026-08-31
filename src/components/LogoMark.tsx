@@ -1,13 +1,23 @@
 import React from 'react';
 import { Text, View } from 'react-native';
-import Svg, { Defs, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
+import Svg, { Path, Rect } from 'react-native-svg';
 import { APP_NAME } from '@/config/app';
 import { BRAND } from '@/theme/colors';
 import { FONTS } from '@/theme/typography';
 
 /**
- * La marque Ti Pwof : une bulle de dialogue portant l'étincelle
- * de l'IA — l'app, c'est une conversation avec un prof qui sait.
+ * La marque EDEM : un E dans un D.
+ *
+ * La forme extérieure est un D — trois coins largement arrondis, le
+ * quatrième carré en bas à gauche. C'est ce coin unique qui donne
+ * son assise au signe : quatre coins arrondis auraient donné une
+ * pastille de plus, indistincte des dizaines d'autres sur l'écran
+ * d'accueil d'un téléphone.
+ *
+ * Le E est ÉVIDÉ, pas posé dessus : il est peint dans la couleur du
+ * fond de la tuile. Les deux lettres ne sont donc qu'une seule
+ * forme, et le signe reste lisible réduit à 28 px dans une bulle de
+ * conversation comme agrandi à 1024 px sur une fiche de store.
  *
  * ⚠️ Ce tracé est le MÊME que celui de `scripts/make_icons.py`,
  * en grille 96×96. Si tu modifies l'un, relance l'autre :
@@ -26,43 +36,29 @@ export function LogoMark({
   return (
     <View style={{ width: size, height: size }}>
       <Svg width={size} height={size} viewBox="0 0 96 96">
-        <Defs>
-          <LinearGradient id="tipwofBg" x1="0" y1="0" x2="1" y2="1">
-            <Stop offset="0" stopColor={BRAND.blue} />
-            <Stop offset="1" stopColor={BRAND.blueDeep} />
-          </LinearGradient>
-        </Defs>
-
-        {/* Pastille de marque */}
+        {/* La tuile */}
         <Rect
           x="0"
           y="0"
           width="96"
           height="96"
-          rx={rounded ? 26 : 0}
-          fill="url(#tipwofBg)"
+          rx={rounded ? 22 : 0}
+          fill={BRAND.ink}
         />
 
-        {/* La pointe, posée avant le trait qui vient la recouvrir */}
-        <Path d="M35 58 L30 73 L51 58 Z" fill={BRAND.white} />
-
-        {/* Le corps de la bulle */}
-        <Rect
-          x="21"
-          y="23"
-          width="54"
-          height="37"
-          rx="14"
-          fill="none"
-          stroke={BRAND.white}
-          strokeWidth="4.6"
-        />
-
-        {/* L'étincelle — l'intelligence qui répond */}
+        {/* Le D — arrondi partout sauf en bas à gauche */}
         <Path
-          d="M48 27 L52.2 36.8 L62 41 L52.2 45.2 L48 55 L43.8 45.2 L34 41 L43.8 36.8 Z"
-          fill={BRAND.sky}
+          d="M18 38 A20 20 0 0 1 38 18 L58 18 A20 20 0 0 1 78 38 L78 58 A20 20 0 0 1 58 78 L18 78 Z"
+          fill={BRAND.blue}
         />
+
+        {/* Le E, évidé dans le D. La barre du milieu est plus
+            courte : c'est ce qui l'empêche de se lire comme un
+            simple empilement de trois traits. */}
+        <Rect x="30" y="29" width="9" height="38" rx="4.5" fill={BRAND.ink} />
+        <Rect x="30" y="29" width="35.5" height="9" rx="4.5" fill={BRAND.ink} />
+        <Rect x="30" y="43.5" width="22.5" height="9" rx="4.5" fill={BRAND.ink} />
+        <Rect x="30" y="58" width="32.5" height="9" rx="4.5" fill={BRAND.ink} />
       </Svg>
     </View>
   );
@@ -85,9 +81,9 @@ export function LogoLockup({
       <LogoMark size={size} />
       <Text
         style={{
-          fontFamily: FONTS.extrabold,
-          fontSize: size * 0.52,
-          letterSpacing: -0.8,
+          fontFamily: FONTS.semibold,
+          fontSize: size * 0.5,
+          letterSpacing: -0.4,
           color,
         }}
       >
