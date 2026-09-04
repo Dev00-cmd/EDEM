@@ -60,6 +60,7 @@ et sait **lire la photo d'un devoir** pour l'expliquer pas à pas.
 | 🛡️ | **Modération** | Filtre en français et en créole, bouton signaler en deux touches, le prof modère sa classe, et chaque geste est journalisé — [§10](#10-protection-des-mineurs-et-modération) |
 | 🔔 | **Notifications** | Un devoir publié, une copie corrigée, le fil qui bouge — l'élève est prévenu. Jamais le TEXTE d'un message : un écran verrouillé se lit par-dessus l'épaule, et un message que la modération retire aurait déjà été affiché |
 | ⚡ | **Réponse en flux** | M. Thomas s'écrit sous les yeux de l'élève. Le premier mot arrive en moins d'une seconde au lieu de 5 à 15 secondes de bulle vide |
+| 💾 | **Banque de questions** | Une question de 9e AF vaut pour tout élève de 9e AF : écrite une fois, resservie à ceux qui ne l'ont pas vue. Le quiz s'ouvre **instantanément** et la génération n'est payée qu'une fois |
 | 🧠 | **Révision espacée** | Toute question ratée revient après 1, 3, 7 puis 21 jours, **rejouée telle quelle** — sans repasser par le modèle, donc sans rien coûter |
 | 📴 | **File d'attente** | Le réseau lâche pendant un quiz ? Les XP arrivent au retour du signal. Une question posée sans connexion part toute seule, et la réponse atterrit dans le bon fil |
 | 🔄 | **Mise à jour intégrée** | Bouton dans le Profil : cherche, télécharge et applique une mise à jour sans passer par un store |
@@ -642,6 +643,52 @@ Trois détails qui font la différence entre un flux et un flux correct :
 
 > 🔧 Côté application, le flux passe par **`expo/fetch`** et non par `supabase.functions.invoke`, qui rend une réponse déjà entièrement lue. C'est la seule implémentation qui expose un vrai `response.body` sur Android et iOS — celle de React Native passe par `XMLHttpRequest` et rend `body` nul. Elle vit dans le paquet `expo` lui-même, **déjà présent dans l'APK** : ce changement part donc en OTA.
 
+### 💾 La banque de questions — `supabase/migrations/20260904_banque_de_questions.sql`
+
+Chaque quiz était écrit de zéro : **15 secondes d'attente**, et un appel au modèle payé à chaque fois. Trente élèves de 9e AF qui révisent les fractions le même soir, c'était trente générations pour trente quiz interchangeables.
+
+Or une question de maths de 9e AF en français, niveau moyen, vaut pour **n'importe quel** élève de 9e AF. Elle est donc écrite une fois, gardée, et resservie à ceux qui ne l'ont pas encore vue.
+
+```
+        L'élève demande un quiz de 10 questions
+                        │
+        ┌───────────────┼───────────────┐
+        ▼               ▼               ▼
+   🧠 RÉVISIONS    💾 BANQUE       ✨ LE MODÈLE
+   ce qu'il a      ce que ses      seulement ce
+   raté (max 4)    camarades ont   qui manque
+                   déjà fait écrire      │
+                        │                ▼
+                        │           déposé en banque
+                        │           pour les suivants
+                        └────────────────┘
+                        │
+              mélangées, options remélangées
+```
+
+**Quand la banque suffit, le modèle n'est pas appelé du tout** : le quiz s'ouvre en une fraction de seconde, et ne coûte rien.
+
+| La clé de partage | Pourquoi celle-là |
+|---|---|
+| **matière + classe + langue + difficulté** | Ce sont exactement les quatre choses qui entrent dans le prompt de génération. Deux élèves qui les partagent recevraient de toute façon des questions interchangeables |
+
+> 🔒 **La classe et la langue sont lues dans `profiles`, côté serveur — jamais envoyées par l'application.** Sinon un client modifié choisirait la banque qu'il veut, et un élève de NS IV se ferait servir des questions de 6e AF pour gonfler ses XP. C'est le même principe que partout : le client demande, le serveur décide.
+
+**Ce que ça ne dégrade pas.** Deux élèves ne reçoivent pas le même quiz :
+
+- le tirage est **aléatoire** dans un ensemble qui s'agrandit à chaque génération ;
+- les questions déjà vues sont **exclues élève par élève** — c'est `quiz_seen_questions`, qui servait déjà à ne pas se répéter ;
+- l'ordre des options est **remélangé à chaque service**. Même question, deux élèves, deux positions de bonne réponse : on ne peut pas se souffler « c'est la B » ;
+- les moins servies passent devant, pour que la banque **tourne** au lieu de resservir éternellement les premières écrites.
+
+La correction, elle, ne bouge pas d'un pouce : le serveur ouvre toujours une `quiz_sessions` avec les bonnes réponses, et c'est toujours lui qui corrige.
+
+> 💡 **Un effet de bord utile.** La génération pouvait échouer et laisser l'élève les mains vides. Maintenant, si le modèle rate alors que la banque et les révisions ont déjà de quoi faire, **on sert ce qu'on a**. En dessous de quatre questions seulement, ce n'est plus un quiz et l'erreur revient.
+
+> ⚠️ **Jamais pour un devoir.** Un quiz de devoir obéit aux notions et à la difficulté choisies par le professeur ; un tirage qui les ignorerait servirait autre chose que ce qu'il a demandé. Les devoirs sont donc toujours générés, et leurs questions ne sont pas déposées.
+
+**La banque est vide au départ.** Elle se remplit toute seule, une génération à la fois : les premiers élèves paient le plein tarif, les suivants de moins en moins. `bank_stats()` dit où elle en est, sans jamais révéler un énoncé.
+
 ### 🧠 La révision espacée — `supabase/migrations/20260904_revision_espacee.sql`
 
 Jusqu'ici les quiz **évaluaient**. Ils ne faisaient pas **retenir**. Une question ratée disparaissait : l'élève apprenait qu'il ne savait pas, et rien de plus.
@@ -837,6 +884,7 @@ Pas de logique de score dans l'app :
 | `moderate_message()` | La décision du professeur : supprimer, masquer, laisser |
 | `register_push_token()` · `forget_push_token()` | L'appareil se confie au compte connecté, et s'en détache à la sortie |
 | `push_flush()` | Vide la file de notifications vers Expo, 100 au plus par passage. Appelée par `pg_cron`, jamais par un client |
+| `bank_draw()` · `bank_add()` | La banque de questions. `bank_draw` rend les ÉNONCÉS (Edge Function seule) ; `bank_stats()` ne rend que des comptes, et l'app peut l'appeler |
 | `review_due()` · `review_pending()` | Les révisions dues. `review_due` rend les QUESTIONS (Edge Function seule, clé de service) ; `review_pending` ne rend qu'un **nombre**, et c'est celle que l'app peut appeler |
 
 > ⚠️ **Une leçon apprise deux fois : ces fonctions RENDENT une erreur, elles ne la LÈVENT pas.**
@@ -872,6 +920,7 @@ npx supabase gen types typescript --project-id qoyebljuvrxhcroxapys > src/lib/da
 | L'IA n'est accessible qu'aux inscrits | La fonction refuse tout appel sans jeton valide (401) |
 | Un fichier joint reste privé | Bucket privé + vérification du propriétaire côté serveur |
 | Une notification n'ouvre pas n'importe quel écran | Son contenu vient du réseau : seules `/assignment/{id}` et `/fil/{id}` sont acceptées, le reste est ignoré |
+| Un élève ne choisit pas sa banque de questions | La classe et la langue sont lues dans `profiles` **côté serveur** : sinon un NS IV se ferait servir du 6e AF pour gonfler ses XP |
 | Un élève ne lit pas ses propres révisions à venir | `review_queue` contient les bonnes réponses : **aucune policy**, comme `quiz_sessions` |
 | Le texte d'un message de classe ne s'affiche pas sur un écran verrouillé | La notification dit qu'il y a des messages, jamais lesquels |
 | La file d'attente ne fabrique pas d'XP | Elle ne rejoue que des CHOIX ; la correction reste faite par le serveur, qui refuse une session déjà corrigée |
@@ -1063,7 +1112,6 @@ APK que chacun doit réinstaller à la main.
 
 | | Ce que ça change | Livraison |
 |---|---|---|
-| 💾 **Cache de quiz partagé** | Un quiz devient instantané au lieu de 15 s, et sa génération n'est payée **qu'une fois** pour des dizaines d'élèves de la même classe. C'est maintenant le meilleur rapport gain/effort restant | ✅ Serveur seul |
 | 📄 **Mode « Examen d'État »** | Épreuves blanches chronométrées 6e AF / 9e AF / Bac, au format réel | ✅ OTA |
 | 📸 **Photo de leçon → fiche + quiz** | L'élève photographie son cahier, reçoit une fiche de révision et 5 questions dessus | ✅ OTA |
 | 👪 **Tableau de bord parents** | Ce que `topic_mastery` sait déjà, montré à un parent | ✅ OTA + SQL |
@@ -1075,6 +1123,7 @@ APK que chacun doit réinstaller à la main.
 - [x] ~~**Notifications**~~ — devoir publié, copie corrigée, fil qui bouge. Jamais le texte des messages — [§9bis](#9bis-prévenir-écrire-en-direct-faire-retenir-et-tenir-sans-réseau)
 - [x] ~~**Réponse en flux**~~ — le premier mot en moins d'une seconde, à coût et modèle inchangés
 - [x] ~~**Révision espacée**~~ — 1, 3, 7, 21 jours, questions rejouées telles quelles, sans un appel de plus
+- [x] ~~**Banque de questions partagée**~~ — un quiz instantané au lieu de 15 s, et la génération payée UNE fois pour toute une classe — [§9bis](#9bis-prévenir-écrire-en-direct-faire-retenir-et-tenir-sans-réseau)
 - [x] ~~**File d'attente hors-ligne**~~ — plus un seul XP perdu quand le réseau lâche pendant un quiz
 - [x] ~~**Quota par élève**~~ — `usage_counters` + `bump_usage()`, quotidien pour le tuteur et les quiz, horaire pour les messages et les codes d'invitation
 - [x] ~~**Tableau de bord prof**~~ — [§9](#9-classes-devoirs-et-fil)

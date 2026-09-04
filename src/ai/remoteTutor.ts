@@ -34,6 +34,13 @@ interface QuizResponse {
   sessionId?: string | null;
   /** Nombre de questions rejouées depuis la file de révision. */
   revisions?: number;
+  /**
+   * Nombre de questions tirées de la banque partagée.
+   *
+   * Suivi seulement : elles sont neuves pour cet élève, il n'a
+   * aucune raison de savoir qu'un camarade les a déjà vues.
+   */
+  banque?: number;
   error?: string;
 }
 

@@ -1793,8 +1793,25 @@ Deno.serve(async (req: Request) => {
       // évaluation, pas l'entraînement personnel de l'élève.
       let revisions: RawQuestion[] = [];
 
+      // ── LA BANQUE DE QUESTIONS ──────────────────────────────
+      //
+      // Une question de maths de 9e AF en francais, niveau moyen,
+      // vaut pour N'IMPORTE QUEL eleve de 9e AF. Elle est ecrite
+      // une fois, gardee, et resservie a ceux qui ne l'ont pas
+      // encore vue : le quiz s'ouvre alors en une fraction de
+      // seconde au lieu de quinze, et la generation est payee une
+      // fois pour des dizaines d'eleves.
+      //
+      // La classe et la langue sont lues DANS LA BASE, jamais
+      // recues de l'application. Sinon un client modifie choisirait
+      // la banque qu'il veut, et un eleve de NS IV se ferait servir
+      // des questions de 6e AF pour gonfler ses XP.
+      let niveau = "";
+      let langue = "";
+      let banque: RawQuestion[] = [];
+
       if (userId) {
-        const [seenRes, perfRes, revRes] = await Promise.all([
+        const [seenRes, perfRes, revRes, profilRes] = await Promise.all([
           supabase
             .from("quiz_seen_questions")
             .select("question")
@@ -1810,7 +1827,16 @@ Deno.serve(async (req: Request) => {
               p_subject_id: subject,
               p_limit: 4,
             }),
+          adminClient()
+            .from("profiles")
+            .select("level, lang")
+            .eq("id", userId)
+            .maybeSingle(),
         ]);
+
+        const profil = profilRes?.data as { level?: string; lang?: string } | null;
+        niveau = (profil?.level ?? "").trim();
+        langue = profil?.lang === "ht" ? "ht" : profil?.lang === "fr" ? "fr" : "";
         seen = (seenRes.data ?? []).map((r: { question: string }) => r.question);
         perf = perfRes;
 
@@ -1819,79 +1845,145 @@ Deno.serve(async (req: Request) => {
         if (Array.isArray(revRes?.data)) {
           revisions = (revRes.data as RawQuestion[]).filter(isSound);
         }
+
+        // Jamais pour un devoir : le professeur a fixe les notions
+        // et la difficulte, et un tirage qui les ignorerait servirait
+        // autre chose que ce qu'il a demande.
+        //
+        // Pas de niveau ou pas de langue en base = pas de cle de
+        // partage : on genere, comme avant. C'est aussi ce qui fait
+        // que rien ne casse pour un profil incomplet.
+        const besoin = 10 - revisions.length;
+        if (!devoirId && niveau !== "" && langue !== "" && besoin > 0) {
+          const { data: tirage } = await adminClient().rpc("bank_draw", {
+            p_user_id: userId,
+            p_subject_id: subject,
+            p_level: niveau,
+            p_lang: langue,
+            p_difficulty: devoirDiff ?? chosen ?? "moyen",
+            p_limit: besoin,
+          });
+          if (Array.isArray(tirage)) {
+            banque = (tirage as RawQuestion[]).filter(isSound);
+          }
+        }
       }
 
-      const route = routeQuiz();
-      console.log(`quiz → ${route.model} (${subject}/${chosen ?? "auto"})`);
+      // Ce qu'il reste a ECRIRE, une fois comptees les revisions et
+      // la banque. Souvent zero — et c'est tout l'interet : zero
+      // appel au modele, donc un quiz instantane et gratuit.
+      const aGenerer = Math.max(0, 10 - revisions.length - banque.length);
 
-      const raw = await generate({
-        model: route.model,
-        thinking: route.thinking,
-        system: `Tu génères des quiz scolaires pour des élèves haïtiens, adaptés à leur classe et au programme du MENFP.\n\n${TEACHING_METHOD}\n\n${quizGuidance(seen, perf, chosen)}`,
-        contents: [{
-          role: "user",
-          parts: [{
-            text: prompt + consigneNotions +
-              (revisions.length === 0 ? "" : [
-                "",
-                "",
-                `Génère ${10 - revisions.length} questions et non dix :`,
-                "les autres sont des révisions déjà retenues.",
-              ].join("\n")),
+      let nouvelles: RawQuestion[] = [];
+
+      if (aGenerer > 0) {
+        const route = routeQuiz();
+        console.log(
+          `quiz → ${route.model} (${subject}/${chosen ?? "auto"}) — ` +
+            `${aGenerer} a ecrire, ${banque.length} de la banque, ${revisions.length} en revision`,
+        );
+
+        const raw = await generate({
+          model: route.model,
+          thinking: route.thinking,
+          system: `Tu génères des quiz scolaires pour des élèves haïtiens, adaptés à leur classe et au programme du MENFP.\n\n${TEACHING_METHOD}\n\n${quizGuidance(seen, perf, chosen)}`,
+          contents: [{
+            role: "user",
+            parts: [{
+              text: prompt + consigneNotions +
+                (aGenerer === 10 ? "" : [
+                  "",
+                  "",
+                  `Génère ${aGenerer} questions et non dix :`,
+                  "les autres sont déjà choisies ailleurs.",
+                ].join("\n")),
+            }],
           }],
-        }],
-        schema: QUIZ_SCHEMA as unknown as Record<string, unknown>,
-        // Dix questions, leurs options et leurs explications, plus
-        // les jetons de réflexion : il faut de la marge.
-        maxOutputTokens: 16000,
-        // Plus bas que le chat : on veut des énoncés justes et des
-        // distracteurs crédibles, pas de la fantaisie.
-        temperature: 0.6,
-      });
+          schema: QUIZ_SCHEMA as unknown as Record<string, unknown>,
+          // Dix questions, leurs options et leurs explications, plus
+          // les jetons de réflexion : il faut de la marge.
+          maxOutputTokens: 16000,
+          // Plus bas que le chat : on veut des énoncés justes et des
+          // distracteurs crédibles, pas de la fantaisie.
+          temperature: 0.6,
+        });
 
-      let parsed: { questions?: RawQuestion[] };
-      try {
-        parsed = JSON.parse(raw);
-      } catch {
-        console.error("quiz : JSON illisible", raw.slice(0, 300));
-        return json({ error: "génération du quiz impossible" }, 502);
+        let parsed: { questions?: RawQuestion[] } = {};
+        try {
+          parsed = JSON.parse(raw);
+        } catch {
+          console.error("quiz : JSON illisible", raw.slice(0, 300));
+        }
+
+        if (Array.isArray(parsed?.questions)) {
+          // On écarte les questions bancales, puis on remélange les
+          // options pour que la bonne réponse ne tombe pas toujours au
+          // même endroit.
+          nouvelles = parsed.questions
+            .map((q) => ({
+              ...q,
+              question: decodeEntities(String(q.question ?? "")),
+              choices: (q.choices ?? []).map((c) => decodeEntities(String(c))),
+              explanation: decodeEntities(String(q.explanation ?? "")),
+              // Meme si la consigne est claire, le modele derive : on
+              // ramene l'etiquette a une notion du programme. Sans ca,
+              // topic_mastery se remplit de texte libre et le tableau
+              // de bord du professeur n'agrege plus rien.
+              topic: normaliserNotion(q.topic, subject),
+            }))
+            .filter(isSound)
+            .map(shuffleChoices)
+            // Le modèle rend parfois dix questions quand on en demande
+            // six. On tronque plutôt que de servir un quiz de quatorze.
+            .slice(0, aGenerer);
+        }
+
+        // ── LE DEPOT ────────────────────────────────────────────
+        //
+        // Ce que le modele vient d'ecrire servira aux camarades de
+        // la meme classe. C'est CE depot qui fait que la generation
+        // n'est payee qu'une fois.
+        //
+        // Pas pour un devoir : ces questions obeissent aux notions
+        // choisies par le professeur, pas au programme de la classe.
+        //
+        // Attendu et non lance-puis-oublie : l'isolat Edge peut etre
+        // detruit des la reponse envoyee, et le depot serait perdu.
+        // Un echec ne prive personne de son quiz.
+        if (nouvelles.length > 0 && !devoirId && niveau !== "" && langue !== "") {
+          const { error: depotError } = await adminClient().rpc("bank_add", {
+            p_subject_id: subject,
+            p_level: niveau,
+            p_lang: langue,
+            p_difficulty: devoirDiff ?? chosen ?? "moyen",
+            p_questions: nouvelles,
+          });
+          if (depotError) console.error("banque:", depotError.message);
+        }
+      } else {
+        console.log(
+          `quiz → banque seule (${subject}/${chosen ?? "auto"}) — ` +
+            `${banque.length} de la banque, ${revisions.length} en revision, 0 appel au modele`,
+        );
       }
 
-      if (!parsed?.questions || !Array.isArray(parsed.questions)) {
-        return json({ error: "génération du quiz impossible" }, 502);
-      }
-
-      // On écarte les questions bancales, puis on remélange les
-      // options pour que la bonne réponse ne tombe pas toujours au
-      // même endroit.
-      const nouvelles = parsed.questions
-        .map((q) => ({
-          ...q,
-          question: decodeEntities(String(q.question ?? "")),
-          choices: (q.choices ?? []).map((c) => decodeEntities(String(c))),
-          explanation: decodeEntities(String(q.explanation ?? "")),
-          // Meme si la consigne est claire, le modele derive : on
-          // ramene l'etiquette a une notion du programme. Sans ca,
-          // topic_mastery se remplit de texte libre et le tableau
-          // de bord du professeur n'agrege plus rien.
-          topic: normaliserNotion(q.topic, subject),
-        }))
-        .filter(isSound)
-        .map(shuffleChoices)
-        // Le modèle rend parfois dix questions quand on en demande
-        // six. On tronque plutôt que de servir un quiz de quatorze.
-        .slice(0, Math.max(0, 10 - revisions.length));
-
-      // Les révisions passent aussi par `shuffleChoices` : sans ça
-      // la bonne réponse retomberait à la même place qu'il y a trois
-      // semaines, et l'élève retrouverait la position, pas la
-      // notion.
+      // Les révisions et les questions de la banque passent AUSSI par
+      // `shuffleChoices` : sans ça la bonne réponse retomberait à la
+      // même place que la fois précédente, et l'élève retrouverait la
+      // position au lieu de la notion. C'est aussi ce qui fait que
+      // deux camarades servis par la même banque ne peuvent pas se
+      // souffler « c'est la B ».
       const questions = melangerQuestions([
         ...revisions.map(shuffleChoices),
+        ...banque.map(shuffleChoices),
         ...nouvelles,
       ]);
 
-      if (questions.length === 0) {
+      // La generation a pu echouer alors que la banque et les
+      // revisions ont deja de quoi faire : on sert ce qu'on a plutot
+      // que de renvoyer l'eleve les mains vides. En dessous de
+      // quatre questions, en revanche, ce n'est plus un quiz.
+      if (questions.length < 4) {
         return json({ error: "génération du quiz impossible" }, 502);
       }
 
@@ -1905,16 +1997,22 @@ Deno.serve(async (req: Request) => {
       // Un échec ne doit pas priver l'élève de son quiz : on
       // journalise et on continue.
       //
-      // Seulement les NOUVELLES : une révision est déjà connue, et
-      // la réinscrire ici la ferait remonter en tête de la liste
-      // « déjà vues » à chaque passage, chassant de vraies questions
-      // de la fenêtre de quarante.
-      const { error: memoryError } = nouvelles.length === 0
+      // Les nouvelles ET celles de la banque : les deux sont
+      // inedites POUR CET ELEVE, et c'est cette memoire qui empeche
+      // la banque de lui reservir la meme question demain.
+      //
+      // Pas les revisions : elles sont deja connues, et les
+      // reinscrire les ferait remonter en tete de la liste « deja
+      // vues » a chaque passage, chassant de vraies questions de la
+      // fenetre de quarante.
+      const aRetenir = [...banque, ...nouvelles];
+
+      const { error: memoryError } = aRetenir.length === 0
         ? { error: null }
         : await supabase
           .from("quiz_seen_questions")
           .insert(
-            nouvelles.map((q) => ({
+            aRetenir.map((q) => ({
               user_id: userId,
               subject_id: subject,
               question: q.question.slice(0, 500),
@@ -1979,7 +2077,14 @@ Deno.serve(async (req: Request) => {
 
       // `revisions` permet à l'écran d'expliquer pourquoi des
       // questions reviennent. Sans ce mot, l'élève croit à un bug.
-      return json({ questions, sessionId, revisions: revisions.length });
+      // `banque` ne sert qu'au suivi : l'élève n'a pas à savoir
+      // d'où vient une question qui est neuve pour lui.
+      return json({
+        questions,
+        sessionId,
+        revisions: revisions.length,
+        banque: banque.length,
+      });
     }
 
     // ── Relecture de modération ───────────────────────────────
