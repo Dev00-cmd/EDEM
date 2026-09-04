@@ -75,6 +75,10 @@ alter table public.push_tokens enable row level security;
 
 -- L'élève voit ses propres appareils. Il n'écrit rien directement :
 -- `register_push_token` est le seul chemin.
+-- `drop` d'abord : `create policy` est la seule chose non
+-- rejouable de ce fichier, et une migration qu'on ne peut pas
+-- relancer après un échec à mi-parcours est un piège.
+drop policy if exists push_tokens_select on public.push_tokens;
 create policy push_tokens_select on public.push_tokens
   for select to authenticated
   using (user_id = (select auth.uid()));
@@ -113,6 +117,10 @@ alter table public.notifications enable row level security;
 
 -- Lecture seule, et seulement les siennes : l'élève peut ainsi
 -- retrouver dans l'app ce qu'il a manqué pendant la coupure.
+-- `drop` d'abord : `create policy` est la seule chose non
+-- rejouable de ce fichier, et une migration qu'on ne peut pas
+-- relancer après un échec à mi-parcours est un piège.
+drop policy if exists notifications_select on public.notifications;
 create policy notifications_select on public.notifications
   for select to authenticated
   using (user_id = (select auth.uid()));
