@@ -38,24 +38,6 @@ const CANAL = 'default';
 /** Le jeton obtenu pendant cette session, pour pouvoir l'oublier. */
 let jetonCourant: string | null = null;
 
-/**
- * Les deux fonctions SQL des notifications, appelées sans le typage
- * généré.
- *
- * `src/lib/database.types.ts` est REGÉNÉRÉ depuis la base
- * (`node scripts/dump_types.mjs`) : tant que la migration
- * `20260904_notifications.sql` n'est pas appliquée, ces deux noms
- * n'y figurent pas et `supabase.rpc` les refuse.
- *
- * Le transtypage est donc volontairement enfermé ICI, sur ces deux
- * appels et rien d'autre. Une fois la migration appliquée et les
- * types régénérés, il peut disparaître sans rien changer d'autre.
- */
-const rpc = supabase.rpc as unknown as (
-  nom: 'register_push_token' | 'forget_push_token',
-  args: Record<string, unknown>,
-) => Promise<{ error: { message: string } | null }>;
-
 // Le type minimal dont on se sert. On ne peut pas importer le vrai :
 // le module peut être absent du binaire.
 type ModuleNotifications = typeof import('expo-notifications');
@@ -120,7 +102,7 @@ export async function enregistrerPush(): Promise<boolean> {
     const { data: jeton } = await N.getExpoPushTokenAsync({ projectId });
     if (!jeton) return false;
 
-    const { error } = await rpc('register_push_token', {
+    const { error } = await supabase.rpc('register_push_token', {
       p_token: jeton,
       p_platform: Platform.OS,
     });
@@ -148,7 +130,7 @@ export async function oublierPush(): Promise<void> {
   const jeton = jetonCourant;
   jetonCourant = null;
   try {
-    await rpc('forget_push_token', { p_token: jeton });
+    await supabase.rpc('forget_push_token', { p_token: jeton });
   } catch {
     // La base tranchera de toute façon au prochain enregistrement :
     // le jeton est réattribué à qui se connecte.

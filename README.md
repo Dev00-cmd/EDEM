@@ -951,6 +951,8 @@ Redessine les sept fichiers (icône iOS, icône adaptative Android, monochrome, 
 | **2** | **Redéployer l'Edge Function.** Le flux et les révisions vivent dedans. Un serveur non redéployé fait simplement retomber l'app sur l'ancien chemin | tout le monde, tout de suite |
 | **3** | **Construire l'APK 1.2.0.** Notifications comprises | ceux qui l'installent |
 
+> ✅ **Les trois premières étapes ont été faites le 4 septembre 2026** : les deux migrations sont appliquées (3 tables, 4 déclencheurs, 8 fonctions, 3 tâches `pg_cron`), et l'Edge Function est en **version 28**.
+
 ```bash
 node scripts/migrate.mjs supabase/migrations/20260904_notifications.sql
 node scripts/migrate.mjs supabase/migrations/20260904_revision_espacee.sql
@@ -961,7 +963,7 @@ npx eas-cli build --platform android --profile preview
 
 > 💡 **Tu veux que le parc actuel profite du flux tout de suite, sans attendre l'APK ?** Publie une OTA sur le runtime **1.1.0** *avant* de prendre le passage à 1.2.0 — tout ce qui n'est pas natif (flux, WebP, file d'attente, version affichée) part alors en cinq minutes, et les notifications suivront avec le nouveau binaire. Le code est écrit pour ça : `expo-notifications` est chargé à l'exécution et reste absent sans faire de bruit sur un ancien APK.
 
-> 🔑 **Une fois les migrations passées, relance `node scripts/dump_types.mjs`.** `register_push_token` et `forget_push_token` n'existent pas encore dans `src/lib/database.types.ts` : [`src/lib/push.ts`](src/lib/push.ts) contourne le typage par un transtypage volontairement enfermé sur ces deux appels, qui peut alors disparaître.
+> 🔑 **`dump_types.mjs` n'est pas décoratif.** Il fait entrer les nouvelles fonctions dans `src/lib/database.types.ts`, et c'est ce qui a permis à `tsc` de vérifier que `p_token` et `p_platform` correspondent bien à la signature réelle en base. Sans lui, un nom de paramètre faux compile et échoue à l'exécution.
 
 ### Mise à jour OTA — sans recompiler
 
@@ -1085,8 +1087,7 @@ APK que chacun doit réinstaller à la main.
 | Sujet | Où | Pourquoi ça compte |
 |---|---|---|
 | WebP seulement sur Android | [`src/lib/attachments.ts`](src/lib/attachments.ts) | L'encodeur WebP est garanti par Android, pas par iOS : un iPhone reste en JPEG. Le parc haïtien est massivement Android, mais c'est une asymétrie à connaître |
-| Le transtypage des RPC de notification | [`src/lib/push.ts`](src/lib/push.ts) | Volontairement enfermé sur deux appels, en attendant que les migrations soient appliquées et `dump_types.mjs` relancé. Il doit alors **disparaître** |
-| Les migrations du 4 septembre ne sont pas encore appliquées | `supabase/migrations/20260904_*.sql` | Écrites et relues, mais elles n'ont pas encore tourné contre la base. Ce sont les seules pièces de la 1.2.0 à n'avoir jamais été exécutées — voir l'ordre de livraison en [§14](#14-livrer-une-modification) |
+| Le jeton de `.env.secrets` expire | `migrate.mjs`, `deploy_function.mjs`, `dump_types.mjs` | Les trois scripts lisent le même `SUPABASE_ACCESS_TOKEN`, et un jeton périmé rend un simple `Unauthorized` sans dire lequel. Il se renouvelle sur [le tableau de bord](https://supabase.com/dashboard/account/tokens) |
 
 ---
 

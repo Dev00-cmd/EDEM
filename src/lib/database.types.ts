@@ -478,6 +478,42 @@ export type Database = {
         }
         Relationships: []
       }
+      notifications: {
+        Row: {
+          attempts: number
+          body: string
+          created_at: string
+          data: Json
+          id: number
+          kind: string
+          sent_at: string | null
+          title: string
+          user_id: string
+        }
+        Insert: {
+          attempts?: number
+          body: string
+          created_at?: string
+          data?: Json
+          id?: never
+          kind: string
+          sent_at?: string | null
+          title: string
+          user_id: string
+        }
+        Update: {
+          attempts?: number
+          body?: string
+          created_at?: string
+          data?: Json
+          id?: never
+          kind?: string
+          sent_at?: string | null
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           board_alias: string | null
@@ -605,6 +641,27 @@ export type Database = {
           updated_at?: string
           user_id?: string
           xp?: number
+        }
+        Relationships: []
+      }
+      push_tokens: {
+        Row: {
+          platform: string
+          token: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          platform?: string
+          token: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          platform?: string
+          token?: string
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -770,6 +827,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      review_queue: {
+        Row: {
+          box: number
+          created_at: string
+          due_on: string
+          qhash: string
+          question: Json
+          subject_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          box?: number
+          created_at?: string
+          due_on: string
+          qhash: string
+          question: Json
+          subject_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          box?: number
+          created_at?: string
+          due_on?: string
+          qhash?: string
+          question?: Json
+          subject_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       role_events: {
         Row: {
@@ -1274,6 +1364,7 @@ export type Database = {
         Args: { p_message_id: string; p_text: string }
         Returns: Json
       }
+      forget_push_token: { Args: { p_token: string }; Returns: undefined }
       generate_join_code: { Args: never; Returns: string }
       grade_quiz: {
         Args: { p_picked: Json; p_session_id: string }
@@ -1407,6 +1498,19 @@ export type Database = {
         Returns: Json
       }
       purge_seen_questions: { Args: { p_keep?: number }; Returns: number }
+      push_flush: { Args: never; Returns: number }
+      push_notify: {
+        Args: {
+          p_body_fr: string
+          p_body_ht: string
+          p_data?: Json
+          p_kind: string
+          p_title_fr: string
+          p_title_ht: string
+          p_users: string[]
+        }
+        Returns: number
+      }
       quiz_history: {
         Args: { p_limit?: number }
         Returns: {
@@ -1423,6 +1527,10 @@ export type Database = {
         Returns: {
           stem: string
         }[]
+      }
+      register_push_token: {
+        Args: { p_platform?: string; p_token: string }
+        Returns: undefined
       }
       reject_teacher_role: {
         Args: { p_reason?: string; p_user_id: string }
@@ -1452,6 +1560,12 @@ export type Database = {
         Returns: Json
       }
       reset_progress: { Args: never; Returns: undefined }
+      review_due: {
+        Args: { p_limit?: number; p_subject_id: string; p_user_id: string }
+        Returns: Json
+      }
+      review_interval: { Args: { p_box: number }; Returns: number }
+      review_pending: { Args: never; Returns: Json }
       revoke_teacher_role: {
         Args: { p_reason?: string; p_user_id: string }
         Returns: Json
@@ -1624,12 +1738,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1653,11 +1767,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1678,11 +1792,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1703,11 +1817,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1720,11 +1834,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
