@@ -17,6 +17,8 @@ import React, {
 } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
 import { supabase, authErrorMessage } from '@/lib/supabase';
+import { enregistrerPush, oublierPush } from '@/lib/push';
+import { jeterFile } from '@/lib/outbox';
 import type { Lang } from '@/i18n';
 
 interface AuthResult {
@@ -68,16 +70,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       supabase.realtime.setAuth(s?.access_token ?? null).catch(() => {});
     };
 
+    /**
+     * Confie l'appareil au compte connecté.
+     *
+     * Ici et pas dans un écran : c'est la SESSION qui décide à qui
+     * appartient ce téléphone. Un enregistrement fait au montage
+     * d'un écran raterait la reconnexion automatique au démarrage,
+     * qui est justement le cas le plus fréquent.
+     *
+     * `void` assumé : l'élève n'attend pas après les notifications
+     * pour entrer dans l'app, et un refus n'est pas une erreur.
+     */
+    const armerNotifications = (s: Session | null) => {
+      if (s) void enregistrerPush();
+    };
+
     supabase.auth.getSession().then(({ data }) => {
       if (!alive) return;
       setSession(data.session);
       armerTempsReel(data.session);
+      armerNotifications(data.session);
       setReady(true);
     });
 
     const { data: sub } = supabase.auth.onAuthStateChange((_event, next) => {
       setSession(next);
       armerTempsReel(next);
+      armerNotifications(next);
     });
 
     return () => {
@@ -132,6 +151,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Lève en cas d'échec, pour que l'écran puisse le dire à
   // l'élève : Supabase renvoie l'erreur plutôt que de la lancer.
   const signOut = useCallback(async () => {
+    // AVANT la déconnexion : `forget_push_token` vérifie que le
+    // jeton appartient bien à celui qui appelle, et sans session il
+    // n'y a plus personne pour le prouver. L'appareil resterait
+    // alors attaché au compte, et le frère qui se connecte ensuite
+    // recevrait des notifications qui ne sont pas les siennes.
+    await oublierPush();
+
+    // La file d'attente appartient à l'élève qui part. La laisser
+    // ferait rejouer SES quiz et SES questions sous le compte du
+    // suivant — un téléphone se partage, en Haïti.
+    await jeterFile();
+
     const { error } = await supabase.auth.signOut();
     if (error) throw new Error(error.message);
   }, []);

@@ -16,6 +16,7 @@ import { AuthProvider, useAuth } from '@/store/AuthContext';
 import { AppProvider, useApp } from '@/store/AppContext';
 import { ThemeProvider, useTheme } from '@/theme/ThemeContext';
 import { UpdateGate } from '@/components/UpdateGate';
+import { ecouterNotifications } from '@/lib/push';
 
 // Garde l'écran de démarrage tant que les polices ne sont pas
 // prêtes : évite le clignotement d'une police de secours.
@@ -81,6 +82,28 @@ function Navigator() {
     if (cotePro && group === '(tabs)') router.replace('/prof');
     if (!cotePro && group === 'prof') router.replace('/(tabs)');
   }, [ready, session, profile.onboarded, profile.role, vueEleve, segments, router]);
+
+  /**
+   * Toucher une notification ouvre l'écran qu'elle annonce.
+   *
+   * Sans ça, l'élève arrive sur l'accueil et doit retrouver seul le
+   * devoir dont on vient de lui parler — ce qui annule à peu près
+   * tout l'intérêt de l'avoir prévenu.
+   *
+   * On attend `session` : ouvrir un devoir avant que l'aiguillage
+   * n'ait tranché renverrait aussitôt vers /login, et la
+   * notification serait perdue.
+   *
+   * `push.ts` a déjà vérifié que la route est l'une des deux
+   * permises — le contenu d'une notification vient du réseau, il
+   * n'ouvre pas n'importe quel écran.
+   */
+  useEffect(() => {
+    if (!ready || !session) return;
+    return ecouterNotifications((route) => {
+      router.push(route as Parameters<typeof router.push>[0]);
+    });
+  }, [ready, session, router]);
 
   const onLayout = useCallback(() => {
     if (ready) SplashScreen.hideAsync().catch(() => {});

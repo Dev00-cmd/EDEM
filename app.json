@@ -3,7 +3,7 @@
     "name": "EDEM",
     "slug": "yourydev",
     "owner": "yourydevs-team",
-    "version": "1.1.0",
+    "version": "1.2.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "scheme": "tipwof",
@@ -40,6 +40,14 @@
         }
       ],
       [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#3B82F6",
+          "defaultChannel": "default"
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "image": "./assets/splash-icon.png",
@@ -60,6 +68,6 @@
     "updates": {
       "url": "https://u.expo.dev/1d6cdcc0-c5b1-4c8f-b578-a3933f486f6b"
     },
-    "runtimeVersion": "1.1.0"
+    "runtimeVersion": "1.2.0"
   }
 }

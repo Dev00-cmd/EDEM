@@ -467,15 +467,26 @@ function buildBody(o: GenerateOptions): Record<string, unknown> {
   return body;
 }
 
-/** Rassemble les morceaux de texte de la réponse. */
+/**
+ * Rassemble les morceaux de texte de la réponse, TELS QUELS.
+ *
+ * Sans rognage, volontairement : en flux, chaque morceau est un
+ * fragment de phrase, et rogner ses bords recolle « les fractions »
+ * en « lesfractions ». C'est `textOf` qui rogne, une fois, à la fin.
+ */
 // deno-lint-ignore no-explicit-any
-function textOf(data: any): string {
+function rawTextOf(data: any): string {
   const parts = data?.candidates?.[0]?.content?.parts ?? [];
   return parts
     .filter((p: { text?: string }) => typeof p.text === "string")
     .map((p: { text: string }) => p.text)
-    .join("")
-    .trim();
+    .join("");
+}
+
+/** Rassemble les morceaux de texte de la réponse. */
+// deno-lint-ignore no-explicit-any
+function textOf(data: any): string {
+  return rawTextOf(data).trim();
 }
 
 /**
@@ -572,6 +583,260 @@ async function generate(o: GenerateOptions): Promise<string> {
     );
   }
   return text;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  LA MÊME RÉPONSE, MAIS TOUT DE SUITE
+//
+//  Une explication de M. Thomas fait 8 à 15 lignes. Produite d'un
+//  bloc, elle demande 5 à 15 secondes — pendant lesquelles l'élève
+//  regarde une bulle vide sur une connexion haïtienne. C'est
+//  exactement le moment où il repose le téléphone.
+//
+//  Rien ne change au modèle, au prompt, ni au coût : la même
+//  réponse est simplement RELAYÉE au fur et à mesure que Gemini
+//  l'écrit. Le premier mot arrive en moins d'une seconde.
+//
+//  Le chemin « d'un bloc » reste en place, intact, et c'est
+//  délibéré : une mise à jour OTA ne s'applique pas toute seule
+//  (§14 du README), donc des installations continueront longtemps
+//  d'appeler « chat » sans « stream ». Elles doivent continuer de
+//  marcher.
+// ═══════════════════════════════════════════════════════════════
+
+const ENCODEUR = new TextEncoder();
+
+/** Une trame SSE à destination de l'application. */
+function trame(event: string, data: unknown): Uint8Array {
+  return ENCODEUR.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+}
+
+/**
+ * Coupe un tampon là où c'est SÛR, et rend ce qu'il faut garder.
+ *
+ * Le modèle écrit parfois des entités HTML (&amp;, &#233;), et le
+ * découpage du flux tombe au milieu. Décoder « &am » puis « p; »
+ * séparément ne donne rien : l'élève lit l'entité en clair au lieu
+ * du caractère. On retient donc une amorce d'entité jusqu'au
+ * morceau suivant.
+ *
+ * Un « & » ordinaire ne bloque rien : au-delà de dix caractères
+ * sans point-virgule, ce n'est pas une entité, on relâche.
+ */
+function coupeSure(tampon: string): [string, string] {
+  const i = tampon.lastIndexOf("&");
+  if (i === -1) return [tampon, ""];
+  const queue = tampon.slice(i);
+  if (queue.includes(";") || queue.length > 10) return [tampon, ""];
+  return [tampon.slice(0, i), queue];
+}
+
+/**
+ * Appelle Gemini en flux et relaie sa réponse à l'application.
+ *
+ * Les deux replis de `generate` sont repris à l'identique — modèle
+ * retiré par Google, niveau de réflexion refusé. Ils jouent AVANT
+ * que le moindre octet ne parte : une fois le flux commencé, on ne
+ * peut plus reprendre du début sans réécrire ce que l'élève lit.
+ */
+async function streamChat(o: GenerateOptions): Promise<Response> {
+  const key = Deno.env.get("GEMINI_API_KEY");
+  if (!key) {
+    throw new GeminiError(
+      "GEMINI_API_KEY manquante côté serveur (secret Supabase).",
+    );
+  }
+
+  const headers = {
+    "Content-Type": "application/json",
+    "x-goog-api-key": key,
+  };
+
+  // `alt=sse` : sans lui, Google rend un tableau JSON complet à la
+  // fin — c'est-à-dire exactement ce qu'on cherche à éviter.
+  const send = (model: string, body: Record<string, unknown>) =>
+    fetch(`${ENDPOINT}/${model}:streamGenerateContent?alt=sse`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(body),
+    });
+
+  let model = o.model;
+  let response = await send(model, buildBody(o));
+
+  if (
+    (response.status === 400 || response.status === 404) &&
+    model !== FALLBACK_MODEL
+  ) {
+    const detail = await response.text();
+    if (/no longer available|not found|not supported|is not valid/i.test(detail)) {
+      console.warn(`${model} indisponible, repli sur ${FALLBACK_MODEL}.`);
+      model = FALLBACK_MODEL;
+      response = await send(model, buildBody({ ...o, model }));
+    } else {
+      response = new Response(detail, { status: response.status });
+    }
+  }
+
+  if (response.status === 400 && o.thinking) {
+    const detail = await response.text();
+    if (/thinking/i.test(detail)) {
+      console.warn(`thinkingLevel refusé par ${model}, second essai sans.`);
+      response = await send(model, buildBody({ ...o, model, thinking: null }));
+    } else {
+      throw new GeminiError(shortenApiError(detail));
+    }
+  }
+
+  if (!response.ok || !response.body) {
+    throw new GeminiError(shortenApiError(await response.text()));
+  }
+
+  const source = response.body;
+
+  const flux = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      const lecteur = source.getReader();
+      const decodeur = new TextDecoder();
+
+      let sse = ""; // lignes SSE de Google, pas encore découpées
+      let entete = true; // « # NOTION: » pas encore tranché
+      let tete = ""; // ce qu'on retient le temps de le trancher
+      let retenue = ""; // amorce d'entité HTML coupée en deux
+      let topic: string | null = null;
+      let tronque = false;
+      let emis = false;
+
+      /** Envoie du texte à l'élève, entités recollées. */
+      const pousse = (texte: string) => {
+        if (!texte) return;
+        const [sur, garde] = coupeSure(retenue + texte);
+        retenue = garde;
+        if (!sur) return;
+        controller.enqueue(trame("delta", { t: decodeEntities(sur) }));
+        emis = true;
+      };
+
+      /**
+       * Retient le début de la réponse le temps de savoir si le
+       * modèle a posé le marqueur de notion — sinon l'élève verrait
+       * « # NOTION: fractions » s'afficher dans sa conversation.
+       *
+       * On relâche dès qu'on est fixé : au premier caractère visible
+       * qui n'est pas un « # », il n'y a pas de marqueur. C'est
+       * quelques dizaines de caractères de retard, pas une seconde.
+       */
+      const avale = (morceau: string) => {
+        if (!entete) {
+          pousse(morceau);
+          return;
+        }
+
+        tete += morceau;
+
+        const trouve = tete.match(MARQUEUR_NOTION);
+        if (trouve) {
+          topic = slugifieNotion(trouve[1]);
+          entete = false;
+          const reste = tete.slice(trouve[0].length);
+          tete = "";
+          // Le marqueur est suivi de sauts de ligne que l'élève n'a
+          // pas à voir en tête de sa réponse.
+          pousse(reste.replace(/^\s+/, ""));
+          return;
+        }
+
+        const visible = tete.replace(/^\s+/, "");
+        if ((visible.length > 0 && !visible.startsWith("#")) || tete.length > 160) {
+          entete = false;
+          const tout = tete;
+          tete = "";
+          pousse(tout);
+        }
+      };
+
+      try {
+        while (true) {
+          const { done, value } = await lecteur.read();
+          if (done) break;
+
+          sse += decodeur.decode(value, { stream: true });
+
+          let saut: number;
+          while ((saut = sse.indexOf("\n")) !== -1) {
+            const ligne = sse.slice(0, saut).trim();
+            sse = sse.slice(saut + 1);
+
+            if (!ligne.startsWith("data:")) continue;
+            const charge = ligne.slice(5).trim();
+            if (!charge || charge === "[DONE]") continue;
+
+            const data = JSON.parse(charge);
+
+            // Un blocage arrive AVANT toute génération. Sans ce
+            // test, l'élève verrait une réponse vide sans savoir
+            // pourquoi.
+            const bloque = data?.promptFeedback?.blockReason;
+            if (bloque) {
+              throw new GeminiError(
+                `Question refusée par le filtre de sécurité (${bloque}).`,
+              );
+            }
+
+            if (data?.candidates?.[0]?.finishReason === "MAX_TOKENS") {
+              tronque = true;
+            }
+
+            avale(rawTextOf(data));
+          }
+        }
+
+        // Ce qui restait retenu contre une entité coupée.
+        if (retenue) {
+          controller.enqueue(trame("delta", { t: decodeEntities(retenue) }));
+          emis = true;
+          retenue = "";
+        }
+
+        // L'entête n'a jamais été tranchée : le modèle n'a écrit que
+        // ça. Mieux vaut le brut que du vide — c'est le choix déjà
+        // fait par `splitTopic`.
+        if (entete && tete) {
+          controller.enqueue(trame("delta", { t: decodeEntities(tete) }));
+          emis = true;
+        }
+
+        if (!emis) {
+          controller.enqueue(trame("error", { error: "Réponse vide du modèle." }));
+        } else {
+          controller.enqueue(trame("done", { topic, tronque }));
+        }
+      } catch (e) {
+        // Une panne à mi-réponse ne doit pas effacer ce que l'élève
+        // a déjà sous les yeux : on lui dit que c'est coupé, et il
+        // garde le début.
+        console.error("stream", e);
+        controller.enqueue(
+          trame("error", {
+            error: e instanceof Error ? e.message : String(e),
+            partiel: emis,
+          }),
+        );
+      } finally {
+        controller.close();
+        lecteur.releaseLock();
+      }
+    },
+  });
+
+  return new Response(flux, {
+    headers: {
+      ...CORS,
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      "Connection": "keep-alive",
+    },
+  });
 }
 
 /** Extrait le message utile d'une erreur de l'API, sans le pavé JSON. */
@@ -890,16 +1155,35 @@ function normaliserNotion(brut: string | undefined, subject: string): string {
   return score > 0 ? meilleur : "general";
 }
 
-function splitTopic(raw: string): { reply: string; topic: string | null } {
-  const match = raw.match(/^\s*#\s*NOTION\s*:\s*([^\n]*)\n?/i);
-  if (!match) return { reply: raw.trim(), topic: null };
+/**
+ * Le marqueur que le modèle pose en tête de réponse pour dire quelle
+ * notion il vient de traiter. Une seule définition : la réponse
+ * complète et la réponse en flux doivent le reconnaître pareil.
+ */
+const MARQUEUR_NOTION = /^\s*#\s*NOTION\s*:\s*([^\n]*)\n?/i;
 
-  const slug = match[1]
+/**
+ * Le slug d'une notion, à partir de ce que le modèle a écrit après
+ * « # NOTION: ».
+ *
+ * Extrait de `splitTopic` parce que le flux en a besoin AUSSI, et
+ * qu'une seconde copie aurait divergé : deux façons de fabriquer un
+ * slug, ce sont deux notions distinctes en base pour la même leçon,
+ * et une maîtrise qui se partage en deux au lieu de progresser.
+ */
+function slugifieNotion(brut: string): string | null {
+  const slug = brut
     .trim()
     .toLowerCase()
     .replace(/[^a-z0-9à-ÿ\s-]/g, "")
     .replace(/\s+/g, "-")
     .slice(0, 60);
+  return !slug || slug === "aucune" || slug === "none" ? null : slug;
+}
+
+function splitTopic(raw: string): { reply: string; topic: string | null } {
+  const match = raw.match(MARQUEUR_NOTION);
+  if (!match) return { reply: raw.trim(), topic: null };
 
   const reply = raw.slice(match[0].length).trim();
 
@@ -907,10 +1191,7 @@ function splitTopic(raw: string): { reply: string; topic: string | null } {
   // mieux vaut alors renvoyer le brut que du vide.
   if (!reply) return { reply: raw.trim(), topic: null };
 
-  return {
-    reply,
-    topic: !slug || slug === "aucune" || slug === "none" ? null : slug,
-  };
+  return { reply, topic: slugifieNotion(match[1]) };
 }
 
 // ── Schéma du quiz ────────────────────────────────────────────
@@ -1166,6 +1447,26 @@ function shuffleChoices(q: RawQuestion): RawQuestion {
 }
 
 /**
+ * Mélange l'ORDRE des questions d'un quiz.
+ *
+ * Les révisions et les nouveautés arrivent en deux paquets. Servies
+ * dans cet ordre, elles se voient : les quatre premières sont
+ * toujours celles qu'on a déjà ratées, et l'élève apprend à
+ * reconnaître le début du quiz au lieu de réviser.
+ *
+ * Fisher-Yates, comme pour les options, et sur une copie : le
+ * tableau d'entrée sert encore ailleurs.
+ */
+function melangerQuestions(qs: RawQuestion[]): RawQuestion[] {
+  const out = [...qs];
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
+}
+
+/**
  * Rétablit les accents écrits en entités HTML.
  *
  * Gemini produit par moments « graph&egrave;mes » au lieu de
@@ -1326,11 +1627,17 @@ Deno.serve(async (req: Request) => {
   try {
     // ── Conversation avec le tuteur ───────────────────────────
     if (action === "chat") {
-      const { system, messages, attachment, subjectId } = body as {
+      const { system, messages, attachment, subjectId, stream } = body as {
         system?: string;
         messages?: { role: "user" | "assistant"; content: string }[];
         attachment?: { path: string; type: string } | null;
         subjectId?: string;
+        /**
+         * Absent ou faux = l'ancienne réponse d'un bloc. Les
+         * installations qui n'ont pas encore pris l'OTA continuent
+         * donc de fonctionner exactement comme avant.
+         */
+        stream?: boolean;
       };
 
       if (!Array.isArray(messages) || messages.length === 0) {
@@ -1376,7 +1683,12 @@ Deno.serve(async (req: Request) => {
           ? system
           : "Tu es M. Thomas, tuteur scolaire pour un élève haïtien.";
 
-      const raw = await generate({
+      // Un seul jeu d'options pour les deux chemins : le quota, le
+      // choix du modèle, la pièce jointe et la méthode ont déjà été
+      // décidés au-dessus. Seule la façon de RENDRE la réponse
+      // change — c'est tout l'intérêt de brancher ici et pas dans
+      // une action séparée qui aurait recopié tout ce qui précède.
+      const options = {
         model: route.model,
         thinking: route.thinking,
         system: `${profile}\n\n${TEACHING_METHOD}\n${TOPIC_PROTOCOL}`,
@@ -1384,7 +1696,11 @@ Deno.serve(async (req: Request) => {
         // Une réponse de tuteur qui dépasse ça n'est plus une
         // explication, c'est un cours : l'élève décroche avant.
         maxOutputTokens: 3000,
-      });
+      };
+
+      if (stream === true) return await streamChat(options);
+
+      const raw = await generate(options);
 
       const { reply, topic } = splitTopic(raw);
       return json({ reply: decodeEntities(reply), topic });
@@ -1462,8 +1778,23 @@ Deno.serve(async (req: Request) => {
         averageMastery: 0,
       };
 
+      // ── LES RÉVISIONS DUES ──────────────────────────────────
+      //
+      // Une question ratée revient après 1, 3, 7 et 21 jours. Elle
+      // est REJOUÉE telle quelle depuis `review_queue` : le modèle
+      // ne la regénère pas. C'est ce que la méthode exige — la
+      // révision espacée veut le MÊME item — et ça ne coûte rien.
+      //
+      // Quatre au plus sur dix : au-delà, le quiz cesserait d'être
+      // un quiz pour devenir une séance de rattrapage, et l'élève
+      // n'apprendrait plus rien de neuf.
+      //
+      // Jamais pour un devoir : ce que le professeur note est une
+      // évaluation, pas l'entraînement personnel de l'élève.
+      let revisions: RawQuestion[] = [];
+
       if (userId) {
-        const [seenRes, perfRes] = await Promise.all([
+        const [seenRes, perfRes, revRes] = await Promise.all([
           supabase
             .from("quiz_seen_questions")
             .select("question")
@@ -1472,9 +1803,22 @@ Deno.serve(async (req: Request) => {
             .order("created_at", { ascending: false })
             .limit(40),
           readPerformance(supabase, userId, subject),
+          devoirId
+            ? Promise.resolve({ data: null })
+            : adminClient().rpc("review_due", {
+              p_user_id: userId,
+              p_subject_id: subject,
+              p_limit: 4,
+            }),
         ]);
         seen = (seenRes.data ?? []).map((r: { question: string }) => r.question);
         perf = perfRes;
+
+        // Une file de révision illisible ne doit pas priver l'élève
+        // de son quiz : on l'ignore et on génère tout.
+        if (Array.isArray(revRes?.data)) {
+          revisions = (revRes.data as RawQuestion[]).filter(isSound);
+        }
       }
 
       const route = routeQuiz();
@@ -1484,7 +1828,18 @@ Deno.serve(async (req: Request) => {
         model: route.model,
         thinking: route.thinking,
         system: `Tu génères des quiz scolaires pour des élèves haïtiens, adaptés à leur classe et au programme du MENFP.\n\n${TEACHING_METHOD}\n\n${quizGuidance(seen, perf, chosen)}`,
-        contents: [{ role: "user", parts: [{ text: prompt + consigneNotions }] }],
+        contents: [{
+          role: "user",
+          parts: [{
+            text: prompt + consigneNotions +
+              (revisions.length === 0 ? "" : [
+                "",
+                "",
+                `Génère ${10 - revisions.length} questions et non dix :`,
+                "les autres sont des révisions déjà retenues.",
+              ].join("\n")),
+          }],
+        }],
         schema: QUIZ_SCHEMA as unknown as Record<string, unknown>,
         // Dix questions, leurs options et leurs explications, plus
         // les jetons de réflexion : il faut de la marge.
@@ -1509,7 +1864,7 @@ Deno.serve(async (req: Request) => {
       // On écarte les questions bancales, puis on remélange les
       // options pour que la bonne réponse ne tombe pas toujours au
       // même endroit.
-      const questions = parsed.questions
+      const nouvelles = parsed.questions
         .map((q) => ({
           ...q,
           question: decodeEntities(String(q.question ?? "")),
@@ -1522,7 +1877,19 @@ Deno.serve(async (req: Request) => {
           topic: normaliserNotion(q.topic, subject),
         }))
         .filter(isSound)
-        .map(shuffleChoices);
+        .map(shuffleChoices)
+        // Le modèle rend parfois dix questions quand on en demande
+        // six. On tronque plutôt que de servir un quiz de quatorze.
+        .slice(0, Math.max(0, 10 - revisions.length));
+
+      // Les révisions passent aussi par `shuffleChoices` : sans ça
+      // la bonne réponse retomberait à la même place qu'il y a trois
+      // semaines, et l'élève retrouverait la position, pas la
+      // notion.
+      const questions = melangerQuestions([
+        ...revisions.map(shuffleChoices),
+        ...nouvelles,
+      ]);
 
       if (questions.length === 0) {
         return json({ error: "génération du quiz impossible" }, 502);
@@ -1537,16 +1904,23 @@ Deno.serve(async (req: Request) => {
       //
       // Un échec ne doit pas priver l'élève de son quiz : on
       // journalise et on continue.
-      const { error: memoryError } = await supabase
-        .from("quiz_seen_questions")
-        .insert(
-          questions.map((q) => ({
-            user_id: userId,
-            subject_id: subject,
-            question: q.question.slice(0, 500),
-            topic: q.topic ?? null,
-          })),
-        );
+      //
+      // Seulement les NOUVELLES : une révision est déjà connue, et
+      // la réinscrire ici la ferait remonter en tête de la liste
+      // « déjà vues » à chaque passage, chassant de vraies questions
+      // de la fenêtre de quarante.
+      const { error: memoryError } = nouvelles.length === 0
+        ? { error: null }
+        : await supabase
+          .from("quiz_seen_questions")
+          .insert(
+            nouvelles.map((q) => ({
+              user_id: userId,
+              subject_id: subject,
+              question: q.question.slice(0, 500),
+              topic: q.topic ?? null,
+            })),
+          );
       if (memoryError) console.error("memoire quiz:", memoryError.message);
 
       // ── La session : le serveur retient les bonnes réponses ──
@@ -1603,7 +1977,9 @@ Deno.serve(async (req: Request) => {
         );
       }
 
-      return json({ questions, sessionId });
+      // `revisions` permet à l'écran d'expliquer pourquoi des
+      // questions reviennent. Sans ce mot, l'élève croit à un bug.
+      return json({ questions, sessionId, revisions: revisions.length });
     }
 
     // ── Relecture de modération ───────────────────────────────

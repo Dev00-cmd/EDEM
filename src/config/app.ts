@@ -2,12 +2,27 @@
 //  CONFIGURATION GLOBALE
 // ═══════════════════════════════════════════════════════════════
 
+import Constants from 'expo-constants';
+
 export const APP_NAME = 'EDEM';
 
 /** Le nom du tuteur. C'est lui que l'élève voit et à qui il parle. */
 export const AI_NAME = 'M. Thomas';
 
-export const APP_VERSION = '2.1.0';
+/**
+ * La version montrée à l'élève, lue dans `app.json` — jamais
+ * recopiée à la main.
+ *
+ * Elle l'était, et elle avait divergé : le Profil affichait
+ * « 2.1.0 » alors qu'aucun build n'a jamais porté ce numéro.
+ * Un élève qui signale un problème donne alors une version qui
+ * n'existe pas, et on cherche la panne dans le mauvais code.
+ *
+ * `expoConfig` est nul dans de rares cas (bundle chargé hors
+ * d'un manifeste) : on retombe alors sur un tiret plutôt que
+ * d'afficher un numéro inventé.
+ */
+export const APP_VERSION = Constants.expoConfig?.version ?? '—';
 
 export const APP_TAGLINE_FR = 'Ton prof IA dans ta poche';
 export const APP_TAGLINE_HT = 'Pwof AI ou nan poch ou';

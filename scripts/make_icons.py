@@ -163,6 +163,8 @@ def main():
         "android-icon-monochrome.png": make_monochrome(432),
         # Démarrage
         "splash-icon.png": make_splash(1024),
+        # Notifications Android
+        "notification-icon.png": make_notification(96),
         # Web
         # Carré lui aussi : ses coins arrondis étaient transparents,
         # et l'aplatissement en RGB les peignait en NOIR — quatre
@@ -197,6 +199,31 @@ def make_monochrome(size):
     img = Image.new("RGBA", (s, s), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
     draw_mark(draw, s, BLUE + (255,), (0, 0, 0, 0), scale=0.72)
+    return img.resize((size, size), Image.LANCZOS)
+
+
+def make_notification(size):
+    """
+    Icône de la barre de notifications Android (96x96).
+
+    Android n'en garde QUE l'alpha et la repeint — exactement
+    comme le calque monochrome. On la dessine donc en blanc, ce
+    que documente Google, en sachant que la couleur ne survivra
+    pas ; c'est la SILHOUETTE qui doit être lisible.
+
+    D'où le E percé plutôt que peint d'une seconde teinte : un
+    trou reste un trou après repeinte, une couleur non. Sans ça,
+    la lettre disparaîtrait et il ne resterait qu'un D plein
+    dans la barre d'état.
+
+    Un peu plus grand que le monochrome (0,80 contre 0,72) : la
+    barre de notifications est déjà petite, et la marge que
+    réclame l'écran d'accueil n'a pas lieu d'être ici.
+    """
+    s = size * SS
+    img = Image.new("RGBA", (s, s), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(img)
+    draw_mark(draw, s, (255, 255, 255, 255), (0, 0, 0, 0), scale=0.80)
     return img.resize((size, size), Image.LANCZOS)
 
 

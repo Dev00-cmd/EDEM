@@ -1,0 +1,44 @@
+# ═══════════════════════════════════════════════════════════════
+#  LE GARDE-FOU
+#
+#  Les vérifications de ce dépôt sont bonnes — elles ont déjà
+#  attrapé une limite de dix essais qui ne limitait rien, et un
+#  index de réponse invalide qui présentait une mauvaise option
+#  comme étant la bonne. Leur seul défaut : elles ne tournaient
+#  que si quelqu'un y pensait.
+#
+#  Ce fichier fait qu'on ne peut plus oublier.
+#
+#  Ce qui tourne ici ne demande NI base de données NI clé d'API :
+#  types, traductions, routes, routage de l'IA. Les tests qui
+#  parlent à Supabase (smoke_test, test_moderation…) restent
+#  manuels — ils écrivent dans le vrai projet, et une CI qui crée
+#  six comptes à chaque poussée n'est pas une CI, c'est une fuite.
+# ═══════════════════════════════════════════════════════════════
+
+name: check
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: npm
+
+      # `.npmrc` porte `legacy-peer-deps=true` — voir §15 du README.
+      - run: npm ci
+
+      # Régénère .expo/types/router.d.ts avant de vérifier les types :
+      # ce fichier est généré et ignoré par Git, il n'existe donc PAS
+      # sur une machine fraîche. Sans cette étape, `tsc` refuserait
+      # toutes les routes de l'application.
+      - run: npm run check

@@ -35,7 +35,9 @@ import { useKeyboard, useKeyboardShift } from '@/theme/useKeyboard';
 import { BLUR, FLOAT, RADIUS } from '@/theme/theme';
 import { useGlass } from '@/theme/useGlass';
 import { FONTS, type } from '@/theme/typography';
-import { askTutor } from '@/ai/tutor';
+import { askTutorStream } from '@/ai/tutor';
+import { TuteurRefus } from '@/ai/remoteTutor';
+import { enfiler } from '@/lib/outbox';
 import { studentContextOf, dailyPlan, planSubjects } from '@/ai/plan';
 import { isBackendConfigured } from '@/config/app';
 import { SUBJECTS, getSubject } from '@/data/subjects';
@@ -86,6 +88,51 @@ export default function ChatScreen() {
 
   const [input, setInput] = useState('');
   const [typing, setTyping] = useState(false);
+
+  // ── La réponse qui s'écrit sous les yeux de l'élève ─────────
+  //
+  // Ce texte vit ICI, dans l'écran, et pas dans le store : chaque
+  // morceau qui arrive déclencherait sinon une écriture en base.
+  // Des centaines d'écritures pour un seul message, sur un forfait
+  // payé à l'unité. Le message n'est enregistré qu'UNE fois, quand
+  // il est complet — l'historique reste exactement ce qu'il était.
+  const [flux, setFlux] = useState('');
+  const fluxRef = useRef('');
+  const minuteurFlux = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  /**
+   * Reçoit un morceau et repeint l'écran, au plus une fois par
+   * 60 ms.
+   *
+   * Sans ce frein, chaque morceau relance l'analyse des maths sur
+   * TOUT le texte déjà reçu — une réponse de quinze lignes la
+   * referait des dizaines de fois, et l'affichage saccade sur les
+   * téléphones d'entrée de gamme qui sont justement le parc visé.
+   * 60 ms, c'est fluide à l'œil et dix fois moins de travail.
+   */
+  const pousseFlux = useCallback((morceau: string) => {
+    fluxRef.current += morceau;
+    if (minuteurFlux.current) return;
+    minuteurFlux.current = setTimeout(() => {
+      minuteurFlux.current = null;
+      setFlux(fluxRef.current);
+    }, 60);
+  }, []);
+
+  const videFlux = useCallback(() => {
+    if (minuteurFlux.current) {
+      clearTimeout(minuteurFlux.current);
+      minuteurFlux.current = null;
+    }
+    fluxRef.current = '';
+    setFlux('');
+  }, []);
+
+  // Quitter l'écran pendant que le tuteur écrit ne doit pas laisser
+  // un minuteur derrière soi.
+  useEffect(() => () => {
+    if (minuteurFlux.current) clearTimeout(minuteurFlux.current);
+  }, []);
   const listRef = useRef<FlatList<ChatMsg>>(null);
   const bootstrapped = useRef<string | null>(null);
 
@@ -185,7 +232,10 @@ export default function ChatScreen() {
         ts: Date.now(),
         attachment: uploaded,
       };
-      addChatMessages([userMsg]);
+      // On ATTEND : c'est cet appel qui crée la conversation en
+      // base la première fois, et son identifiant est ce qui
+      // permettra de rapporter la réponse ici si le réseau lâche.
+      const convId = await addChatMessages([userMsg]);
       scrollToEnd();
 
       if (!online) {
@@ -201,26 +251,43 @@ export default function ChatScreen() {
         return;
       }
 
+      const history = [...messages, userMsg].slice(-12).map((m) => ({
+        role: m.role === 'user' ? ('user' as const) : ('assistant' as const),
+        content: m.text,
+      }));
+
       setTyping(true);
+      videFlux();
       try {
-        const history = [...messages, userMsg].slice(-12).map((m) => ({
-          role: m.role === 'user' ? ('user' as const) : ('assistant' as const),
-          content: m.text,
-        }));
         const ctx = studentContextOf(
           profile,
           progress,
           subject === 'general' ? undefined : subject,
         );
-        const reply = await askTutor(
+        const reply = await askTutorStream(
           history,
           ctx,
+          pousseFlux,
           { profile, subjectIds: planSubjects(profile) },
           uploaded ? { path: uploaded.path, type: uploaded.type } : null,
         );
 
+        // La bulle provisoire s'efface et la vraie prend sa place
+        // dans le même rendu : React groupe les deux, l'élève ne
+        // voit aucun clignotement.
+        videFlux();
         addChatMessages([
-          { id: uid(), role: 'tutor', text: reply.text, ts: Date.now() },
+          {
+            id: uid(),
+            role: 'tutor',
+            // Une réponse coupée par la limite du modèle reste utile
+            // — l'élève a le début. On le lui DIT plutôt que de le
+            // laisser croire que le tuteur s'est arrêté là.
+            text: reply.tronque
+              ? `${reply.text}\n\n⚠️ ${t('chat.tronque')}`
+              : reply.text,
+            ts: Date.now(),
+          },
         ]);
 
         // La notion détectée par l'IA fait progresser la maîtrise.
@@ -229,12 +296,40 @@ export default function ChatScreen() {
         } else if (params.planTopic && params.subject && params.subject !== 'general') {
           studyTopic(params.subject, params.planTopic);
         }
-      } catch {
+      } catch (e) {
+        videFlux();
+
+        // DEUX ÉCHECS, DEUX SUITES.
+        //
+        // Un refus motivé du serveur — quota du jour épuisé,
+        // session expirée — est déjà écrit pour l'élève, et se
+        // reproduirait à l'identique. On le dit, et on s'arrête.
+        //
+        // Tout le reste, c'est le réseau. La question part alors en
+        // file : elle sera posée toute seule au retour du signal, et
+        // la réponse atterrira DANS CE FIL. L'élève qui demande une
+        // explication le soir, chez lui sans connexion, la trouve le
+        // lendemain à l'école — au lieu de devoir y repenser.
+        const motif = e instanceof TuteurRefus ? e.message : '';
+
+        if (!motif && convId) {
+          await enfiler({
+            type: 'question',
+            conversationId: convId,
+            subjectId: subject,
+            historique: history,
+          });
+        }
+
         addChatMessages([
           {
             id: uid(),
             role: 'tutor',
-            text: `⚠️ **${t('chat.errorTitle')}**\n\n${t('chat.errorBody')}`,
+            text: motif
+              ? `⚠️ **${t('chat.errorTitle')}**\n\n${motif}`
+              : convId
+                ? `⏳ **${t('chat.enFileTitle')}**\n\n${t('chat.enFileBody')}`
+                : `⚠️ **${t('chat.errorTitle')}**\n\n${t('chat.errorBody')}`,
             ts: Date.now(),
           },
         ]);
@@ -258,6 +353,8 @@ export default function ChatScreen() {
       studyTopic,
       touchActivity,
       scrollToEnd,
+      pousseFlux,
+      videFlux,
       t,
     ],
   );
@@ -315,7 +412,7 @@ export default function ChatScreen() {
   // taper.
   useEffect(() => {
     scrollToEnd();
-  }, [messages.length, typing, kb.shift, scrollToEnd]);
+  }, [messages.length, typing, flux, kb.shift, scrollToEnd]);
 
   const [askingClear, setAskingClear] = useState(false);
   const glass = useGlass();
@@ -495,7 +592,19 @@ export default function ChatScreen() {
             </View>
           </View>
         }
-        ListFooterComponent={typing ? <TypingBubble /> : null}
+        ListFooterComponent={
+          // Tant que rien n'est arrivé, les trois points ; dès le
+          // premier mot, la réponse elle-même, qui s'allonge.
+          typing ? (
+            flux ? (
+              <ChatBubble
+                msg={{ id: 'flux', role: 'tutor', text: flux, ts: 0 }}
+              />
+            ) : (
+              <TypingBubble />
+            )
+          ) : null
+        }
       />
 
       {/* ── Barre de saisie ─────────────────────────────────────

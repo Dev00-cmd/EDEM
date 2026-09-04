@@ -6,8 +6,9 @@
 //  jeton de l'élève connecté. Sans compte, pas d'accès à l'IA.
 // ═══════════════════════════════════════════════════════════════
 
+import { fetch } from 'expo/fetch';
 import { supabase } from '@/lib/supabase';
-import type { Difficulty } from '@/config/app';
+import { SUPABASE_ANON_KEY, SUPABASE_URL, type Difficulty } from '@/config/app';
 import { buildQuizPrompt, buildSystemPrompt } from './prompts';
 import type { AIMessage, GeneratedQuiz, QuizQuestion, StudentContext } from './types';
 
@@ -31,6 +32,8 @@ interface QuizResponse {
   questions?: RawQuizQuestion[];
   /** Session ouverte par le serveur, qui corrigera la remise. */
   sessionId?: string | null;
+  /** Nombre de questions rejouées depuis la file de révision. */
+  revisions?: number;
   error?: string;
 }
 
@@ -147,8 +150,183 @@ export async function remoteQuiz(
     // qui n'accordent aucun XP à l'élève.
     if (questions.length === 0 || !data.sessionId) return null;
 
-    return { subjectId, source: 'ai', questions, sessionId: data.sessionId };
+    return {
+      subjectId,
+      source: 'ai',
+      questions,
+      sessionId: data.sessionId,
+      // Un serveur qui n'a pas encore reçu la révision espacée ne
+      // renvoie pas ce champ : zéro, et l'écran ne dit rien.
+      revisions: typeof data.revisions === 'number' ? data.revisions : 0,
+    };
   } catch {
     return null;
   }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  LA RÉPONSE QUI S'ÉCRIT SOUS LES YEUX DE L'ÉLÈVE
+//
+//  `remoteAnswer` attend que la réponse entière soit prête avant
+//  de rendre la main : 5 à 15 secondes de bulle vide. Ici, on lit
+//  la réponse au fur et à mesure, et l'élève voit le premier mot
+//  en moins d'une seconde.
+//
+//  On passe par `expo/fetch` et non par `supabase.functions.invoke` :
+//  `invoke` rend une réponse déjà entièrement lue, ce qui annulerait
+//  tout l'intérêt. `expo/fetch` est la seule implémentation qui
+//  expose un vrai `response.body` sur Android et iOS — celle de
+//  React Native passe par XMLHttpRequest et rend `body` nul.
+//
+//  Elle vit dans le paquet `expo` lui-même, déjà présent dans
+//  l'APK : ce changement part donc en OTA, sans nouveau build.
+// ═══════════════════════════════════════════════════════════════
+
+/** Le tuteur a refusé la question — quota, session, filtre. */
+export class TuteurRefus extends Error {}
+
+export interface RemoteStreamReply extends RemoteReply {
+  /** Le modèle a atteint sa limite : la réponse s'arrête en plein vol. */
+  tronque: boolean;
+}
+
+/** Découpe une trame SSE en son nom d'événement et sa charge utile. */
+function litTrame(brut: string): { event: string; data: string } {
+  let event = 'message';
+  let data = '';
+  for (const ligne of brut.split('\n')) {
+    if (ligne.startsWith('event:')) event = ligne.slice(6).trim();
+    else if (ligne.startsWith('data:')) data += ligne.slice(5).trim();
+  }
+  return { event, data };
+}
+
+/**
+ * Pose la question au tuteur et RELAIE sa réponse morceau par
+ * morceau via `onDelta`.
+ *
+ * Rend le texte complet à la fin — c'est lui qu'on garde en base,
+ * pas la somme des morceaux affichés.
+ *
+ * Deux façons d'échouer, et elles n'appellent pas la même suite :
+ *
+ *  · `TuteurRefus` — le serveur a répondu, mais non (quota épuisé,
+ *    session expirée, filtre de sécurité). Réessayer sans le flux
+ *    donnerait exactement le même refus : on remonte l'erreur.
+ *
+ *  · toute autre erreur AVANT le premier morceau — le flux lui-même
+ *    n'a pas pu s'établir. Là, l'appel d'un bloc a toutes ses
+ *    chances, et c'est `askTutorStream` qui s'en charge.
+ */
+export async function remoteAnswerStream(
+  messages: AIMessage[],
+  ctx: StudentContext,
+  subjectLabel: string,
+  attachment: RemoteAttachment | null | undefined,
+  onDelta: (morceau: string) => void,
+): Promise<RemoteStreamReply> {
+  const { data: sessionData } = await supabase.auth.getSession();
+  const token = sessionData.session?.access_token;
+  if (!token) throw new TuteurRefus('Session expirée. Reconnecte-toi.');
+
+  const response = await fetch(`${SUPABASE_URL}/functions/v1/tutor`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      apikey: SUPABASE_ANON_KEY,
+      'Content-Type': 'application/json',
+      Accept: 'text/event-stream',
+    },
+    body: JSON.stringify({
+      action: 'chat',
+      stream: true,
+      system: buildSystemPrompt(ctx, subjectLabel),
+      messages,
+      subjectId: ctx.subject ?? null,
+      attachment: attachment ?? null,
+    }),
+  });
+
+  // Le serveur a répondu en JSON : c'est un refus motivé, pas une
+  // panne de transport. Le message est déjà écrit pour l'élève.
+  if (!response.ok) {
+    let message = `Le tuteur n'a pas pu répondre (${response.status}).`;
+    try {
+      const corps = (await response.json()) as { error?: string };
+      if (corps?.error) message = corps.error;
+    } catch {
+      // pas du JSON : on garde le message générique
+    }
+    throw new TuteurRefus(message);
+  }
+
+  if (!response.body) throw new Error('flux indisponible');
+
+  const lecteur = response.body.getReader();
+  const decodeur = new TextDecoder();
+
+  let tampon = '';
+  let texte = '';
+  let topic: string | null = null;
+  let tronque = false;
+  /** Une panne à mi-réponse : on garde ce qui est déjà affiché. */
+  let coupe = false;
+
+  const traite = (brut: string) => {
+    const { event, data } = litTrame(brut);
+    if (!data) return;
+
+    if (event === 'delta') {
+      const morceau = (JSON.parse(data) as { t?: string }).t ?? '';
+      if (!morceau) return;
+      texte += morceau;
+      onDelta(morceau);
+      return;
+    }
+
+    if (event === 'done') {
+      const fin = JSON.parse(data) as { topic?: string | null; tronque?: boolean };
+      topic = fin.topic ?? null;
+      tronque = !!fin.tronque;
+      return;
+    }
+
+    if (event === 'error') {
+      const echec = JSON.parse(data) as { error?: string; partiel?: boolean };
+      // Rien n'est encore affiché : l'élève n'a rien à perdre, on
+      // remonte l'erreur. Sinon on s'arrête là et il garde le début.
+      if (!echec.partiel && texte.length === 0) {
+        throw new TuteurRefus(echec.error ?? 'Réponse interrompue.');
+      }
+      coupe = true;
+    }
+  };
+
+  try {
+    for (;;) {
+      const { done, value } = await lecteur.read();
+      if (done) break;
+
+      // Les fins de ligne varient d'un intermédiaire à l'autre ;
+      // on les ramène à une seule forme avant de découper.
+      tampon += decodeur.decode(value, { stream: true }).replace(/\r\n/g, '\n');
+
+      let fin: number;
+      while ((fin = tampon.indexOf('\n\n')) !== -1) {
+        const brut = tampon.slice(0, fin);
+        tampon = tampon.slice(fin + 2);
+        traite(brut);
+      }
+      if (coupe) break;
+    }
+  } finally {
+    // Le lecteur reste ouvert si l'élève quitte l'écran en cours de
+    // route ; sans annulation, la connexion traîne et le forfait
+    // continue de se vider.
+    await lecteur.cancel().catch(() => {});
+  }
+
+  if (texte.length === 0) throw new Error('réponse vide');
+
+  return { text: texte, topic, tronque };
 }

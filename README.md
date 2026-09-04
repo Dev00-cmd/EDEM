@@ -26,6 +26,7 @@ et sait **lire la photo d'un devoir** pour l'expliquer pas à pas.
 7. [Comptes élèves](#7-comptes-élèves)
 8. [Photos et documents](#8-photos-et-documents)
 9. [Classes, devoirs et fil](#9-classes-devoirs-et-fil)
+9bis. [Prévenir, écrire en direct, faire retenir, tenir sans réseau](#9bis-prévenir-écrire-en-direct-faire-retenir-et-tenir-sans-réseau)
 10. [Protection des mineurs et modération](#10-protection-des-mineurs-et-modération)
 11. [La base de données](#11-la-base-de-données)
 12. [Sécurité](#12-sécurité)
@@ -57,6 +58,10 @@ et sait **lire la photo d'un devoir** pour l'expliquer pas à pas.
 | 📊 | **Suivi de classe** | La maîtrise moyenne de sa classe notion par notion, et qui est sous 40 % — sans avoir corrigé une seule copie. C'est un onglet, plus un écran enfoui |
 | 💬 | **Fil de classe** | Un chat en temps réel, uniquement à l'intérieur d'une classe où un professeur est présent. Pas de messages privés |
 | 🛡️ | **Modération** | Filtre en français et en créole, bouton signaler en deux touches, le prof modère sa classe, et chaque geste est journalisé — [§10](#10-protection-des-mineurs-et-modération) |
+| 🔔 | **Notifications** | Un devoir publié, une copie corrigée, le fil qui bouge — l'élève est prévenu. Jamais le TEXTE d'un message : un écran verrouillé se lit par-dessus l'épaule, et un message que la modération retire aurait déjà été affiché |
+| ⚡ | **Réponse en flux** | M. Thomas s'écrit sous les yeux de l'élève. Le premier mot arrive en moins d'une seconde au lieu de 5 à 15 secondes de bulle vide |
+| 🧠 | **Révision espacée** | Toute question ratée revient après 1, 3, 7 puis 21 jours, **rejouée telle quelle** — sans repasser par le modèle, donc sans rien coûter |
+| 📴 | **File d'attente** | Le réseau lâche pendant un quiz ? Les XP arrivent au retour du signal. Une question posée sans connexion part toute seule, et la réponse atterrit dans le bon fil |
 | 🔄 | **Mise à jour intégrée** | Bouton dans le Profil : cherche, télécharge et applique une mise à jour sans passer par un store |
 | 🌗 | **Clair & sombre** | Deux thèmes complets, cohérents jusqu'au dernier détail |
 | 🇭🇹 | **Bilingue** | Français et Kreyòl ayisyen, partout, changeable à tout moment |
@@ -115,12 +120,13 @@ Détails, choix du modèle et coûts : **[`docs/IA.md`](docs/IA.md)**
                          · maîtrise par notion        │
                          · quiz + conversations       ▼
                          · 📎 fichiers (privés)    ✨ GEMINI
-                                                      modèle choisi
-                         LA CLASSE                    par question
-                         · écoles, communes           · chat
-                         · classes et adhésions       · quiz
-                         · devoirs et remises         · modération
-                         · fil de discussion            (2ᵉ temps)
+                         · 🧠 file de révision         modèle choisi
+                                                       par question
+                         LA CLASSE                     · chat  ⚡ EN FLUX
+                         · écoles, communes            · quiz
+                         · classes et adhésions        · modération
+                         · devoirs et remises            (2ᵉ temps)
+                         · fil de discussion
                                     ▲
                          LA MODÉRATION
                          · filtre de termes FR + HT ── appliqué ici,
@@ -128,8 +134,20 @@ Détails, choix du modèle et coûts : **[`docs/IA.md`](docs/IA.md)**
                          · journal (illisible          gratuitement
                            depuis l'app)
 
+                         🔔 LES NOTIFICATIONS
+                         · déclencheurs SQL → une file
+                         · pg_cron, chaque minute      le déclencheur
+                         · pg_net ──► API Expo ──► 📱  n'appelle JAMAIS
+                                                       Internet lui-même
+
               ────────── tout est chez Supabase ──────────
                   aucun serveur à héberger toi-même
+
+
+                    📴  ET SUR L'APPAREIL, UNE SEULE CHOSE
+                        une file d'attente : ce que le réseau a fait
+                        rater — remise de quiz, question au tuteur —
+                        repart tout seul au retour du signal
 ```
 
 **Pourquoi ce découpage ?** Quatre raisons concrètes :
@@ -202,9 +220,11 @@ EDEM/
 │   │   ├── ConfirmDialog.tsx   Confirmation (Alert.alert n'existe pas sur web)
 │   │   ├── CharteDialog.tsx    Les 5 règles, à la première entrée en classe
 │   │   ├── ReportDialog.tsx    Signaler : le drapeau, puis le motif
-│   │   ├── UpdateBanner.tsx    Bandeau « mise à jour prête »
+│   │   ├── UpdateGate.tsx      Bandeau « mise à jour prête » + recherche
 │   │   ├── ChatBubble.tsx      Bulles de conversation + aperçu de fichier
+│   │   ├── QuizHistoryRow.tsx  Une ligne de l'historique des quiz
 │   │   ├── LogoMark.tsx        Le logo, en vectoriel
+│   │   ├── EducareMark.tsx     La marque Educare, en vectoriel
 │   │   ├── TabBar.tsx          La barre d'onglets — partagée par les 2 interfaces
 │   │   ├── ProfileBlocks.tsx   Langue, thème, mise à jour — partagés par les 2 profils
 │   │   ├── SchoolPicker.tsx    Choisir l'école d'une salle (recherche nationale)
@@ -220,6 +240,8 @@ EDEM/
 │   ├── i18n/                   🌍 fr.ts + ht.ts — TOUS LES TEXTES
 │   ├── lib/
 │   │   ├── supabase.ts         Client + traduction des erreurs
+│   │   ├── push.ts             🔔 Jeton de l'appareil, ouverture au toucher
+│   │   ├── outbox.ts           📴 La file d'attente du réseau
 │   │   ├── attachments.ts      📎 Photos et documents
 │   │   ├── schools.ts          Recherche dans les 25 347 écoles
 │   │   ├── teacher.ts          Demande et état du rôle professeur
@@ -238,12 +260,14 @@ EDEM/
 │       ├── typography.ts       L'échelle typographique (Sora)
 │       ├── responsive.ts       📐 Adaptation aux tailles d'écran
 │       ├── useKeyboard.ts      ⌨️ Le clavier ne masque plus la saisie
+│       ├── useGlass.ts         Le verre dépoli (expo-blur + repli)
 │       └── ThemeContext.tsx    Distribution du thème
 │
 ├── supabase/functions/tutor/
 │   └── index.ts                ⚡ TOUT LE SERVEUR IA en un seul fichier :
 │                                  méthode d'enseignement, choix du modèle,
-│                                  difficulté adaptative, appel à Gemini
+│                                  difficulté adaptative, appel à Gemini,
+│                                  réponse EN FLUX (SSE) et révisions dues
 │
 ├── supabase/migrations/        Les migrations SQL, commentées
 │                                  (recopie exacte de ce qui a été appliqué)
@@ -255,7 +279,16 @@ EDEM/
 │   ├── smoke_test.mjs          Quiz, XP, quotas — bout en bout
 │   ├── test_moderation.mjs     🛡️ Modération — 6 comptes, vraies requêtes REST
 │   ├── check_i18n.mjs          Chaque clé existe en FR ET en HT
+│   ├── check_routes.mjs        Aucune collision de route
+│   ├── check_routing.mjs       L'IA route bien chaque type de question
+│   ├── dump_ecoles_menfp.mjs   Extrait les écoles des PDF du MENFP
+│   ├── test_conversations.mjs  Fils multiples, titres, suppression
+│   ├── test_pieces_jointes.mjs Photos et PDF — envoi, lecture, cloisonnement
+│   ├── test_prof_autonome.mjs  Rôle prof accordé sans validation
+│   ├── test_recherche_ecoles.mjs  Recherche dans les 25 347 écoles
 │   └── make_icons.py           Régénère toutes les icônes de l'app
+├── .github/workflows/
+│   └── check.yml               🔒 `npm run check` à chaque poussée
 ├── assets/                     Icônes, logo, illustration
 └── docs/
     ├── IA.md                   Régler l'IA, les modèles, les coûts
@@ -545,6 +578,108 @@ Ce n'est pas une liste de fonctionnalités à faire plus tard : **un mineur ne s
 
 ---
 
+## 9bis. Prévenir, écrire en direct, faire retenir, et tenir sans réseau
+
+Quatre ajouts qui répondent chacun à un moment précis où l'application perdait l'élève.
+
+### 🔔 Les notifications — `supabase/migrations/20260904_notifications.sql` · [`src/lib/push.ts`](src/lib/push.ts)
+
+Le professeur posait un devoir, corrigeait une copie, écrivait dans le fil — et personne ne l'apprenait avant d'ouvrir l'application. Toute la vie de classe reposait sur l'élève qui y pense. **Un devoir donné le lundi se découvrait le vendredi.**
+
+**Trois moments, et pas un de plus.** Une application qui sonne pour tout se fait désactiver en une semaine — et on perd alors *aussi* le devoir à rendre demain.
+
+| Quand | Ce que l'élève lit |
+|---|---|
+| Un devoir est **publié** | *Nouveau devoir · Fractions · 9e A* |
+| Sa copie est **corrigée** | *Ton devoir est corrigé · Fractions · 84/100* |
+| Le fil de sa classe **bouge** | *9e A · Nouveaux messages dans le fil* |
+
+> 🔒 **Le texte des messages ne sort jamais.** La notification dit qu'il y a des messages, jamais lesquels. Deux raisons, toutes les deux sérieuses : un écran verrouillé se lit par-dessus l'épaule, et un message que la modération retirera dix secondes plus tard aurait déjà été affiché à toute la classe. **Une notification ne se rappelle pas.**
+
+**Comment ça marche, et pourquoi comme ça :**
+
+```
+  Le professeur publie          Un déclencheur SQL écrit UNE LIGNE
+        │                       dans `notifications` — et c'est tout.
+        ▼                       Il n'appelle pas Internet.
+  ┌──────────────┐
+  │ notifications│  ← la file, une ligne par élève, déjà dans SA langue
+  └──────┬───────┘
+         │  pg_cron, toutes les minutes
+         ▼
+    push_flush()  ──── pg_net ────►  API Expo  ────►  📱
+```
+
+- **Le déclencheur n'appelle pas Internet.** S'il le faisait, l'envoi d'un message d'élève dépendrait de la disponibilité d'un service tiers : Expo en panne, et le fil de classe cesserait de fonctionner. Ce n'est pas un compromis acceptable.
+- **Aucun secret n'est nécessaire.** L'API d'Expo accepte un jeton d'appareil sans clé de service. Rien dans le Vault, rien à héberger, rien qui puisse fuiter — c'est ce qui permet à tout ceci de tenir dans la base.
+- **Le jeton appartient à l'APPAREIL, pas au compte.** `push_tokens` a pour clé primaire le jeton. En Haïti un téléphone se partage entre frères et sœurs : si le jeton restait attaché au premier compte connecté, **le second recevrait les devoirs du premier**. Se connecter le réattribue, se déconnecter l'efface.
+- **Le fil est bridé** à une notification par classe et par élève tous les quarts d'heure. Un échange de vingt messages entre deux camarades ne fait pas vingt notifications à toute la classe.
+- **Toucher la notification ouvre le bon écran** — et seulement `/assignment/{id}` ou `/fil/{id}`. Le contenu d'une notification vient du réseau : le passer tel quel à `router.push` laisserait un message forgé ouvrir n'importe quel écran, y compris ceux du professeur.
+
+> ⚠️ **`expo-notifications` est un module NATIF.** Il n'existe pas dans les APK construits avant son ajout — voir [§14](#14-livrer-une-modification). C'est pourquoi [`push.ts`](src/lib/push.ts) le charge **à l'exécution**, dans un `try`/`catch` : sur un ancien binaire il rend `null` et l'app fonctionne exactement comme avant. Un `import` en tête de fichier aurait fait planter au démarrage toutes les installations existantes à la première mise à jour OTA — et il n'y aurait plus eu aucun moyen de leur livrer la correction.
+
+### ⚡ La réponse en flux
+
+Une explication de M. Thomas fait 8 à 15 lignes. Produite d'un bloc, elle demandait **5 à 15 secondes** — pendant lesquelles l'élève regardait une bulle vide sur une connexion haïtienne. C'est exactement le moment où il repose le téléphone.
+
+**Rien ne change au modèle, au prompt, ni au coût.** La même réponse est relayée au fur et à mesure que Gemini l'écrit.
+
+```
+Gemini  ──:streamGenerateContent?alt=sse──►  Edge Function  ──SSE──►  📱
+                                                  │
+                                    tranche « # NOTION: … »
+                                    recolle les entités HTML
+                                    coupées en deux par le flux
+```
+
+Trois détails qui font la différence entre un flux et un flux correct :
+
+1. **L'en-tête est retenue.** Le modèle commence par `# NOTION: fractions`, qui sert à faire progresser la maîtrise. Sans rétention, l'élève la verrait s'afficher. On garde donc le début jusqu'au premier caractère visible qui n'est pas un `#` — quelques dizaines de caractères, pas une seconde.
+2. **Les entités HTML sont recollées.** Le modèle écrit parfois `&egrave;`, et le découpage du flux tombe au milieu. Décoder `&am` puis `p;` séparément ne donne rien : on retient une amorce d'entité jusqu'au morceau suivant.
+3. **L'écran ne se repeint qu'au plus une fois par 60 ms.** Chaque morceau relancerait sinon l'analyse des maths sur tout le texte déjà reçu — dix fois plus de travail, et un affichage qui saccade sur les téléphones d'entrée de gamme, qui sont justement le parc visé.
+
+> 💡 **Le chemin « d'un bloc » reste en place, intact.** Une mise à jour OTA ne s'applique pas toute seule : des installations continueront longtemps d'appeler `chat` sans `stream`. Elles doivent continuer de marcher. Et si le flux ne s'établit pas — un intermédiaire réseau qui met en tampon, un serveur non redéployé — l'app **retombe d'elle-même** sur l'appel d'un bloc. Un refus motivé (quota épuisé), lui, n'est jamais rejoué : il coûterait un second appel pour le même refus.
+
+> 🔧 Côté application, le flux passe par **`expo/fetch`** et non par `supabase.functions.invoke`, qui rend une réponse déjà entièrement lue. C'est la seule implémentation qui expose un vrai `response.body` sur Android et iOS — celle de React Native passe par `XMLHttpRequest` et rend `body` nul. Elle vit dans le paquet `expo` lui-même, **déjà présent dans l'APK** : ce changement part donc en OTA.
+
+### 🧠 La révision espacée — `supabase/migrations/20260904_revision_espacee.sql`
+
+Jusqu'ici les quiz **évaluaient**. Ils ne faisaient pas **retenir**. Une question ratée disparaissait : l'élève apprenait qu'il ne savait pas, et rien de plus.
+
+Une question ratée revient maintenant après **1, 3, 7 puis 21 jours**. Quatre bonnes réponses espacées, et elle sort de la file : elle est apprise. La rater à nouveau la ramène au premier palier.
+
+> 💰 **Ça ne coûte rien — au contraire.** `quiz_sessions.questions` gardait déjà la question complète : énoncé, quatre options, bonne réponse, explication. Une révision se **rejoue telle quelle**, sans repasser par le modèle. Zéro appel, zéro gourde. Et c'est aussi ce que la méthode exige : la révision espacée veut le *même* item, pas un item qui lui ressemble.
+>
+> **C'est la seule fonctionnalité de cette liste qui rende l'application moins chère à faire tourner en la rendant meilleure.**
+
+| Règle | Pourquoi |
+|---|---|
+| **4 révisions au plus** sur les 10 questions | Au-delà, le quiz cesse d'être un quiz pour devenir une séance de rattrapage, et l'élève n'apprend plus rien de neuf |
+| Les questions sont **remélangées** | Servies en deux paquets, les révisions se verraient : l'élève apprendrait à reconnaître le début du quiz au lieu de réviser |
+| Les **options** aussi | Sinon la bonne réponse retomberait à la même place qu'il y a trois semaines, et l'élève retrouverait la position, pas la notion |
+| **Jamais pour un devoir** | Ce que le professeur note est une évaluation, pas l'entraînement personnel de l'élève |
+| `review_queue` n'a **aucune policy** | Elle contient les bonnes réponses. Seule l'Edge Function la lit, avec la clé de service — exactement comme `quiz_sessions` |
+| C'est un **déclencheur**, pas une modification de `grade_quiz` | La correction est le morceau le plus sensible de cette base : c'est elle qui décide des XP. Si la planification d'une révision bute, elle ne doit pas faire perdre ses points à l'élève |
+
+### 📴 La file d'attente — [`src/lib/outbox.ts`](src/lib/outbox.ts)
+
+Le réseau haïtien tombe. Le courant aussi. Jusqu'ici, ce qui tombait avec eux était perdu.
+
+| Avant | Maintenant |
+|---|---|
+| Un quiz terminé au moment où la connexion lâche ne rapportait **rien**. Dix minutes de travail, zéro XP, **et pas un mot pour dire pourquoi** | La remise est gardée sur l'appareil et rejouée au retour du signal. Les XP arrivent |
+| Une question posée le soir sans réseau recevait un message d'excuse, et l'élève devait penser à la reposer | Elle part toute seule, et **la réponse atterrit dans le bon fil**. L'élève demande une explication le soir chez lui, il la trouve le lendemain à l'école |
+
+> 🔒 **Pourquoi rejouer est SÛR.** La file ne transporte **aucune prétention** — seulement des choix déjà faits. La session de quiz a été ouverte par le *serveur* avant que l'élève ne commence, et c'est lui qui détient les bonnes réponses : rejouer une remise ne fabrique donc aucun XP. Et `grade_quiz` refuse explicitement une session déjà corrigée — un doublon est impossible, même si l'app est tuée entre l'envoi et l'effacement de la ligne.
+
+**Ce qu'elle ne fait pas :** aucune détection de réseau. Elle est vidée quand l'app revient au premier plan et au démarrage — les deux moments où l'élève est là pour voir le résultat. Écouter l'état du réseau demanderait un module natif de plus pour un gain nul : ici, **un réseau annoncé présent qui ne passe pas est le cas ordinaire, pas l'exception.**
+
+Une seule distinction commande tout le comportement : **panne de transport ou refus motivé ?** Une panne se rejoue plus tard et finit par passer ; un refus — session déjà corrigée, quota du jour épuisé — se reproduira à l'identique, et le remettre en file le ferait tourner en boucle jusqu'à sa péremption (7 jours).
+
+> ⚠️ La file est **personnelle** : elle est jetée à la déconnexion et à la remise à zéro. Sans ça, elle rejouerait les quiz et les questions d'un élève sous le compte du suivant — et un téléphone se partage.
+
+---
+
 ## 10. Protection des mineurs et modération
 
 **Les utilisateurs sont majoritairement des mineurs.** Ce n'est pas une note de bas de page, c'est ce qui décide de l'architecture.
@@ -700,6 +835,9 @@ Pas de logique de score dans l'app :
 | `post_classroom_message()` | Charte, quota, **filtre de modération**, puis insertion |
 | `report_content()` | Signaler — et masquer à trois signaleurs distincts |
 | `moderate_message()` | La décision du professeur : supprimer, masquer, laisser |
+| `register_push_token()` · `forget_push_token()` | L'appareil se confie au compte connecté, et s'en détache à la sortie |
+| `push_flush()` | Vide la file de notifications vers Expo, 100 au plus par passage. Appelée par `pg_cron`, jamais par un client |
+| `review_due()` · `review_pending()` | Les révisions dues. `review_due` rend les QUESTIONS (Edge Function seule, clé de service) ; `review_pending` ne rend qu'un **nombre**, et c'est celle que l'app peut appeler |
 
 > ⚠️ **Une leçon apprise deux fois : ces fonctions RENDENT une erreur, elles ne la LÈVENT pas.**
 >
@@ -733,6 +871,10 @@ npx supabase gen types typescript --project-id qoyebljuvrxhcroxapys > src/lib/da
 | Le code d'invitation ne se devine pas | 6 caractères sur 31 symboles (887 millions), **10 essais par heure** |
 | L'IA n'est accessible qu'aux inscrits | La fonction refuse tout appel sans jeton valide (401) |
 | Un fichier joint reste privé | Bucket privé + vérification du propriétaire côté serveur |
+| Une notification n'ouvre pas n'importe quel écran | Son contenu vient du réseau : seules `/assignment/{id}` et `/fil/{id}` sont acceptées, le reste est ignoré |
+| Un élève ne lit pas ses propres révisions à venir | `review_queue` contient les bonnes réponses : **aucune policy**, comme `quiz_sessions` |
+| Le texte d'un message de classe ne s'affiche pas sur un écran verrouillé | La notification dit qu'il y a des messages, jamais lesquels |
+| La file d'attente ne fabrique pas d'XP | Elle ne rejoue que des CHOIX ; la correction reste faite par le serveur, qui refuse une session déjà corrigée |
 | Une remise de devoir reste entre l'élève et son prof | Le chemin distingue `…/chat/…` (tous les membres) de `…/{devoir}/…` (le professeur seul) |
 
 > 🔒 **Le principe qui revient partout : le client lit, seules des fonctions `SECURITY DEFINER` écrivent.** Toutes ont `SET search_path TO ''`, aucune n'est exécutable par `anon`.
@@ -742,8 +884,10 @@ npx supabase gen types typescript --project-id qoyebljuvrxhcroxapys > src/lib/da
 ```bash
 node scripts/smoke_test.mjs        # quiz, XP, quotas, anti-rejeu
 node scripts/test_moderation.mjs   # 47 vérifications sur 6 comptes réels
-npm run check                      # types + i18n FR/HT + routage de l'IA
+npm run check                      # types + i18n FR/HT + routes + routage de l'IA
 ```
+
+`npm run check` tourne aussi **à chaque poussée**, par [`.github/workflows/check.yml`](.github/workflows/check.yml). Les tests qui parlent à Supabase, eux, restent manuels : ils écrivent dans le vrai projet, et une intégration continue qui crée six comptes à chaque poussée n'est pas une CI, c'est une fuite.
 
 Le linter de sécurité Supabase ne remonte **aucune erreur**. Il signale en `WARN` que les fonctions `SECURITY DEFINER` sont appelables par un utilisateur connecté — c'est précisément l'architecture voulue : chacune vérifie elle-même qui appelle avant d'agir.
 
@@ -770,6 +914,9 @@ La vraie clé secrète — `GEMINI_API_KEY` — n'est **jamais** dans le dépôt
 | 🛡️ **Les termes filtrés** | La table `moderation_terms` (SQL uniquement — jamais lisible depuis l'app) |
 | 📜 **La charte de classe** | `src/i18n/fr.ts` et `ht.ts`, section `charte` |
 | 🤖 **Le prompt de modération** | `supabase/functions/tutor/index.ts`, `MODERATION_PROMPT` |
+| 🔔 **Quand une notification part** | Les trois déclencheurs de `supabase/migrations/20260904_notifications.sql` |
+| 🧠 **Les paliers de révision** | `review_interval()` — 1, 3, 7, 21 jours par défaut |
+| ⏳ **Combien de temps la file garde** | `PEREMPTION` dans `src/lib/outbox.ts` (7 jours) |
 
 ### Régénérer les icônes de l'app
 
@@ -777,7 +924,9 @@ La vraie clé secrète — `GEMINI_API_KEY` — n'est **jamais** dans le dépôt
 python scripts/make_icons.py
 ```
 
-Redessine les six fichiers (icône iOS, icône adaptative Android, monochrome, fond, écran de démarrage, favicon) à partir du même tracé que le logo.
+Redessine les sept fichiers (icône iOS, icône adaptative Android, monochrome, fond, écran de démarrage, **icône de notification**, favicon) à partir du même tracé que le logo.
+
+> L'icône de notification est un POCHOIR : Android n'en garde que l'alpha et la repeint. C'est pour ça que le E y est **percé** plutôt que peint d'une seconde couleur — un trou survit à la repeinte, une couleur non, et il ne resterait qu'un D plein dans la barre d'état.
 
 ---
 
@@ -791,6 +940,28 @@ Redessine les six fichiers (icône iOS, icône adaptative Android, monochrome, f
 | **Base de données, XP, classement** | Migration SQL | ~1 min | **rien du tout** |
 | **Écrans, textes, couleurs, logique** | `eas update` (OTA) | ~5 min | Profil → Mises à jour |
 | **Nom, permissions, `app.json`** | Nouveau build EAS | 15-20 min | Réinstaller l'APK |
+
+### ⚠️ La version 1.2.0 se livre en TROIS temps, dans cet ordre
+
+`app.json` est passé de **1.1.0 à 1.2.0**, `version` et `runtimeVersion` ensemble, parce qu'`expo-notifications` est un module **natif** : une OTA ne peut pas l'ajouter. L'ordre ci-dessous n'est pas une préférence, c'est ce qui décide de qui reçoit quoi.
+
+| # | À faire | Qui en profite |
+|---|---|---|
+| **1** | **Les migrations SQL**, d'abord. Elles posent des tables et des déclencheurs dont le reste dépend, et ne cassent rien pour les installations existantes | tout le monde, tout de suite |
+| **2** | **Redéployer l'Edge Function.** Le flux et les révisions vivent dedans. Un serveur non redéployé fait simplement retomber l'app sur l'ancien chemin | tout le monde, tout de suite |
+| **3** | **Construire l'APK 1.2.0.** Notifications comprises | ceux qui l'installent |
+
+```bash
+node scripts/migrate.mjs supabase/migrations/20260904_notifications.sql
+node scripts/migrate.mjs supabase/migrations/20260904_revision_espacee.sql
+node scripts/dump_types.mjs          # les nouvelles RPC entrent dans database.types.ts
+node scripts/deploy_function.mjs
+npx eas-cli build --platform android --profile preview
+```
+
+> 💡 **Tu veux que le parc actuel profite du flux tout de suite, sans attendre l'APK ?** Publie une OTA sur le runtime **1.1.0** *avant* de prendre le passage à 1.2.0 — tout ce qui n'est pas natif (flux, WebP, file d'attente, version affichée) part alors en cinq minutes, et les notifications suivront avec le nouveau binaire. Le code est écrit pour ça : `expo-notifications` est chargé à l'exécution et reste absent sans faire de bruit sur un ancien APK.
+
+> 🔑 **Une fois les migrations passées, relance `node scripts/dump_types.mjs`.** `register_push_token` et `forget_push_token` n'existent pas encore dans `src/lib/database.types.ts` : [`src/lib/push.ts`](src/lib/push.ts) contourne le typage par un transtypage volontairement enfermé sur ces deux appels, qui peut alors disparaître.
 
 ### Mise à jour OTA — sans recompiler
 
@@ -845,29 +1016,77 @@ Guide complet : **[`docs/DEPLOIEMENT.md`](docs/DEPLOIEMENT.md)**
 | Un message normal est refusé | Faux positif du filtre | Regarder `moderation_terms` : le terme est probablement en `mot_entier = false` alors qu'il est court |
 | Le prof ne voit pas un message signalé | Il n'est pas le professeur **de cette classe** | `classroom_moderation()` ne rend rien à quelqu'un d'autre, sans erreur |
 | Écran blanc au lancement | Erreur JavaScript | Regarde le terminal ; `npx expo start --clear` |
+| Aucune notification n'arrive | L'APK est antérieur à 1.2.0 | `expo-notifications` est natif : il faut le nouveau binaire, une OTA ne l'ajoute pas |
+| Notifications muettes sur un APK 1.2.0 | Le canal Android n'existe pas, ou la file n'est pas vidée | Android 13+ n'affiche la demande d'autorisation **qu'une fois le canal créé** — c'est fait avant `getExpoPushTokenAsync`. Sinon : `select public.push_flush();` à la main, et regarder `notifications` (`sent_at` nul = jamais parti) |
+| Le tuteur répond toujours d'un bloc | Edge Function pas redéployée, ou intermédiaire qui met en tampon | L'app **retombe d'elle-même** sur l'appel d'un bloc : ce n'est pas une panne. Redéployer la fonction |
+| Une question de quiz revient | C'est voulu — [§9bis](#9bis-prévenir-écrire-en-direct-faire-retenir-et-tenir-sans-réseau) | La révision espacée. L'écran l'écrit sous le compteur de questions |
+| « X chose(s) attendent le réseau » ne baisse pas | La file ne se vide qu'au retour au premier plan | Sortir de l'app et y revenir. Une ligne coincée est jetée au bout de 7 jours |
+| `tsc` refuse une route qui existe | `.expo/types/router.d.ts` est périmé | `npm run check` la régénère avant de vérifier — voir plus bas |
+| Le Profil affiche une version inconnue | *(corrigé)* Le numéro était recopié à la main dans `src/config/app.ts` | Il est maintenant lu dans `app.json`, suivi de l'OTA en cours |
 
 ### Vérifier que tout est sain
 
 ```bash
-npx tsc --noEmit    # types — doit être silencieux
+npm run check       # LA commande — types, i18n FR/HT, routes, routage de l'IA
 npx expo-doctor     # configuration — doit afficher 21/21
 ```
+
+`npm run check` **régénère d'abord les types de routes** (`expo customize
+tsconfig.json`), puis lance `tsc`. C'est délibéré, et ça vient d'un piège :
+
+> ⚠️ **Un `tsc` rouge ne veut pas toujours dire que le code est faux.**
+> Les types de routes vivent dans `.expo/types/router.d.ts`, un fichier
+> **généré**, ignoré par Git, et rafraîchi seulement quand le serveur de
+> développement démarre. Ajoute un écran sans relancer `npx expo start`, et
+> `tsc` refuse une route qui existe pourtant — `router.replace('/prof')`
+> devient « not assignable », alors que `app/prof/index.tsx` est bien là.
+> On cherche alors une erreur dans du code correct. La régénération est donc
+> passée dans la commande elle-même : elle ne peut plus être oubliée, ni ici,
+> ni sur une machine d'intégration continue.
+
+> 💡 Les trois scripts qui suivent `tsc` ne coûtent rien et attrapent ce que
+> les types ne voient pas : une clé traduite en français mais pas en créole
+> (`check_i18n`), deux écrans qui revendiquent la même URL (`check_routes`),
+> et une question de maths partie sur le modèle rapide au lieu de celui qui
+> sait raisonner (`check_routing`).
 
 ---
 
 ## 🗺️ Feuille de route
 
-Par ordre d'utilité réelle. Les deux premières ne demandent **aucune mise à jour de l'app**.
+Rangée par **utilité réelle pour un élève haïtien**, pas par difficulté. La
+colonne *Livraison* est ce qui décide vraiment de l'ordre : ce qui part en OTA
+arrive chez tout le monde en cinq minutes, un nouveau module natif demande un
+APK que chacun doit réinstaller à la main.
 
-- [ ] **Cache de quiz partagé** — un quiz devient instantané au lieu de 15 s, et la génération n'est payée qu'une fois pour des dizaines d'élèves *(serveur seul)*
+| | Ce que ça change | Livraison |
+|---|---|---|
+| 💾 **Cache de quiz partagé** | Un quiz devient instantané au lieu de 15 s, et sa génération n'est payée **qu'une fois** pour des dizaines d'élèves de la même classe. C'est maintenant le meilleur rapport gain/effort restant | ✅ Serveur seul |
+| 📄 **Mode « Examen d'État »** | Épreuves blanches chronométrées 6e AF / 9e AF / Bac, au format réel | ✅ OTA |
+| 📸 **Photo de leçon → fiche + quiz** | L'élève photographie son cahier, reçoit une fiche de révision et 5 questions dessus | ✅ OTA |
+| 👪 **Tableau de bord parents** | Ce que `topic_mastery` sait déjà, montré à un parent | ✅ OTA + SQL |
+| 🔊 **Explications audio** | Synthèse vocale — décisif pour un élève qui lit mal | ⚠️ Selon le moteur retenu |
+| 🧠 **Barème de maîtrise des révisions** | Retrouver une notion trois semaines après en dit plus long que la réussir le jour même. Aujourd'hui une révision compte comme n'importe quelle bonne réponse — toucher au barème demande de reprendre l'anti-triche avec | ✅ SQL |
+
+**Fait :**
+
+- [x] ~~**Notifications**~~ — devoir publié, copie corrigée, fil qui bouge. Jamais le texte des messages — [§9bis](#9bis-prévenir-écrire-en-direct-faire-retenir-et-tenir-sans-réseau)
+- [x] ~~**Réponse en flux**~~ — le premier mot en moins d'une seconde, à coût et modèle inchangés
+- [x] ~~**Révision espacée**~~ — 1, 3, 7, 21 jours, questions rejouées telles quelles, sans un appel de plus
+- [x] ~~**File d'attente hors-ligne**~~ — plus un seul XP perdu quand le réseau lâche pendant un quiz
 - [x] ~~**Quota par élève**~~ — `usage_counters` + `bump_usage()`, quotidien pour le tuteur et les quiz, horaire pour les messages et les codes d'invitation
-- [ ] **Révision espacée** — toute question ratée revient après 1, 3, 7 et 21 jours. Le plus gros levier pédagogique : c'est ce qui fait *retenir* au lieu de seulement *évaluer*
-- [ ] **Mode « Examen d'État »** — épreuves blanches chronométrées 6e AF / 9e AF / Bac, au format réel
-- [ ] **Photo de leçon → fiche + quiz** — l'élève photographie son cahier, reçoit une fiche de révision et 5 questions dessus
-- [x] ~~Tableau de bord prof~~ — [§9](#9-classes-devoirs-et-fil)
-- [ ] Tableau de bord parents
-- [ ] Explications audio (synthèse vocale)
-- [ ] Mode hors-ligne complet pour les notions déjà consultées
+- [x] ~~**Tableau de bord prof**~~ — [§9](#9-classes-devoirs-et-fil)
+- [x] ~~**Version affichée fiable**~~ — lue dans `app.json`, plus recopiée à la main, et suivie de l'identifiant de l'OTA en cours
+- [x] ~~**Intégration continue**~~ — [`.github/workflows/check.yml`](.github/workflows/check.yml) : `npm run check` à chaque poussée
+- [x] ~~**`manipulateAsync` déprécié**~~ — passé à l'API contextuelle du SDK 57, et **WebP sur Android** : ~30 % de données en moins à chaque photo de devoir
+
+### Dette technique connue
+
+| Sujet | Où | Pourquoi ça compte |
+|---|---|---|
+| WebP seulement sur Android | [`src/lib/attachments.ts`](src/lib/attachments.ts) | L'encodeur WebP est garanti par Android, pas par iOS : un iPhone reste en JPEG. Le parc haïtien est massivement Android, mais c'est une asymétrie à connaître |
+| Le transtypage des RPC de notification | [`src/lib/push.ts`](src/lib/push.ts) | Volontairement enfermé sur deux appels, en attendant que les migrations soient appliquées et `dump_types.mjs` relancé. Il doit alors **disparaître** |
+| Les migrations du 4 septembre ne sont pas encore appliquées | `supabase/migrations/20260904_*.sql` | Écrites et relues, mais elles n'ont pas encore tourné contre la base. Ce sont les seules pièces de la 1.2.0 à n'avoir jamais été exécutées — voir l'ordre de livraison en [§14](#14-livrer-une-modification) |
 
 ---
 

@@ -20,8 +20,19 @@ import React, {
   useState,
   type ReactNode,
 } from 'react';
+import { AppState as AppStateRN } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { STORAGE_KEYS, type Difficulty } from '@/config/app';
+import {
+  enfiler,
+  jeterFile,
+  tailleFile,
+  viderFile,
+  type Issue,
+  type Travail,
+} from '@/lib/outbox';
+import { askTutor } from '@/ai/tutor';
+import { studentContextOf, planSubjects } from '@/ai/plan';
 import { supabase } from '@/lib/supabase';
 import { removeAttachments } from '@/lib/attachments';
 import { acceptCharter as acceptCharterRpc } from '@/lib/moderation';
@@ -203,6 +214,15 @@ interface AppState {
   syncing: boolean;
   /** true si la dernière synchro a échoué (mode hors-ligne). */
   offline: boolean;
+  /**
+   * Ce qui attend le retour du réseau : remises de quiz et
+   * questions posées hors ligne.
+   *
+   * Zéro la plupart du temps. Dès que ce n'est plus zéro, l'écran
+   * doit le DIRE — un élève qui ne voit pas ses XP arriver après un
+   * quiz croit les avoir perdus, et c'est la fois de trop.
+   */
+  enAttente: number;
   profile: Profile;
   progress: Progress;
   activity: ActivityPoint[];
@@ -232,7 +252,19 @@ interface AppState {
   startConversation: (subjectId: string) => void;
   deleteConversation: (id: string) => Promise<void>;
   refreshConversations: () => Promise<void>;
-  addChatMessages: (msgs: ChatMsg[]) => Promise<void>;
+  /**
+   * Ajoute des messages au fil ouvert.
+   *
+   * REND l'identifiant de la conversation utilisée — celle qui
+   * existait, ou celle qui vient d'être créée. Sans ça, l'appelant
+   * ne peut pas savoir où son message a atterri : `currentConversationId`
+   * est un état React, il ne change pas dans la fonction en cours.
+   * C'est exactement ce dont la file d'attente a besoin pour
+   * ramener la réponse au bon endroit.
+   *
+   * null si l'élève n'est pas connecté, ou si la base a refusé.
+   */
+  addChatMessages: (msgs: ChatMsg[]) => Promise<string | null>;
   clearChat: () => void;
   touchActivity: () => void;
   resetAll: () => Promise<void>;
@@ -297,6 +329,31 @@ type ProgressRow = {
   studied_count: number;
 };
 
+/**
+ * Cette erreur est-elle une panne de TRANSPORT, ou un refus motivé
+ * du serveur ?
+ *
+ * La distinction commande tout : une panne de transport se rejoue
+ * plus tard et finit par passer ; un refus motivé — session déjà
+ * corrigée, quota du jour épuisé — se reproduira à l'identique, et
+ * le remettre en file le ferait tourner en boucle jusqu'à sa
+ * péremption.
+ *
+ * On reconnaît la panne au message, faute de mieux : supabase-js
+ * ne distingue pas les deux dans son type d'erreur.
+ */
+const estPanneReseau = (message?: string): boolean => {
+  if (!message) return true; // pas de message = pas de réponse = réseau
+  const m = message.toLowerCase();
+  return (
+    m.includes('network') ||
+    m.includes('fetch') ||
+    m.includes('timeout') ||
+    m.includes('timed out') ||
+    m.includes('connection')
+  );
+};
+
 const mergeProgressRow = (prev: Progress, row: ProgressRow): Progress => ({
   ...prev,
   xp: row.xp,
@@ -317,6 +374,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [offline, setOffline] = useState(false);
+  const [enAttente, setEnAttente] = useState(0);
   const [profile, setProfile] = useState<Profile>(DEFAULT_PROFILE);
   const [progress, setProgress] = useState<Progress>(DEFAULT_PROGRESS);
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -644,6 +702,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
       if (error || !data) {
         setOffline(true);
+
+        // Le réseau a lâché entre la dernière question et la
+        // remise. La session existe côté serveur, avec les bonnes
+        // réponses : la remise est donc REJOUABLE telle quelle, et
+        // les XP arriveront. Avant, ces dix minutes de travail ne
+        // rapportaient rien et rien ne le disait.
+        //
+        // On ne met en file qu'une panne de TRANSPORT : un refus
+        // motivé (session déjà corrigée) se reproduirait à
+        // l'identique et n'a rien à faire dans une file.
+        if (estPanneReseau(error?.message)) {
+          await enfiler({ type: 'quiz', sessionId, subjectId, picked });
+          setEnAttente(await tailleFile());
+        }
         return 0;
       }
 
@@ -669,6 +741,121 @@ export function AppProvider({ children }: { children: ReactNode }) {
     },
     [userId, loadFromServer],
   );
+
+  // ═══════════════════════════════════════════════════════════
+  //  LE RETOUR DU RÉSEAU
+  //
+  //  Rien ici ne SURVEILLE la connexion : on rejoue quand l'app
+  //  revient au premier plan, et au démarrage. Ce sont les deux
+  //  moments où l'élève est là pour voir le résultat, et les seuls
+  //  où l'on sait quelque chose d'utile — un réseau annoncé
+  //  présent mais qui ne passe pas est le cas ordinaire ici.
+  // ═══════════════════════════════════════════════════════════
+
+  const traiterTravail = useCallback(
+    async (travail: Travail): Promise<Issue> => {
+      if (!userId) return 'attend';
+
+      if (travail.type === 'quiz') {
+        const { data, error } = await supabase.rpc('grade_quiz', {
+          p_session_id: travail.sessionId,
+          p_picked: travail.picked,
+        });
+
+        if (error || !data) {
+          // « session deja corrigee » : elle est passée, peut-être
+          // depuis un autre appareil. C'est un succès, pas un
+          // échec — on retire la ligne.
+          return estPanneReseau(error?.message) ? 'attend' : 'fait';
+        }
+
+        const payload = data as { gained: number; pct: number; progress: ProgressRow };
+        setProgress((prev) => ({
+          ...mergeProgressRow(prev, payload.progress),
+          quizBest: {
+            ...prev.quizBest,
+            [travail.subjectId]: Math.max(
+              prev.quizBest[travail.subjectId] ?? 0,
+              payload.pct,
+            ),
+          },
+        }));
+        return 'fait';
+      }
+
+      // ── Une question posée sans réseau ──────────────────────
+      //
+      // La réponse est écrite DIRECTEMENT en base, dans la
+      // conversation d'origine. Elle n'est pas affichée en
+      // surgissant sous les yeux de l'élève : il la retrouve en
+      // ouvrant son fil, à l'endroit où il l'attendait.
+      try {
+        const ctx = studentContextOf(
+          profile,
+          progress,
+          travail.subjectId === 'general' ? undefined : travail.subjectId,
+        );
+        const reponse = await askTutor(travail.historique, ctx, {
+          profile,
+          subjectIds: planSubjects(profile),
+        });
+
+        const { error } = await supabase.from('chat_messages').insert({
+          user_id: userId,
+          conversation_id: travail.conversationId,
+          thread: travail.subjectId,
+          role: 'tutor',
+          text: reponse.text,
+        });
+        if (error) return estPanneReseau(error.message) ? 'attend' : 'fait';
+
+        void refreshConversations();
+        return 'fait';
+      } catch (e) {
+        return estPanneReseau(e instanceof Error ? e.message : '') ? 'attend' : 'fait';
+      }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [userId, profile, progress],
+  );
+
+  /**
+   * Le traitement, tenu dans une référence.
+   *
+   * Il dépend du profil et de la progression — donc il change à
+   * chaque XP gagné. S'il entrait dans les dépendances de l'effet
+   * ci-dessous, celui-ci se réabonnerait à l'état de
+   * l'application à chaque quiz, et relancerait un vidage juste
+   * après celui qui vient de modifier la progression. Une boucle
+   * qui finit par se calmer, mais qui n'a aucune raison d'exister.
+   */
+  const traiterRef = useRef(traiterTravail);
+  useEffect(() => {
+    traiterRef.current = traiterTravail;
+  }, [traiterTravail]);
+
+  const rejouerFile = useCallback(async () => {
+    if (!userId) return;
+    const faits = await viderFile((t) => traiterRef.current(t));
+    setEnAttente(await tailleFile());
+    if (faits > 0) {
+      setOffline(false);
+      loadFromServer(userId);
+    }
+  }, [userId, loadFromServer]);
+
+  // Au démarrage, puis à chaque retour au premier plan. C'est là
+  // que l'élève est présent pour voir le résultat — et les deux
+  // seuls moments où l'on apprend quelque chose de la connexion.
+  useEffect(() => {
+    if (!userId) return;
+    void rejouerFile();
+
+    const abonnement = AppStateRN.addEventListener('change', (etat) => {
+      if (etat === 'active') void rejouerFile();
+    });
+    return () => abonnement.remove();
+  }, [userId, rejouerFile]);
 
   // ── Conversations ───────────────────────────────────────────
 
@@ -742,9 +929,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const addChatMessages = useCallback(
-    async (msgs: ChatMsg[]) => {
+    async (msgs: ChatMsg[]): Promise<string | null> => {
       setMessages((prev) => [...prev, ...msgs]);
-      if (!userId) return;
+      if (!userId) return null;
 
       let convId = currentConversationId;
 
@@ -764,7 +951,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
         if (error || !data) {
           setOffline(true);
-          return;
+          return null;
         }
         convId = data.id;
         setCurrentConversationId(convId);
@@ -786,6 +973,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       );
       setOffline(!!error);
       if (!error) void refreshConversations();
+
+      return convId;
     },
     [userId, currentConversationId, refreshConversations],
   );
@@ -832,6 +1021,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const { error } = await supabase.rpc('reset_progress');
       if (error) throw new Error(error.message);
     }
+    // La file part avec le reste : elle ne contient que des
+    // remises et des questions de la progression qu'on efface.
+    await jeterFile();
+    setEnAttente(0);
+
     setProgress(DEFAULT_PROGRESS);
     setConversations([]);
     setCurrentConversationId(null);
@@ -937,6 +1131,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     ready: ready && authReady,
     syncing,
     offline,
+    enAttente,
     profile,
     progress,
     activity,

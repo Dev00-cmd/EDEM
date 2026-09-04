@@ -67,6 +67,7 @@ export const fr = {
 
   sync: {
     offline: 'Hors ligne — tes progrès seront envoyés au retour du réseau.',
+    enAttente: '{n} chose(s) attendent le réseau — quiz et questions partiront tout seuls.',
     syncing: 'Synchronisation…',
   },
 
@@ -723,8 +724,16 @@ export const fr = {
     setupTitle: 'Serveur IA non configuré',
     setupBody:
       "Le tuteur fonctionne avec Claude via ton petit serveur (5 min à mettre en place).\n\n1. Ouvre le dossier server/ et suis son README\n2. Mets EXPO_PUBLIC_API_URL dans le fichier .env\n3. Relance l'app — et c'est parti ✦\n\nGuide complet : docs/IA.md",
+    // Le réseau a lâché, la question est gardée. Ce n'est pas
+    // une panne du point de vue de l'élève : c'est un report.
+    enFileTitle: 'Question gardée',
+    enFileBody: 'Pas de réseau pour le moment. Ta question part toute seule dès que la connexion revient, et la réponse arrivera ici.',
     errorTitle: 'Impossible de joindre le serveur IA',
     errorBody: 'Vérifie ta connexion et que le serveur tourne, puis réessaie.',
+    // La réponse a atteint la limite du modèle. L'élève garde le
+    // début, qui reste utile : on le lui dit plutôt que de le
+    // laisser croire que M. Thomas s'est arrêté là de lui-même.
+    tronque: 'Réponse trop longue, elle a été coupée. Redemande la suite en plus court.',
     xpGained: 'notion étudiée',
     newConversation: 'Nouvelle discussion',
     history: 'Mes discussions',
@@ -753,6 +762,7 @@ export const fr = {
     levelHint_difficile: 'Plusieurs notions à la fois, niveau examen d’État. Rapporte le plus d’XP.',
     difficulty: 'Niveau',
     question: 'Question',
+    revisionNote: 'Dont {n} révision(s) — des questions déjà ratées.',
     correct: 'Bonne réponse !',
     wrong: 'Pas tout à fait…',
     timeUp: 'Temps écoulé !',

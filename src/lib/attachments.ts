@@ -14,7 +14,7 @@
 import { Linking, Platform } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
-import * as ImageManipulator from 'expo-image-manipulator';
+import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import { Directory, File, Paths } from 'expo-file-system';
 import { supabase } from './supabase';
 import type { Lang } from '@/i18n';
@@ -75,16 +75,51 @@ export function attachmentError(kind: string, lang: Lang): string {
 // ─── Choix du fichier ─────────────────────────────────────────
 
 /**
- * Réduit et convertit une image en JPEG.
+ * Le format de sortie des photos.
+ *
+ * WebP pèse environ 30 % de moins que le JPEG à qualité égale.
+ * Sur un forfait payé au mégaoctet, ce n'est pas une optimisation
+ * de confort : c'est de l'argent rendu à l'élève à chaque photo de
+ * devoir, et une photo qui part au lieu d'expirer sur un réseau
+ * lent.
+ *
+ * Android seulement, et c'est délibéré : l'encodeur WebP est
+ * garanti par la plateforme Android, pas par iOS. Un iPhone reste
+ * donc en JPEG — le parc haïtien est massivement Android, et un
+ * format qui échoue à l'encodage coûterait la pièce jointe entière
+ * pour économiser quelques kilo-octets.
+ *
+ * Les deux formats sont déjà acceptés partout ailleurs : `IMAGE_TYPES`
+ * liste `image/webp`, `isImagePath` le reconnaît, `mimeDe` le rend,
+ * et Gemini sait le lire.
+ */
+const SORTIE = Platform.OS === 'android'
+  ? { format: SaveFormat.WEBP, type: 'image/webp', ext: 'webp' }
+  : { format: SaveFormat.JPEG, type: 'image/jpeg', ext: 'jpg' };
+
+/**
+ * Réduit une image et la réencode.
  * C'est ce qui rend l'envoi possible sur un réseau lent.
+ *
+ * On passe par l'API contextuelle (`manipulate` → `renderAsync` →
+ * `saveAsync`) et non par `manipulateAsync`, **déprécié depuis le
+ * SDK 57**. Les deux vivent dans la même version du module natif
+ * déjà installée : ce changement part donc en OTA sans nouvel APK.
  */
 async function compressImage(uri: string): Promise<{ uri: string; type: string }> {
-  const result = await ImageManipulator.manipulateAsync(
-    uri,
-    [{ resize: { width: MAX_IMAGE_SIDE } }],
-    { compress: 0.75, format: ImageManipulator.SaveFormat.JPEG },
-  );
-  return { uri: result.uri, type: 'image/jpeg' };
+  const contexte = ImageManipulator.manipulate(uri);
+  // `height: null` = calculé pour préserver le rapport d'origine.
+  contexte.resize({ width: MAX_IMAGE_SIDE, height: null });
+
+  const rendu = await contexte.renderAsync();
+  const result = await rendu.saveAsync({ compress: 0.75, format: SORTIE.format });
+
+  return { uri: result.uri, type: SORTIE.type };
+}
+
+/** Remplace l'extension d'un nom de fichier par celle du format de sortie. */
+function renomme(nom: string): string {
+  return `${nom.replace(/\.[^.]+$/, '')}.${SORTIE.ext}`;
 }
 
 /** Prend une photo avec l'appareil. */
@@ -99,7 +134,7 @@ export async function pickFromCamera(lang: Lang): Promise<PickedFile | string> {
   if (res.canceled || res.assets.length === 0) return '';
 
   const { uri, type } = await compressImage(res.assets[0].uri);
-  return { uri, name: `photo-${Date.now()}.jpg`, type, isImage: true };
+  return { uri, name: renomme(`photo-${Date.now()}`), type, isImage: true };
 }
 
 /** Choisit une image déjà dans la galerie. */
@@ -117,7 +152,11 @@ export async function pickFromGallery(lang: Lang): Promise<PickedFile | string> 
   const { uri, type } = await compressImage(asset.uri);
   return {
     uri,
-    name: asset.fileName ?? `image-${Date.now()}.jpg`,
+    // Le nom SUIT le format réel. Sans ça, le HEIC d'un iPhone
+    // gardait son extension d'origine sur un corps réencodé, et
+    // `mimeDe` annonçait ensuite `image/heic` au lecteur du
+    // téléphone pour un fichier qui n'en est pas un.
+    name: renomme(asset.fileName ?? `image-${Date.now()}`),
     type,
     isImage: true,
   };
@@ -142,7 +181,7 @@ export async function pickDocument(lang: Lang): Promise<PickedFile | string> {
     const compressed = await compressImage(asset.uri);
     return {
       uri: compressed.uri,
-      name: asset.name,
+      name: renomme(asset.name),
       type: compressed.type,
       isImage: true,
     };

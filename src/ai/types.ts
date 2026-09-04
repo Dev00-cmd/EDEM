@@ -42,4 +42,13 @@ export interface GeneratedQuiz {
    * proposé à l'élève, faute de pouvoir être noté.
    */
   sessionId: string;
+  /**
+   * Combien de ces questions sont des RÉVISIONS — des questions
+   * déjà ratées, qui reviennent après 1, 3, 7 ou 21 jours.
+   *
+   * Sert uniquement à l'expliquer à l'élève. Sans un mot, une
+   * question qu'il reconnaît ressemble à un bug ; avec, elle
+   * ressemble à ce qu'elle est : une seconde chance.
+   */
+  revisions: number;
 }

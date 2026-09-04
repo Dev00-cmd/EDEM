@@ -32,6 +32,7 @@ export default function HomeScreen() {
     levelProgress,
     touchActivity,
     offline,
+    enAttente,
     syncing,
     refresh,
     shouldTune,
@@ -94,6 +95,18 @@ export default function HomeScreen() {
           <Icon name="alert" size={14} color={colors.warning} />
           <Text style={[type.caption, { color: colors.textSoft, flex: 1 }]}>
             {t('sync.offline')}
+          </Text>
+        </View>
+      )}
+
+      {/* Ce qui attend le réseau. On le dit même quand la synchro
+          est revenue : un élève qui ne voit pas ses XP arriver
+          après un quiz croit les avoir perdus. */}
+      {enAttente > 0 && (
+        <View style={[styles.offline, { backgroundColor: colors.surfaceAlt }]}>
+          <Icon name="refresh" size={14} color={colors.accent} />
+          <Text style={[type.caption, { color: colors.textSoft, flex: 1 }]}>
+            {t('sync.enAttente', { n: String(enAttente) })}
           </Text>
         </View>
       )}

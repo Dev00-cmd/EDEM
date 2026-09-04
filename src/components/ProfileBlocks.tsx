@@ -213,10 +213,28 @@ export function BlocMiseAJour() {
   );
 }
 
+/**
+ * Les sept premiers caractères de l'identifiant de la mise à jour
+ * en cours, ou null si l'app tourne sur le code embarqué du build.
+ *
+ * La version seule ne suffit plus à savoir ce que l'élève exécute :
+ * tout le monde est en 1.1.0, mais chacun est sur l'OTA qu'il a
+ * bien voulu télécharger. Quand un élève signale un problème, c'est
+ * CE code qui dit si la correction est déjà chez lui.
+ *
+ * Volontairement sans étiquette traduite : c'est un identifiant
+ * technique, il se lit pareil en français et en créole.
+ */
+function revisionOTA(): string | null {
+  if (!Updates.isEnabled || Updates.isEmbeddedLaunch) return null;
+  return Updates.updateId ? Updates.updateId.slice(0, 7) : null;
+}
+
 /** « À propos ». */
 export function BlocAPropos() {
   const { t, profile } = useApp();
   const { colors } = useTheme();
+  const revision = revisionOTA();
 
   return (
     <Section label={t('profile.about')}>
@@ -227,6 +245,7 @@ export function BlocAPropos() {
             <Text style={[type.cardTitle, { color: colors.text }]}>{APP_NAME}</Text>
             <Text style={[type.caption, { color: colors.textFaint }]}>
               {t('profile.version')} {APP_VERSION}
+              {revision ? ` · ${revision}` : ''}
             </Text>
           </View>
         </View>

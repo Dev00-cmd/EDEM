@@ -453,6 +453,17 @@ export default function QuizScreen() {
           <Text style={[type.captionMedium, { color: colors.textSoft }]}>
             {t('quiz.question')} {index + 1}/{total}
           </Text>
+          {/* Pourquoi des questions reviennent. Sans ce mot, l'élève
+              qui reconnaît un énoncé croit à une erreur — alors que
+              c'est précisément là que se joue l'apprentissage. */}
+          {quiz.revisions > 0 && (
+            <View style={styles.row6}>
+              <Icon name="refresh" size={11} color={colors.textFaint} />
+              <Text style={[type.caption, { color: colors.textFaint }]}>
+                {t('quiz.revisionNote', { n: String(quiz.revisions) })}
+              </Text>
+            </View>
+          )}
           <View
             style={[
               styles.quizSubject,

@@ -67,6 +67,7 @@ export const ht: Messages = {
 
   sync: {
     offline: 'Ou pa sou entènèt — pwogrè ou ap voye lè rezo a tounen.',
+    enAttente: '{n} bagay ap tann rezo a — quiz ak kesyon yo ap pati pou kont yo.',
     syncing: 'Ap senkronize…',
   },
 
@@ -718,8 +719,11 @@ export const ht: Messages = {
     setupTitle: 'Sèvè AI a poko konfigire',
     setupBody:
       'Pwofesè a mache ak Claude atravè ti sèvè ou a (5 minit pou mete l sou pye).\n\n1. Louvri katab server/ la epi swiv README li a\n2. Mete EXPO_PUBLIC_API_URL nan fichye .env lan\n3. Rekòmanse app lan — epi an n ale ✦\n\nGid konplè: docs/IA.md',
+    enFileTitle: 'Kesyon an sere',
+    enFileBody: 'Pa gen rezo kounye a. Kesyon ou ap pati pou kont li lè koneksyon an tounen, epi repons lan ap rive isit la.',
     errorTitle: 'Nou pa ka kontakte sèvè AI a',
     errorBody: 'Verifye koneksyon ou ak si sèvè a ap travay, apre eseye ankò.',
+    tronque: 'Repons lan te twò long, li koupe. Redemande rès la an pi kout.',
     xpGained: 'notion etidye',
     newConversation: 'Nouvo diskisyon',
     history: 'Diskisyon mwen yo',
@@ -748,6 +752,7 @@ export const ht: Messages = {
     levelHint_difficile: 'Plizyè notion ansanm, nivo egzamen eta. Li bay plis pwen.',
     difficulty: 'Nivo',
     question: 'Kesyon',
+    revisionNote: 'Ladan yo {n} revizyon — kesyon ou te rate deja.',
     correct: 'Bon repons !',
     wrong: 'Pa sa non…',
     timeUp: 'Tan an fini !',
